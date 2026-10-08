@@ -36,6 +36,23 @@ and consistent record-keeping are about.
 🚧 Early development — contributions, feedback, and ideas from parents, 
 therapists, and developers are all welcome.
 
+## Development prototype
+
+The first phase is a mobile browser application built with React Native and Expo Web,
+backed by a Rust HTTP API. iOS and Android apps are planned for phase two.
+
+The local prototype supports training plans, per-goal results, difficulty and experience
+follow-up, and draft recovery. It uses sample data and is not a production deployment.
+
+- [Product plan and requirements (中文)](docs/product-plan.md)
+- [Development and validation (中文)](docs/development.md)
+
+```bash
+npm ci
+npm run web:build
+bash tools/start-local.sh
+```
+
 ## License
 
 [MIT](./LICENSE)

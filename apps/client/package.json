@@ -1,0 +1,24 @@
+{
+  "name": "@skarma/client",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "web": "expo start --web",
+    "build": "expo export --platform web",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "expo": "57.0.27",
+    "@expo/metro-runtime": "~57.0.16",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-web": "~0.21.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.0",
+    "typescript": "~5.9.2"
+  }
+}

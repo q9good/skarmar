@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "skarma",
+    "slug": "skarma",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "web": { "bundler": "metro", "output": "single", "name": "skarma · 每一步都值得记录" }
+  }
+}
