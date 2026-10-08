@@ -15,6 +15,18 @@ pub enum GoalStatus {
     Archived,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum GoalProgress {
+    Cultivating,
+    Internalized,
+    NotStarted,
+    InProgress,
+    Achieved,
+    Completed,
+    Overdue,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Goal {
     pub id: String,
@@ -25,6 +37,61 @@ pub struct Goal {
     pub criteria: String,
     pub status: GoalStatus,
     pub version: u64,
+    #[serde(default)]
+    pub progress_status: Option<GoalProgress>,
+    #[serde(default)]
+    pub start_date: Option<String>,
+    #[serde(default)]
+    pub due_date: Option<String>,
+    #[serde(default)]
+    pub last_review_date: Option<String>,
+    #[serde(default)]
+    pub next_review_date: Option<String>,
+    #[serde(default)]
+    pub completion_date: Option<String>,
+    #[serde(default)]
+    pub review_notes: String,
+}
+
+impl Goal {
+    pub fn is_reviewable(&self) -> bool {
+        self.level != Level::Long
+            && (self.status == GoalStatus::Archived
+                || matches!(
+                    self.progress_status,
+                    Some(GoalProgress::Achieved | GoalProgress::Completed)
+                ))
+    }
+
+    pub fn is_trainable(&self) -> bool {
+        self.level != Level::Long && self.status == GoalStatus::Active && !self.is_reviewable()
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct UpdateGoal {
+    pub expected_version: u64,
+    pub title: String,
+    pub parent_id: Option<String>,
+    pub area: String,
+    pub criteria: String,
+    pub status: GoalStatus,
+    pub progress_status: Option<GoalProgress>,
+    pub start_date: Option<String>,
+    pub due_date: Option<String>,
+    pub last_review_date: Option<String>,
+    pub next_review_date: Option<String>,
+    pub completion_date: Option<String>,
+    pub review_notes: String,
+    pub change_note: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GoalRevision {
+    pub goal: Goal,
+    pub recorded_at: String,
+    pub change_note: String,
+    pub source_session_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

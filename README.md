@@ -42,10 +42,11 @@ The first phase is a mobile browser application built with React Native and Expo
 backed by a Rust HTTP API. iOS and Android apps are planned for phase two.
 
 The local prototype supports training plans, per-goal results, difficulty and experience
-follow-up, and draft recovery. It uses sample data and is not a production deployment.
+follow-up, draft recovery, and versioned goal reviews. It uses sample data and is not a production deployment.
 
 - [Product plan and requirements (中文)](docs/product-plan.md)
 - [Development and validation (中文)](docs/development.md)
+- [Tencent snapshot and live audit status (中文)](docs/tencent-audit.md)
 
 ```bash
 npm ci

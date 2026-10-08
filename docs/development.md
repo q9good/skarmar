@@ -25,6 +25,8 @@ bash tools/start-local.sh
 
 启动脚本在云环境激活 `/workspace/.toolchains/` 中的 Rust；普通开发机使用已安装的
 Rust。API 同时提供 Web 静态资源，开发端口为 3001，仅监听 127.0.0.1。
+本轮 worktree 位于 `/workspace/worktrees/skarmar-web`，分支 `feat/tencent-informed-web`。
+为与原 checkout 的开发服务并行，可在此 worktree 根目录使用 `SKARMA_PORT=3002 bash tools/start-local.sh`。
 脚本默认使用 `.local/demo.db`，仅在没有目标时加入明确的示例目标，不清空现有数据库。
 首次安装 Rust 时按 rust-toolchain.toml 安装对应版本及 rustfmt、clippy。
 
@@ -46,12 +48,16 @@ EXPO_PUBLIC_API_URL=http://localhost:3001 EXPO_NO_TELEMETRY=1 npx expo start --w
 cargo fmt --all --check
 cargo test --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
+python -m unittest discover -s tools -p 'test_*.py' -v
 npm run typecheck
 npm run web:build
 ```
 
 Rust 集成测试覆盖草稿／完成规则、角色与目标范围、来源生成、历史快照、重复操作、
-版本冲突、并发 HTTP 更新，以及故障注入后的数据库事务回滚。
+版本冲突、并发 HTTP 更新，以及故障注入后的数据库事务回滚；本轮共 17 项。
+新增目标验收覆盖状态与归档独立、长期内化保留、完成目标复习、复盘日期、目标历史的事务回滚、
+旧字段兼容及显式重新保存计划后采用新目标版本。Python 测试使用合成数据和虚构凭证，验证字段
+映射、分页完整性、悬空关系分类及读取工具的凭证／输出边界。
 
 浏览器验收用可删除的独立数据库运行服务器：
 
@@ -62,11 +68,14 @@ python tools/smoke_web.py
 
 服务器必须从仓库根目录启动，验收库必须为空。每次运行可指定一个新的 validation
 数据库文件；不要复用或删除实际使用的数据库来满足验收前提。
+worktree 使用不同端口时，同时设置服务器的 `SKARMA_PORT=3002` 与验收脚本的
+`SKARMA_TEST_URL=http://127.0.0.1:3002`。
 浏览器脚本依赖 Python Playwright 与 Chromium；当前云镜像已提供这两项。其他环境需
 安装 Playwright，并通过 CHROMIUM_EXECUTABLE 指定 Chromium 的可执行文件位置。
 
 该脚本在 390 × 844 的 viewport 验证实际 UI：计划与回填共用 ID、本机草稿恢复、
-提交已在服务端完成但响应被网关错误替代后的重试、困难与经验生成、归档时快照及跟进来源跳转。
+提交已在服务端完成但响应被网关错误替代后的重试、困难与经验生成、归档时快照及跟进来源跳转；
+也覆盖目标复盘、目标并发冲突时保留与备份填写内容、待复盘入口及已完成目标的候选范围。
 截图输出到被 Git 忽略的 `.local/screenshots/`。这是浏览器模拟尺寸，真机验收另行完成。
 
 ## 数据与阶段边界
@@ -78,3 +87,5 @@ python tools/smoke_web.py
 后端为本地原型选择 SQLite 并把实体内容存为 JSON，关系与幂等操作使用 SQL 约束。
 正式存储结构、查询索引、版本化迁移、修订记录和备份方案会随部署设计进一步确定。
 首次初始化与重复启动可以保留数据库，不代表升级迁移及备份恢复已经通过验收。
+
+腾讯线上核验和附件关系审计的命令、证据边界见 [腾讯核验说明](tencent-audit.md)。

@@ -48,6 +48,26 @@ async fn create_goal(State(db): State<Database>, Json(input): Json<NewGoal>) -> 
     ))
 }
 
+async fn update_goal(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+    Json(input): Json<UpdateGoal>,
+) -> Result<Json<Goal>> {
+    Ok(Json(
+        db.execute(move |db| store::update_goal(db, &id, input))
+            .await?,
+    ))
+}
+
+async fn goal_history(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<GoalRevision>>> {
+    Ok(Json(
+        db.execute(move |db| store::goal_history(db, &id)).await?,
+    ))
+}
+
 async fn save_session(
     State(db): State<Database>,
     Path(id): Path<String>,
@@ -89,6 +109,8 @@ pub fn router(db: Database, web_origin: HeaderValue, assets: &str) -> Router {
         )
         .route("/state", get(read_state))
         .route("/goals", post(create_goal))
+        .route("/goals/{id}", put(update_goal))
+        .route("/goals/{id}/history", get(goal_history))
         .route("/sessions/{id}", put(save_session))
         .route("/difficulties/{id}", put(update_difficulty))
         .route("/experiences/{id}", put(update_experience))

@@ -25,8 +25,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse()?;
     let assets = env::var("SKARMA_WEB_ASSETS").unwrap_or_else(|_| "apps/client/dist".into());
     let db = Database(Arc::new(Mutex::new(connection)));
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3001").await?;
-    eprintln!("skarma development server listening on port 3001");
+    let port: u16 = env::var("SKARMA_PORT")
+        .unwrap_or_else(|_| "3001".into())
+        .parse()?;
+    let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;
+    eprintln!("skarma development server listening on port {port}");
     axum::serve(listener, router(db, origin, &assets)).await?;
     Ok(())
 }

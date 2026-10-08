@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd /workspace/skarmar
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 export RUSTUP_HOME=/workspace/.toolchains/rustup
 export CARGO_HOME=/workspace/.toolchains/cargo

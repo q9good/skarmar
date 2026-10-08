@@ -88,7 +88,153 @@ fn valid_date(date: &str) -> Result<()> {
 
 pub fn initialize(db: &Connection) -> Result<()> {
     db.execute_batch(include_str!("../migrations/001_initial.sql"))?;
+    db.execute_batch(include_str!("../migrations/002_goal_revisions.sql"))?;
     Ok(())
+}
+
+fn record_goal_revision(
+    db: &Connection,
+    goal: &Goal,
+    note: &str,
+    source: Option<&str>,
+) -> Result<()> {
+    let seconds = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| ApiError::invalid("系统时间不可用"))?
+        .as_secs();
+    let revision = GoalRevision {
+        goal: goal.clone(),
+        recorded_at: chrono::DateTime::from_timestamp(seconds as i64, 0)
+            .ok_or_else(|| ApiError::invalid("系统时间不可用"))?
+            .to_rfc3339(),
+        change_note: note.into(),
+        source_session_id: source.map(str::to_owned),
+    };
+    db.execute(
+        "INSERT OR IGNORE INTO goal_revisions(goal_id,version,data) VALUES (?1,?2,?3)",
+        params![
+            goal.id,
+            i64::try_from(goal.version).map_err(|_| ApiError::invalid("目标版本超出范围"))?,
+            json(&revision)?
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn goal_history(db: &Connection, id: &str) -> Result<Vec<GoalRevision>> {
+    if get::<Goal>(db, "goals", id)?.is_none() {
+        return Err(ApiError::missing());
+    }
+    let mut statement =
+        db.prepare("SELECT data FROM goal_revisions WHERE goal_id=?1 ORDER BY version DESC")?;
+    let rows = statement.query_map([id], |row| row.get::<_, String>(0))?;
+    rows.map(|row| Ok(serde_json::from_str(&row?)?)).collect()
+}
+
+pub fn update_goal(db: &mut Connection, id: &str, request: UpdateGoal) -> Result<Goal> {
+    let tx = db.transaction()?;
+    let previous: Goal = get(&tx, "goals", id)?.ok_or_else(ApiError::missing)?;
+    if previous.version != request.expected_version {
+        return Err(ApiError::conflict(
+            "目标已被更新，请保留填写内容并核对最新版本",
+        ));
+    }
+    if request.title.trim().is_empty()
+        || request.title.len() > 300
+        || request.change_note.trim().is_empty()
+        || request.criteria.len() > 5000
+        || request.review_notes.len() > 10_000
+    {
+        return Err(ApiError::invalid(
+            "请填写目标名称与本次修改说明，并控制内容长度",
+        ));
+    }
+    match (&previous.level, &request.progress_status) {
+        (Level::Long, None | Some(GoalProgress::Cultivating | GoalProgress::Internalized)) => {}
+        (
+            Level::Medium | Level::Short,
+            None
+            | Some(
+                GoalProgress::NotStarted
+                | GoalProgress::InProgress
+                | GoalProgress::Achieved
+                | GoalProgress::Completed
+                | GoalProgress::Overdue,
+            ),
+        ) => {}
+        _ => return Err(ApiError::invalid("培养状态与目标层级不匹配")),
+    }
+    for date in [
+        &request.start_date,
+        &request.due_date,
+        &request.last_review_date,
+        &request.next_review_date,
+        &request.completion_date,
+    ]
+    .into_iter()
+    .flatten()
+    {
+        valid_date(date)?;
+    }
+    if previous.level == Level::Long
+        && (request.due_date.is_some() || request.status != GoalStatus::Active)
+    {
+        return Err(ApiError::invalid(
+            "长期目标持续保留，不设置截止日期或归档；内化状态单独记录",
+        ));
+    }
+    if let (Some(start), Some(due)) = (&request.start_date, &request.due_date)
+        && due < start
+    {
+        return Err(ApiError::invalid("截止日期不能早于开始日期"));
+    }
+    match (&previous.level, &request.parent_id) {
+        (Level::Long, None) => {}
+        (Level::Medium | Level::Short, Some(parent_id)) => {
+            let parent: Goal = get(&tx, "goals", parent_id)?.ok_or_else(ApiError::missing)?;
+            let expected = if previous.level == Level::Medium {
+                Level::Long
+            } else {
+                Level::Medium
+            };
+            if parent.level != expected
+                || (parent.status != GoalStatus::Active
+                    && previous.parent_id.as_ref() != Some(parent_id))
+            {
+                return Err(ApiError::invalid("请选择活动中的正确上级目标"));
+            }
+        }
+        (Level::Medium | Level::Short, None) if previous.parent_id.is_none() => {}
+        _ => {
+            return Err(ApiError::invalid(
+                "长期目标不设父级；中期关联长期，短期关联中期",
+            ));
+        }
+    }
+    record_goal_revision(&tx, &previous, "旧版本基线", None)?;
+    let updated = Goal {
+        title: request.title.trim().into(),
+        parent_id: request.parent_id,
+        area: request.area,
+        criteria: request.criteria,
+        status: request.status,
+        progress_status: request.progress_status,
+        start_date: request.start_date,
+        due_date: request.due_date,
+        last_review_date: request.last_review_date,
+        next_review_date: request.next_review_date,
+        completion_date: request.completion_date,
+        review_notes: request.review_notes,
+        version: previous.version + 1,
+        ..previous
+    };
+    tx.execute(
+        "UPDATE goals SET parent_id=?1,data=?2 WHERE id=?3",
+        params![updated.parent_id, json(&updated)?, id],
+    )?;
+    record_goal_revision(&tx, &updated, &request.change_note, None)?;
+    tx.commit()?;
+    Ok(updated)
 }
 
 pub fn state(db: &Connection) -> Result<AppState> {
@@ -128,6 +274,11 @@ pub fn create_goal(db: &mut Connection, input: NewGoal) -> Result<Goal> {
             ));
         }
     }
+    let progress = if input.level == Level::Long {
+        GoalProgress::Cultivating
+    } else {
+        GoalProgress::NotStarted
+    };
     let goal = Goal {
         id: input.id,
         title: input.title.trim().into(),
@@ -137,11 +288,19 @@ pub fn create_goal(db: &mut Connection, input: NewGoal) -> Result<Goal> {
         criteria: input.criteria,
         status: GoalStatus::Active,
         version: 1,
+        progress_status: Some(progress),
+        start_date: None,
+        due_date: None,
+        last_review_date: None,
+        next_review_date: None,
+        completion_date: None,
+        review_notes: String::new(),
     };
     tx.execute(
         "INSERT INTO goals(id,parent_id,data) VALUES (?1,?2,?3)",
         params![goal.id, goal.parent_id, json(&goal)?],
     )?;
+    record_goal_revision(&tx, &goal, "创建目标", None)?;
     tx.commit()?;
     Ok(goal)
 }
@@ -190,7 +349,7 @@ pub fn save_session(db: &mut Connection, id: &str, request: SaveSession) -> Resu
             return Err(ApiError::invalid("同一目标只添加一次"));
         }
         let current: Goal = get(&tx, "goals", &target.goal_id)?.ok_or_else(ApiError::missing)?;
-        let snapshot = previous
+        let planned_snapshot = previous
             .as_ref()
             .and_then(|s| {
                 s.target_snapshots
@@ -199,15 +358,24 @@ pub fn save_session(db: &mut Connection, id: &str, request: SaveSession) -> Resu
             })
             .map(|t| t.goal_snapshot.clone())
             .unwrap_or_else(|| current.clone());
+        // Explicitly saving a plan acknowledges the latest goal definition.
+        // Completion alone must not silently replace the definition used before training.
+        let snapshot = if complete {
+            planned_snapshot
+        } else {
+            current.clone()
+        };
         if complete {
             if snapshot.version != current.version {
                 return Err(ApiError::conflict("关联目标已更新，请重新核对本次目标"));
             }
             if current.level == Level::Long
-                || (target.role == Role::Review && current.status != GoalStatus::Archived)
-                || (target.role != Role::Review && current.status != GoalStatus::Active)
+                || (target.role == Role::Review && !current.is_reviewable())
+                || (target.role != Role::Review && !current.is_trainable())
             {
-                return Err(ApiError::invalid("主副目标选当前中短期；复习选归档中短期"));
+                return Err(ApiError::invalid(
+                    "主副目标选待训练中短期；复习选已达成、已完成或已归档中短期",
+                ));
             }
             if target.outcome.is_none() {
                 return Err(ApiError::invalid("请分别确认每个目标的处理结果"));
@@ -274,12 +442,22 @@ pub fn save_session(db: &mut Connection, id: &str, request: SaveSession) -> Resu
             let mut goal: Goal =
                 get(&tx, "goals", &target.goal_id)?.ok_or_else(ApiError::missing)?;
             if goal.status != GoalStatus::Archived {
+                record_goal_revision(&tx, &goal, "旧版本基线", None)?;
                 goal.status = GoalStatus::Archived;
+                if !matches!(
+                    goal.progress_status,
+                    Some(GoalProgress::Achieved | GoalProgress::Completed)
+                ) {
+                    goal.progress_status = Some(GoalProgress::Achieved);
+                }
+                goal.completion_date
+                    .get_or_insert_with(|| session.input.business_date.clone());
                 goal.version += 1;
                 tx.execute(
                     "UPDATE goals SET data=?1 WHERE id=?2",
                     params![json(&goal)?, goal.id],
                 )?;
+                record_goal_revision(&tx, &goal, "训练后确认达成并归档", Some(id))?;
             }
         }
     }
@@ -415,13 +593,25 @@ pub fn seed_demo(db: &mut Connection) -> Result<()> {
             },
         )?;
         if title.starts_with("复习") {
-            let archived = Goal {
-                status: GoalStatus::Archived,
-                ..goal
-            };
-            db.execute(
-                "UPDATE goals SET data=?1 WHERE id=?2",
-                params![json(&archived)?, archived.id],
+            update_goal(
+                db,
+                &goal.id,
+                UpdateGoal {
+                    expected_version: goal.version,
+                    title: goal.title,
+                    parent_id: goal.parent_id,
+                    area: goal.area,
+                    criteria: goal.criteria,
+                    status: GoalStatus::Archived,
+                    progress_status: Some(GoalProgress::Achieved),
+                    start_date: None,
+                    due_date: None,
+                    last_review_date: None,
+                    next_review_date: None,
+                    completion_date: None,
+                    review_notes: String::new(),
+                    change_note: "示例归档".into(),
+                },
             )?;
         }
     }

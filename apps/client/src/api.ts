@@ -1,10 +1,19 @@
 export type Level = 'long' | 'medium' | 'short';
 export type Role = 'primary' | 'secondary' | 'review';
 export type Outcome = 'continue' | 'archive' | 'adjust';
+export type GoalProgress = 'cultivating' | 'internalized' | 'not_started' | 'in_progress' | 'achieved' | 'completed' | 'overdue';
 export type Goal = {
   id: string; title: string; level: Level; parent_id: string | null;
   area: string; criteria: string; status: 'active' | 'archived'; version: number;
+  progress_status: GoalProgress | null; start_date: string | null; due_date: string | null;
+  last_review_date: string | null; next_review_date: string | null; completion_date: string | null;
+  review_notes: string;
 };
+export type GoalUpdate = Omit<Goal, 'id' | 'level' | 'version'> & { expected_version: number; change_note: string };
+export type GoalRevision = { goal: Goal; recorded_at: string; change_note: string; source_session_id: string | null };
+export const isReviewable = (goal: Goal) => goal.level !== 'long' &&
+  (goal.status === 'archived' || goal.progress_status === 'achieved' || goal.progress_status === 'completed');
+export const isTrainable = (goal: Goal) => goal.level !== 'long' && goal.status === 'active' && !isReviewable(goal);
 export type Target = {
   goal_id: string; role: Role; plan: string; progress: string;
   outcome: Outcome | null; next_step: string;

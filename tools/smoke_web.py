@@ -3,7 +3,7 @@
 import json
 import os
 from pathlib import Path
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -109,6 +109,51 @@ with sync_playwright() as playwright:
     assert followed["experiences"][0]["status"] == "verified"
     page.get_by_role("button", name="查看来源训练", exact=True).nth(0).click()
     expect(page.get_by_text("训练回看", exact=True)).to_be_visible()
+
+    # Progress and archive are independent; historical snapshots stay unchanged.
+    secondary_id = next(t["goal_id"] for t in followed["sessions"][0]["targets"] if t["role"] == "secondary")
+    secondary = next(g for g in followed["goals"] if g["id"] == secondary_id)
+    page.get_by_role("button", name="目标", exact=True).click()
+    page.get_by_text(secondary["title"], exact=True).click()
+    page.get_by_role("button", name="修改／复盘目标", exact=True).click()
+    page.get_by_role("textbox", name="达成标准", exact=True).fill("【浏览器验收】修改后的观察标准")
+    page.get_by_role("button", name="已完成", exact=True).click()
+    page.get_by_role("textbox", name="下次复盘日期（可选）", exact=True).fill(planned["business_date"])
+    page.get_by_role("textbox", name="本次修改说明", exact=True).fill("【浏览器验收】本次复盘")
+    page.get_by_role("button", name="保存目标复盘", exact=True).click()
+    expect(page.get_by_text("目标复盘已保存，修改历史已保留。", exact=True)).to_be_visible()
+    revised = next(g for g in state()["goals"] if g["id"] == secondary_id)
+    assert revised["progress_status"] == "completed" and revised["status"] == "active"
+    snapshot = next(t["goal_snapshot"] for t in state()["sessions"][0]["target_snapshots"] if t["goal_id"] == secondary_id)
+    assert snapshot["criteria"] == secondary["criteria"]
+
+    # A concurrent editor must not replace unsaved form contents on conflict.
+    page.get_by_role("button", name="修改／复盘目标", exact=True).click()
+    page.get_by_role("textbox", name="进度与复盘记录", exact=True).fill("【浏览器验收】我的未提交复盘")
+    page.get_by_role("textbox", name="本次修改说明", exact=True).fill("【浏览器验收】我的修改")
+    external = {key: value for key, value in revised.items() if key not in ("id", "level", "version")}
+    external.update(expected_version=revised["version"], criteria="【浏览器验收】另一位记录者的标准", change_note="并发修改")
+    with urlopen(Request(f"{BASE}/api/goals/{secondary_id}", data=json.dumps(external).encode(),
+                         headers={"Content-Type": "application/json"}, method="PUT")) as response:
+        assert response.status == 200
+    page.get_by_role("button", name="保存目标复盘", exact=True).click()
+    expect(page.get_by_role("button", name="备份我的填写并采用最新目标", exact=True)).to_be_visible()
+    expect(page.get_by_role("textbox", name="进度与复盘记录", exact=True)).to_have_value("【浏览器验收】我的未提交复盘")
+    expect(page.get_by_role("button", name="保存目标复盘", exact=True)).to_be_disabled()
+    page.get_by_role("button", name="备份我的填写并采用最新目标", exact=True).click()
+    expect(page.get_by_role("textbox", name="达成标准", exact=True)).to_have_value("【浏览器验收】另一位记录者的标准")
+    assert page.evaluate("key => localStorage.getItem(key)", f"skarma:goal-conflict-backup:{secondary_id}")
+
+    page.get_by_role("button", name="今天", exact=True).click()
+    expect(page.get_by_text("待复盘目标 · 1", exact=True)).to_be_visible()
+    page.screenshot(path=str(OUTPUT / "goal-review.png"), full_page=True)
+    page.get_by_role("button", name="＋ 新建训练计划", exact=True).click()
+    page.get_by_role("button", name="＋ 主目标", exact=True).click()
+    expect(page.get_by_role("button", name=secondary["title"], exact=True)).to_have_count(0)
+    page.get_by_role("button", name="收起选择", exact=True).click()
+    page.get_by_role("button", name="＋ 复习", exact=True).click()
+    expect(page.get_by_role("button", name=secondary["title"], exact=True)).to_be_visible()
+    assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
     assert not errors, f"Browser runtime errors: {errors}"
     browser.close()
-print("PASS: mobile layout, plan/refill identity, local draft recovery, lost-response replay, archive snapshot, follow-up and source navigation")
+print("PASS: mobile layout, plan/refill identity, local draft recovery, lost-response replay, archive snapshot, follow-up, goal review/history, conflict preservation and role candidates")
