@@ -11,8 +11,8 @@ from datetime import timedelta
 from pathlib import Path
 
 ENDPOINT = "https://docs.qq.com/openapi/mcp"
-READ_PREFIX = re.compile(r"^(?:query|get|list)_", re.IGNORECASE)
-MUTATION_WORDS = re.compile(r"(?:^|_)(?:create|add|update|delete|remove|modify|set|execute|send|upload|enable|disable)(?:_|$)", re.IGNORECASE)
+READ_PREFIX = re.compile(r"^(?:[a-z][a-z0-9_]*\.)?(?:query|get|list)_", re.IGNORECASE)
+MUTATION_WORDS = re.compile(r"(?:^|[_.])(?:create|add|update|delete|remove|modify|set|execute|send|upload|enable|disable)(?:[_.]|$)", re.IGNORECASE)
 
 
 def credential(path: Path) -> str:

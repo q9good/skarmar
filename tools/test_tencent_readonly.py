@@ -27,9 +27,9 @@ class TencentClientTests(unittest.TestCase):
                 private_output(repo / 'snapshot.json')
 
     def test_mutating_names_are_not_read_candidates(self):
-        for name in ['query_records', 'get_fields', 'list_sheets']:
+        for name in ['query_records', 'get_fields', 'list_sheets', 'smartsheet.list_records', 'smartsheet.list_fields']:
             self.assertTrue(READ_PREFIX.search(name) and not MUTATION_WORDS.search(name))
-        for name in ['update_records', 'get_and_delete_records', 'execute_query']:
+        for name in ['update_records', 'get_and_delete_records', 'execute_query', 'smartsheet.update_records', 'smartsheet.get_and_delete_records']:
             self.assertFalse(READ_PREFIX.search(name) and not MUTATION_WORDS.search(name))
 
     def test_private_response_write_is_complete_and_restricted(self):
