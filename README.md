@@ -47,6 +47,7 @@ follow-up, draft recovery, and versioned goal reviews. It uses sample data and i
 - [Product plan and requirements (中文)](docs/product-plan.md)
 - [Development and validation (中文)](docs/development.md)
 - [Tencent snapshot and live audit status (中文)](docs/tencent-audit.md)
+- [Cloudflare free deployment research and Rust verification (中文)](docs/cloudflare-deployment-research.md)
 
 ```bash
 npm ci

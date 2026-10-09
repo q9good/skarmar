@@ -1,0 +1,16 @@
+[package]
+name = "skarma-cloudflare-probe"
+version = "0.1.0"
+edition = "2024"
+[lib]
+crate-type = ["cdylib"]
+[dependencies]
+worker = { version = "=0.8.7", features = ["http", "axum"] }
+axum = { version = "0.8", default-features = false, features = ["json"] }
+tower-service = "0.3"
+serde = { version = "1", features = ["derive"] }
+[profile.release]
+opt-level = "s"
+
+# Keep this verification project separate from the application workspace.
+[workspace]

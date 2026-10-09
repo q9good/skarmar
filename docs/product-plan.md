@@ -1,12 +1,13 @@
 # skarma：Web + App 产品方案草案
 
-日期：2026-10-09。版本：0.3，待评审。技术路线已确认，独立 worktree 已开始实现。
+日期：2026-10-09。版本：0.4，待评审。技术路线已确认，独立 worktree 已开始实现。
 
 ## 评审摘要
 
 - 路线：**Rust / Axum API + React Native / Expo**；一期手机 Web，二期 iOS / Android。
 - 交互：围绕同一次训练完成课前安排、课后回填、逐目标处理、困难与经验跟进。
 - 本轮新增：目标状态与归档分开、复盘日期、目标版本历史、已达成目标复习，以及迁移关系核对工具。
+- 部署调研：核实最新 Rust Workers / Axum 支持，建议 Static Assets + Rust Worker + SQLite-backed Durable Objects；本地 Rust HTTP 和存储事务探针已通过，完整业务迁移待实现。
 - 现状证据：**已通过腾讯 MCP 完整读取 6 张线上表格的字段、视图与记录**，采集窗口为
   2026-10-09 07:10:28—07:10:37（Asia/Shanghai）。表／记录 ID、字段定义、视图配置和字段值
   均与附件最终快照一致；另读取了两条自动化摘要，具体条件与动作配置尚需人工核验。
@@ -24,7 +25,7 @@
 
 本次已确认技术路线：**Rust 后端 + React Native / Expo 前端**。
 第一期实现主要在手机浏览器中使用的 **Expo Web**，第二期加入 **iOS / Android App**。
-使用规模和成员角色先参考历史家庭／老师协作场景；Cloudflare 仍为托管候选，尚未选择。
+使用规模和成员角色先参考历史家庭／老师协作场景；Cloudflare 免费方案已完成技术调研和 Rust 探针验证，推荐路线待方案评审和完整业务迁移验收。
 
 资料分为三类：
 
@@ -226,12 +227,16 @@ Web 首轮静态导出，由本地 Rust API 同源提供；第二期增加原生
 
 后端原型采用 Rust 1.99、Axum 和 SQLite，目的是在当前开发环境验证 HTTP API、事务
 和记录流程。SQLite 是原型存储选择；正式部署前根据访问地点、运行环境、协作规模、
-备份和登录选择确定是否继续使用 SQLite、改用 PostgreSQL 或增加 Worker / D1 适配。
-普通 Axum 服务不能直接作为 Cloudflare Worker 部署。
+备份和登录选择确定存储适配方式。Cloudflare Workers 当前官方支持 Rust 和 Axum 0.8，
+可保留 Rust 技术栈，通过 `workers-rs` 的 Fetch 入口运行 Axum Router；本地 TCP 服务启动、
+文件服务和 rusqlite 持久连接需要适配。当前 SDK 还包含实验性 Tokio / Emscripten 支持，
+一期优先采用已验证的标准 Wasm 路径。
 
-正式部署建议优先考虑普通容器或 VPS：Rust 服务提供同源 Web / API，关系库优先评估 PostgreSQL，
-照片／音频引入对象存储；先用实际手机网络验证国内访问和登录，再决定托管商。
-当前 SQLite 足够验证业务事务，避免在方案评审前把 Cloudflare / D1 限制固化为架构要求。
+按免费云部署目标，当前建议为 Workers Static Assets + Rust Worker + SQLite-backed Durable Objects：
+同源提供 Expo Web 和 API，按共享空间组织事务存储，暂不启用 R2 附件。
+已用 Rust 探针验证 Axum HTTP、DO SQLite 成功提交及失败回滚，尚未移植完整业务或远端部署。
+D1、普通容器/VPS为备选。真实手机网络、正式登录、全部事务和免费 CPU 限制仍需上线验收，
+详见 [Cloudflare 部署调研](cloudflare-deployment-research.md)。
 前端按训练、目标、跟进模块组织共享业务代码，平台差异集中到存储、登录、附件和通知适配层。
 
 ```mermaid
