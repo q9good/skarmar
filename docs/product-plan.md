@@ -1,13 +1,13 @@
 # skarma：Web + App 产品方案草案
 
-日期：2026-10-09。版本：0.4，待评审。技术路线已确认，独立 worktree 已开始实现。
+日期：2026-10-09。版本：0.5，待评审。技术路线已确认，独立 worktree 已开始实现。
 
 ## 评审摘要
 
 - 路线：**Rust / Axum API + React Native / Expo**；一期手机 Web，二期 iOS / Android。
 - 交互：围绕同一次训练完成课前安排、课后回填、逐目标处理、困难与经验跟进。
 - 本轮新增：目标状态与归档分开、复盘日期、目标版本历史、已达成目标复习，以及迁移关系核对工具。
-- 部署调研：核实最新 Rust Workers / Axum 支持，建议 Static Assets + Rust Worker + SQLite-backed Durable Objects；本地 Rust HTTP 和存储事务探针已通过，完整业务迁移待实现。
+- 双运行环境：共享 Rust 业务、API 和 SQL 迁移；配置选择原生 SQLite / Worker Durable Objects。完整原型已在两边通过 API、事务、幂等、并发冲突及重启数据保留验收；Worker 手机尺寸浏览器流程通过，尚未线上部署。
 - 现状证据：**已通过腾讯 MCP 完整读取 6 张线上表格的字段、视图与记录**，采集窗口为
   2026-10-09 07:10:28—07:10:37（Asia/Shanghai）。表／记录 ID、字段定义、视图配置和字段值
   均与附件最终快照一致；另读取了两条自动化摘要，具体条件与动作配置尚需人工核验。
@@ -25,7 +25,7 @@
 
 本次已确认技术路线：**Rust 后端 + React Native / Expo 前端**。
 第一期实现主要在手机浏览器中使用的 **Expo Web**，第二期加入 **iOS / Android App**。
-使用规模和成员角色先参考历史家庭／老师协作场景；Cloudflare 免费方案已完成技术调研和 Rust 探针验证，推荐路线待方案评审和完整业务迁移验收。
+使用规模和成员角色先参考历史家庭／老师协作场景；同时支持本地与 Cloudflare 运行，正式账号、手机网络与线上额度验收仍待部署阶段完成。
 
 资料分为三类：
 
@@ -225,18 +225,17 @@ Cloudflare 是旧方案的托管候选，其大陆手机访问、App 登录及�
 Web 首轮静态导出，由本地 Rust API 同源提供；第二期增加原生入口及设备适配。
 当前 UUID 生成使用浏览器安全上下文，第二期需加入原生 UUID／安全存储适配并实测。
 
-后端原型采用 Rust 1.99、Axum 和 SQLite，目的是在当前开发环境验证 HTTP API、事务
-和记录流程。SQLite 是原型存储选择；正式部署前根据访问地点、运行环境、协作规模、
-备份和登录选择确定存储适配方式。Cloudflare Workers 当前官方支持 Rust 和 Axum 0.8，
-可保留 Rust 技术栈，通过 `workers-rs` 的 Fetch 入口运行 Axum Router；本地 TCP 服务启动、
-文件服务和 rusqlite 持久连接需要适配。当前 SDK 还包含实验性 Tokio / Emscripten 支持，
-一期优先采用已验证的标准 Wasm 路径。
+后端采用 Rust 1.99、Axum 0.8；共享核心与 HTTP 路由独立于运行入口和存储适配层。
+原生入口通过 `SKARMA_STORAGE=sqlite` 使用本地 SQLite 文件；Worker 入口通过
+`SKARMA_STORAGE=durable_object` 使用托管 SQLite 对象，标准 Wasm 路径保留 Rust 技术栈。
+两边共用数据模型、业务规则、幂等和版本校验，以及带版本记录的 SQL 迁移。
+本机既可直接运行原生服务，也可用 Wrangler 模拟完整 Worker。
 
-按免费云部署目标，当前建议为 Workers Static Assets + Rust Worker + SQLite-backed Durable Objects：
-同源提供 Expo Web 和 API，按共享空间组织事务存储，暂不启用 R2 附件。
-已用 Rust 探针验证 Axum HTTP、DO SQLite 成功提交及失败回滚，尚未移植完整业务或远端部署。
-D1、普通容器/VPS为备选。真实手机网络、正式登录、全部事务和免费 CPU 限制仍需上线验收，
-详见 [Cloudflare 部署调研](cloudflare-deployment-research.md)。
+Cloudflare 入口用 Static Assets 同源提供 Expo Web，Rust Worker 将事务命令交给配置的共享空间对象。
+已验收完整原型的 API、失败全回滚、并发幂等／版本冲突、重启保留数据和 Worker 浏览器流程。
+目前单空间选择由服务端配置，正式多成员权限仍需实现；切换存储配置不会同步两边数据。
+真实手机网络、正式登录、迁移导入／备份恢复及线上免费 CPU 限制仍需上线验收。
+运行命令见 [双环境配置](runtime-storage.md)，免费额度和备选路线见 [Cloudflare 部署调研](cloudflare-deployment-research.md)。
 前端按训练、目标、跟进模块组织共享业务代码，平台差异集中到存储、登录、附件和通知适配层。
 
 ```mermaid
@@ -254,7 +253,10 @@ flowchart LR
 ```text
 apps/client/          Expo Web 与后续 App 客户端
 crates/api/           Rust API、业务校验、SQLite 原型及测试
-crates/api/migrations/ 数据结构初始化
+crates/core/           共享模型、业务规则、SQL 接口与版本化迁移
+crates/http/           共享 API 路由与 Repository 事务命令接口
+crates/worker/         Cloudflare Fetch 入口与 Durable Objects 存储适配
+wrangler.toml          Worker 存储绑定、静态资源与示例环境配置
 tools/               浏览器验收与开发启动脚本
 docs/                需求、方案与阶段边界
 .local/              被忽略的开发库、日志、截图

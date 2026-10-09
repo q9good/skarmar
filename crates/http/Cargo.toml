@@ -1,0 +1,9 @@
+[package]
+name = "skarma-http"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+skarma-core = { path = "../core" }
+axum = { version = "0.8", default-features = false, features = ["json"] }
+serde_json = "1"

@@ -1,6 +1,13 @@
 # Cloudflare 免费部署调研
 
-核验日期：2026-10-09（北京时间）。本次查阅当前官方文档、已发布 Rust SDK 和官方示例，并用本地 Workers 运行时验证关键路径。本文是部署建议，尚未创建 Cloudflare 线上资源或迁移完整应用。
+核验日期：2026-10-09（北京时间）。本次查阅当前官方文档、已发布 Rust SDK 和官方示例，并用本地 Workers 运行时验证关键路径。后续已实现完整原型的本地／Worker 双入口与存储适配，见下节；尚未创建 Cloudflare 线上资源。
+
+## 当前实现进展
+
+按用户要求，原生 SQLite 与 Cloudflare Durable Objects 通过配置选择；Rust 模型、业务、API 和 SQL 迁移共用一份。
+完整原型已通过两种存储的同一套 API 合约：中途 SQL 失败全回滚、训练完成／归档、目标历史、困难／经验、并发幂等与版本冲突、重启保留数据。
+Worker 入口也通过手机尺寸浏览器流程和部署预检查。配置和启动命令见 [双环境说明](runtime-storage.md)。
+下文保留调研时的依据和独立探针结果；线上 CPU、实际手机网络、生产登录和正式数据迁移仍待部署验收。
 
 ## 1. 最新 Rust 支持：可以保留 Rust 和 Axum
 
@@ -94,7 +101,7 @@ Workers / D1 / Durable Objects 的每日免费额度于 UTC 00:00 重置，即�
 
 当前 [Workers 限制](https://developers.cloudflare.com/workers/platform/limits/)列出的上传上限为 Free/Paid 均 **64 MiB 未压缩体积**。不能继续套用历史的 Free 3 MB 压缩限制。探针体积不等于完整业务构建体积。
 
-可复现的 Rust 探针见 [tools/cloudflare-probe](../tools/cloudflare-probe/README.md)。完整业务迁移、真实并发、重试幂等、线上 CPU、国内手机访问和正式登录尚未在 Cloudflare 部署环境验证。
+可复现的 Rust 探针见 [tools/cloudflare-probe](../tools/cloudflare-probe/README.md)。后续完整原型的并发、幂等与事务已经在两种本地运行环境验收；线上 CPU、国内手机访问和正式登录尚未在 Cloudflare 部署环境验证。
 
 ## 5. 实施顺序
 

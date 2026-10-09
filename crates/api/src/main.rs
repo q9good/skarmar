@@ -1,5 +1,6 @@
 use rusqlite::Connection;
 use skarma_api::{Database, router, store};
+use skarma_core::config::{Config, Runtime};
 use std::{
     env,
     path::Path,
@@ -8,6 +9,7 @@ use std::{
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = Config::load(Runtime::Local, |key| env::var(key).ok())?;
     // This first prototype intentionally serves only the local development machine.
     // Public deployment needs authenticated identities and profile authorization.
     let path = env::var("SKARMA_DATABASE").unwrap_or_else(|_| ".local/skarma.db".into());
@@ -16,9 +18,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut connection = Connection::open(path)?;
     connection.busy_timeout(std::time::Duration::from_secs(5))?;
-    store::initialize(&connection).map_err(|_| "database initialization failed")?;
-    if env::var("SKARMA_DEMO").as_deref() == Ok("1") {
-        store::seed_demo(&mut connection).map_err(|_| "demo initialization failed")?;
+    store::initialize(&connection)?;
+    if config.demo {
+        store::seed_demo(&mut connection)?;
     }
     let origin = env::var("SKARMA_WEB_ORIGIN")
         .unwrap_or_else(|_| "http://localhost:8081".into())
@@ -29,6 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| "3001".into())
         .parse()?;
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;
+    let port = listener.local_addr()?.port();
     eprintln!("skarma development server listening on port {port}");
     axum::serve(listener, router(db, origin, &assets)).await?;
     Ok(())

@@ -1,0 +1,36 @@
+name = "skarma-web"
+main = "crates/worker/build/index.js"
+compatibility_date = "2026-10-09"
+# The prototype still needs production authentication. Local dev and dry-run work without publishing.
+workers_dev = false
+
+[build]
+command = "worker-build --release"
+cwd = "crates/worker"
+watch_dir = ["crates/worker/src", "crates/core", "crates/http"]
+
+[assets]
+directory = "apps/client/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api", "/api/*"]
+
+[vars]
+SKARMA_STORAGE = "durable_object"
+SKARMA_DEMO = "0"
+SKARMA_SPACE = "default"
+
+[durable_objects]
+bindings = [{ name = "SKARMA_DB", class_name = "SkarmaSpace" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SkarmaSpace"]
+
+# Explicit sample-data environment for wrangler dev --env demo --local.
+[env.demo.vars]
+SKARMA_STORAGE = "durable_object"
+SKARMA_DEMO = "1"
+SKARMA_SPACE = "demo"
+
+[env.demo.durable_objects]
+bindings = [{ name = "SKARMA_DB", class_name = "SkarmaSpace" }]

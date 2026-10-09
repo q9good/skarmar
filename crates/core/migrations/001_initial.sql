@@ -1,4 +1,3 @@
-PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS goals (
   id TEXT PRIMARY KEY,
   parent_id TEXT REFERENCES goals(id),
