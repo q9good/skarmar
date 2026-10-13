@@ -20,6 +20,7 @@ pub enum Command {
     },
     Auth(auth::AuthCommand),
     State,
+    ExportSnapshot,
     GoalHistory {
         id: String,
     },
@@ -52,6 +53,7 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         }
         Command::Auth(command) => auth::execute(db, command)?,
         Command::State => serde_json::to_value(store::state(db)?)?,
+        Command::ExportSnapshot => serde_json::to_value(store::export_snapshot(db)?)?,
         Command::GoalHistory { id } => serde_json::to_value(store::goal_history(db, &id)?)?,
         Command::CreateGoal(input) => serde_json::to_value(store::create_goal(db, input)?)?,
         Command::UpdateGoal { id, request } => {

@@ -1,33 +1,55 @@
 use axum::{
     Extension, Json, Router,
     extract::{DefaultBodyLimit, Path, State},
-    http::StatusCode,
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
     routing::{get, post, put},
 };
 use serde_json::Value;
 use skarma_core::{Command, model::*, store::Result};
 use std::future::Future;
 pub mod auth;
+pub mod export;
 
 /// Each execute call is one atomic unit of work on the selected backend.
 pub trait Repository: Clone + Send + Sync + 'static {
     fn execute(&self, command: Command) -> impl Future<Output = Result<Value>> + Send;
+    /// Capture the authenticated snapshot atomically, then render without holding the DB lock.
+    fn export(&self, command: Command) -> impl Future<Output = Result<Vec<u8>>> + Send;
 }
 
-async fn execute<R: Repository>(
-    repo: &R,
-    proof: Option<Extension<auth::SessionProof>>,
-    command: Command,
-) -> Result<Value> {
-    let command = if let Some(Extension(auth::SessionProof(token))) = proof {
+fn authenticated(proof: Option<Extension<auth::SessionProof>>, command: Command) -> Command {
+    if let Some(Extension(auth::SessionProof(token))) = proof {
         Command::Authenticated {
             token,
             command: Box::new(command),
         }
     } else {
         command
-    };
-    repo.execute(command).await
+    }
+}
+async fn execute<R: Repository>(
+    repo: &R,
+    proof: Option<Extension<auth::SessionProof>>,
+    command: Command,
+) -> Result<Value> {
+    repo.execute(authenticated(proof, command)).await
+}
+async fn export_workbook<R: Repository>(
+    State(repo): State<R>,
+    proof: Option<Extension<auth::SessionProof>>,
+) -> Result<Response> {
+    let bytes = repo
+        .export(authenticated(proof, Command::ExportSnapshot))
+        .await?;
+    Ok((
+        [
+            (header::CONTENT_TYPE, export::MIME),
+            (header::CONTENT_DISPOSITION, export::DISPOSITION),
+        ],
+        bytes,
+    )
+        .into_response())
 }
 async fn read_state<R: Repository>(
     State(repo): State<R>,
@@ -123,6 +145,7 @@ pub fn router_with_auth<R: Repository>(repo: R, config: auth::AuthConfig) -> Rou
     };
     let protected = Router::new()
         .route("/state", get(read_state::<R>))
+        .route("/export.xlsx", get(export_workbook::<R>))
         .route("/goals", post(create_goal::<R>))
         .route("/goals/{id}", put(update_goal::<R>))
         .route("/goals/{id}/history", get(goal_history::<R>))

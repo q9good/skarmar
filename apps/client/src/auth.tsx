@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { advanceAuthSession, ApiError, onUnauthorized, request } from './api';
+import { downloadWorkbook } from './download';
 
 export type Account = { id: string; username: string; display_name: string; role: 'admin' | 'member'; active: boolean };
 export type Identity = { user: Account; space: string; demo: boolean };
@@ -114,6 +115,13 @@ export function AccountPanel({ back, logout }: { back: () => void; logout: () =>
     <Text style={s.hint}>账号：{auth.identity.user.username} · 空间：{auth.identity.space}</Text>
     {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
     {notice ? <Text accessibilityRole="alert" style={s.notice}>{notice}</Text> : null}
+    {Platform.OS === 'web' && <View style={s.card}><Text style={s.cardTitle}>导出数据</Text>
+      <Text style={s.body}>将本空间已保存的全部数据下载为 Excel：训练记录、逐目标明细、目标、困难、经验和目标历史。</Text>
+      <Text style={s.hint}>包含已保存的训练草稿。本机尚未保存的草稿不包含在内；导出不会修改记录。</Text>
+      <Action title={busy ? '正在处理…' : '导出 Excel'} disabled={busy} onPress={() => void act(async () => {
+        await downloadWorkbook(); setNotice('Excel 已交给浏览器下载，请在下载列表中查看。');
+      })} />
+    </View>}
     <View style={s.card}><Text style={s.cardTitle}>修改密码</Text>
       <Input label="当前密码" value={currentPassword} change={setCurrentPassword} secret disabled={busy} />
       <Input label="新密码" value={password} change={setPassword} secret disabled={busy} />

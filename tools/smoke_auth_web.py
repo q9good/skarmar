@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 from playwright.sync_api import expect, sync_playwright
+from check_excel import read_workbook
 
 BASE = os.environ['SKARMA_TEST_URL']
 OWNER_PASSWORD = 'synthetic-owner-contract-password'
@@ -18,6 +19,7 @@ with sync_playwright() as p:
     page.goto(BASE)
     expect(page.get_by_text('欢迎回来', exact=True)).to_be_visible()
     assert context.request.get(BASE + '/api/state').status == 401
+    assert context.request.get(BASE + '/api/export.xlsx').status == 401
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
     page.screenshot(path=str(OUTPUT / 'login.png'), full_page=True)
 
@@ -34,6 +36,13 @@ with sync_playwright() as p:
     login('owner', OWNER_PASSWORD)
     assert all(cookie['httpOnly'] for cookie in context.cookies() if 'skarma_session' in cookie['name'])
     page.get_by_role('button', name='我的账号', exact=True).click()
+    with page.expect_download() as export:
+        page.get_by_role('button', name='导出 Excel', exact=True).click()
+    assert export.value.suggested_filename.endswith('.xlsx')
+    workbook = read_workbook(Path(export.value.path()).read_bytes())
+    assert len(workbook['目标']) == 5
+    assert workbook['训练记录'] == []
+    expect(page.get_by_text('Excel 已交给浏览器下载，请在下载列表中查看。', exact=True)).to_be_visible()
     page.get_by_role('textbox', name='新成员账号', exact=True).fill('teacher')
     page.get_by_role('textbox', name='成员称呼', exact=True).fill('测试老师')
     page.get_by_label('初始密码', exact=True).fill(MEMBER_PASSWORD)
@@ -68,6 +77,19 @@ with sync_playwright() as p:
     expect(page.get_by_text('草稿已保存在本机', exact=False)).to_be_visible()
     page.get_by_role('button', name='我的账号', exact=True).click()
 
+    # Members may export saved records, without including their unsaved browser draft.
+    with page.expect_download() as export:
+        page.get_by_role('button', name='导出 Excel', exact=True).click()
+    workbook = read_workbook(Path(export.value.path()).read_bytes())
+    assert '这个本机草稿属于老师账号' not in str(workbook)
+    downloads = []
+    page.on('download', lambda download: downloads.append(download))
+    page.route('**/api/export.xlsx', lambda route: route.fulfill(status=200, content_type='text/html', body='<html>gateway</html>'))
+    page.get_by_role('button', name='导出 Excel', exact=True).click()
+    expect(page.get_by_text('下载未完成，请稍后重试', exact=True)).to_be_visible()
+    assert not downloads, 'a gateway page must not be saved as an Excel file'
+    page.unroute_all(behavior='wait')
+
     # If revocation cannot be confirmed, keep the session visible and let the user retry.
     page.route('**/api/auth/logout', lambda route: route.fulfill(status=503, content_type='application/json', body='{"error":"测试：暂时无法退出"}'))
     page.get_by_role('button', name='退出登录', exact=True).click()
@@ -86,11 +108,12 @@ with sync_playwright() as p:
     page.get_by_role('button', name='返回', exact=True).click()
     result = context.request.post(BASE + '/api/auth/logout', headers={'X-Skarma-Request': '1'})
     assert result.ok
-    page.get_by_role('button', name='刷新', exact=True).click()
+    page.get_by_role('button', name='我的账号', exact=True).click()
+    page.get_by_role('button', name='导出 Excel', exact=True).click()
     expect(page.get_by_text('欢迎回来', exact=True)).to_be_visible()
     assert page.get_by_text('把今天的小进步，', exact=False).count() == 0
     assert page.evaluate('(key) => localStorage.getItem(key)', f'skarma:{scope}:training-draft:v2')
     assert not page.evaluate('(password) => JSON.stringify(localStorage).includes(password)', MEMBER_PASSWORD)
     assert not errors, errors
     browser.close()
-print('PASS mobile login: credentials, account creation, roles, logout failure/retry, draft isolation/recovery and expired-session gating')
+print('PASS mobile login/export: roles, Excel download, unsaved-draft exclusion, gateway failure, draft recovery and expired-session gating')

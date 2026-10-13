@@ -1,5 +1,6 @@
 // Real HTTP authentication contract, shared by native and Worker validation.
 import assert from 'node:assert/strict';
+import { excelContract } from './excel-contract.mjs';
 export const ownerPassword = 'synthetic-owner-contract-password';
 export async function authContract(label, send, expire) {
   async function call(method, path, body, cookie, expected = 200, origin = 'https://contract.local') {
@@ -21,6 +22,7 @@ export async function authContract(label, send, expire) {
     return cookie.split(';')[0];
   }
   await call('GET', '/api/state', undefined, undefined, 401);
+  await call('GET', '/api/export.xlsx', undefined, undefined, 401);
   await call('POST', '/api/auth/login', { username: 'owner', password: 'incorrect' }, undefined, 401);
   const owner = await login('owner', ownerPassword);
   await call('GET', '/api/state', undefined, owner);
@@ -29,6 +31,7 @@ export async function authContract(label, send, expire) {
   }, owner);
   let teacher = await login('teacher', 'synthetic-member-password');
   await call('GET', '/api/state', undefined, teacher);
+  await excelContract(label, send, teacher);
   await call('PUT', `/api/auth/users/${member.id}`, { active: false, password: 'short' }, owner, 422);
   await call('GET', '/api/state', undefined, teacher);
   await call('GET', '/api/auth/users', undefined, teacher, 403);
@@ -38,6 +41,7 @@ export async function authContract(label, send, expire) {
   await call('POST', '/api/auth/logout', undefined, owner, 403, 'https://evil.test');
   await call('PUT', `/api/auth/users/${member.id}`, { active: false }, owner);
   await call('GET', '/api/state', undefined, teacher, 401);
+  await call('GET', '/api/export.xlsx', undefined, teacher, 401);
   await call('PUT', `/api/auth/users/${member.id}`, { active: true, password: 'synthetic-reset-password' }, owner);
   teacher = await login('teacher', 'synthetic-reset-password');
   await call('PUT', '/api/auth/password', { current_password: 'synthetic-reset-password', password: 'synthetic-next-password' }, teacher);
@@ -47,5 +51,6 @@ export async function authContract(label, send, expire) {
   await call('GET', '/api/state', undefined, teacher, 401);
   await expire();
   await call('GET', '/api/state', undefined, owner, 401);
+  await call('GET', '/api/export.xlsx', undefined, owner, 401);
   console.log(`PASS ${label}: login, secure cookies, CSRF, member permissions, disable/reset, password change, logout and expiry`);
 }

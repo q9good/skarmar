@@ -22,6 +22,26 @@ struct DurableRepository {
     env: Env,
     space: String,
 }
+impl DurableRepository {
+    async fn request(&self, command: &Command, path: &str) -> AppResult<worker::Response> {
+        let namespace = self
+            .env
+            .durable_object("SKARMA_DB")
+            .map_err(|_| ApiError::storage())?;
+        let stub = namespace
+            .id_from_name(&self.space)
+            .and_then(|id| id.get_stub())
+            .map_err(|_| ApiError::storage())?;
+        let mut init = RequestInit::new();
+        init.with_method(Method::Post)
+            .with_body(Some(serde_json::to_string(command)?.into()));
+        let req = Request::new_with_init(&format!("https://skarma.internal{path}"), &init)
+            .map_err(|_| ApiError::storage())?;
+        stub.fetch_with_request(req)
+            .await
+            .map_err(|_| ApiError::storage())
+    }
+}
 impl Repository for DurableRepository {
     fn execute(
         &self,
@@ -29,24 +49,7 @@ impl Repository for DurableRepository {
     ) -> impl std::future::Future<Output = AppResult<serde_json::Value>> + Send {
         // The SDK's SendFuture bridge is valid in the single-threaded Worker runtime.
         SendFuture::new(async move {
-            let namespace = self
-                .env
-                .durable_object("SKARMA_DB")
-                .map_err(|_| ApiError::storage())?;
-            // Prototype space is server configured. Public profile selection requires authorization.
-            let stub = namespace
-                .id_from_name(&self.space)
-                .and_then(|id| id.get_stub())
-                .map_err(|_| ApiError::storage())?;
-            let mut init = RequestInit::new();
-            init.with_method(Method::Post)
-                .with_body(Some(serde_json::to_string(&command)?.into()));
-            let req = Request::new_with_init("https://skarma.internal/command", &init)
-                .map_err(|_| ApiError::storage())?;
-            let mut response = stub
-                .fetch_with_request(req)
-                .await
-                .map_err(|_| ApiError::storage())?;
+            let mut response = self.request(&command, "/command").await?;
             let status =
                 StatusCode::from_u16(response.status_code()).map_err(|_| ApiError::storage())?;
             let value: serde_json::Value =
@@ -58,6 +61,27 @@ impl Repository for DurableRepository {
                 ));
             }
             Ok(value)
+        })
+    }
+
+    fn export(
+        &self,
+        command: Command,
+    ) -> impl std::future::Future<Output = AppResult<Vec<u8>>> + Send {
+        SendFuture::new(async move {
+            // Generate and compress in the DO, outside the ordinary gateway's short CPU budget.
+            let mut response = self.request(&command, "/export.xlsx").await?;
+            let status =
+                StatusCode::from_u16(response.status_code()).map_err(|_| ApiError::storage())?;
+            if !status.is_success() {
+                let value: serde_json::Value =
+                    response.json().await.map_err(|_| ApiError::storage())?;
+                return Err(ApiError(
+                    status,
+                    value["error"].as_str().unwrap_or("Excel 导出失败").into(),
+                ));
+            }
+            response.bytes().await.map_err(|_| ApiError::storage())
         })
     }
 }
@@ -137,7 +161,8 @@ impl DurableObject for SkarmaSpace {
         Self { state, env }
     }
     async fn fetch(&self, mut req: worker::Request) -> Result<worker::Response> {
-        if req.method() != Method::Post || req.path() != "/command" {
+        let export = req.path() == "/export.xlsx";
+        if req.method() != Method::Post || (!export && req.path() != "/command") {
             return Response::error("Unknown internal command", 404);
         }
         let cfg = match config(&self.env) {
@@ -148,6 +173,12 @@ impl DurableObject for SkarmaSpace {
             }
         };
         let command: Command = req.json().await?;
+        if export
+            && !matches!(&command, Command::ExportSnapshot)
+            && !matches!(&command, Command::Authenticated { command, .. } if matches!(**command, Command::ExportSnapshot))
+        {
+            return Response::error("Invalid export command", 400);
+        }
         // Optional private bootstrap for a future authenticated Worker deployment.
         // Provision through Wrangler secrets; there is no public bootstrap endpoint.
         let initial_admin = self
@@ -207,6 +238,15 @@ impl DurableObject for SkarmaSpace {
         } else {
             outcome
         };
+        if export {
+            let bytes = outcome
+                .and_then(|value| skarma_http::export::workbook(serde_json::from_value(value)?));
+            return match bytes {
+                Ok(bytes) => Response::from_bytes(bytes),
+                Err(error) => Response::from_json(&serde_json::json!({"error":error.1}))
+                    .map(|response| response.with_status(error.0.as_u16())),
+            };
+        }
         match outcome {
             Ok(value) => Response::from_json(&value),
             Err(error) => Response::from_json(&serde_json::json!({"error":error.1}))

@@ -33,14 +33,26 @@ async function api(path, cookie, body) {
   assert.equal(response.status, 200, path); const data = await response.json(); return { response, data };
 }
 async function login() { const { response } = await api('/auth/login', undefined, { username: 'owner', password: ownerPassword }); return response.headers.get('set-cookie').split(';')[0]; }
+async function verifyExport(cookie) {
+  const state = (await api('/state', cookie)).data;
+  const history = (await Promise.all(state.goals.map(goal => api(`/goals/${goal.id}/history`, cookie).then(result => result.data)))).flat();
+  const response = await fetch(origin + '/api/export.xlsx', { headers: { cookie } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('content-type'), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  const file = Buffer.from(await response.arrayBuffer()).toString('base64');
+  execFileSync('python3', ['tools/check_excel.py'], { cwd: root, input: JSON.stringify({ file, state, history }), stdio: ['pipe', 'inherit', 'inherit'] });
+}
 try {
   compose(['run', '--rm', '-T', '--no-deps', 'app', 'admin-init', '--username', 'owner', '--name', 'Contract owner', '--password-stdin'], ownerPassword + '\n');
   compose(['up', '-d', 'app']); await ready();
   assert.equal((await fetch(origin + '/api/state')).status, 401);
+  assert.equal((await fetch(origin + '/api/export.xlsx')).status, 401);
   assert.equal(compose(['exec', '-T', 'app', 'id', '-u']).trim(), '10001');
   let cookie = await login(); assert.match(cookie, /^__Host-skarma_session=/);
   await api('/goals', cookie, { id: randomUUID(), title: 'Container snapshot', level: 'long', parent_id: null, area: '', criteria: '' });
   const snapshot = (await api('/state', cookie)).data;
+  await verifyExport(cookie);
   compose(['restart', 'app']); await ready();
   assert.deepEqual((await api('/state', cookie)).data, snapshot);
   compose(['exec', '-T', 'app', 'skarma-api', 'healthcheck']);
@@ -52,8 +64,10 @@ try {
   rememberBackups(restored);
   await ready();
   assert.equal((await fetch(origin + '/api/state', { headers: { cookie } })).status, 401);
+  assert.equal((await fetch(origin + '/api/export.xlsx', { headers: { cookie } })).status, 401);
   cookie = await login(); assert.deepEqual((await api('/state', cookie)).data, snapshot);
-  console.log('PASS deployment container: non-root, required login, secure cookies, persistent restart, healthcheck, backup script and full-state restore script');
+  await verifyExport(cookie);
+  console.log('PASS deployment container: non-root, login, authenticated XLSX, persistent restart, healthcheck, backup and full-state restore');
 } finally {
   compose(['down', '--volumes', '--remove-orphans']);
   for (const file of artifacts) await rm(file, { force: true });

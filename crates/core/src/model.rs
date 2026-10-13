@@ -215,3 +215,11 @@ pub struct AppState {
     pub difficulties: Vec<FollowUp>,
     pub experiences: Vec<FollowUp>,
 }
+
+/// Business data captured in a single transaction. Never includes account/session tables.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ExportSnapshot {
+    pub exported_at: String,
+    pub state: AppState,
+    pub goal_history: Vec<GoalRevision>,
+}

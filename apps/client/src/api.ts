@@ -47,7 +47,7 @@ let unauthorized: (() => void) | undefined;
 let sessionEpoch = 0;
 export function onUnauthorized(handler?: () => void) { unauthorized = handler; }
 export function advanceAuthSession() { sessionEpoch += 1; }
-export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+async function fetchResponse(path: string, method = 'GET', body?: unknown): Promise<Response> {
   const epoch = sessionEpoch;
   let response: Response;
   try { response = await fetch(`${base}/api${path}`, {
@@ -56,10 +56,28 @@ export async function request<T>(path: string, method = 'GET', body?: unknown): 
     body: body === undefined ? undefined : JSON.stringify(body),
   }); } catch { throw new ApiError('暂时无法连接，请保留草稿后重试', 503); }
   if (response.status === 401 && epoch === sessionEpoch && path !== '/auth/login' && path !== '/auth/me') unauthorized?.();
-  let data: { error?: string };
-  try { data = await response.json(); } catch { throw new ApiError('服务暂时无法响应，请稍后重试', response.ok ? 502 : response.status); }
   if (!response.ok) {
+    let data: { error?: string };
+    try { data = await response.json(); } catch { throw new ApiError('服务暂时无法响应，请稍后重试', response.status); }
     throw new ApiError(data.error ?? '操作未完成，请保留草稿后重试', response.status);
   }
+  return response;
+}
+export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+  const response = await fetchResponse(path, method, body);
+  let data: unknown;
+  try { data = await response.json(); } catch { throw new ApiError('服务暂时无法响应，请稍后重试', 502); }
   return data as T;
+}
+
+export async function exportWorkbook(): Promise<Blob> {
+  const epoch = sessionEpoch;
+  const response = await fetchResponse('/export.xlsx');
+  if (response.headers.get('content-type')?.split(';')[0] !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+    throw new ApiError('下载未完成，请稍后重试', 502);
+  }
+  let file: Blob;
+  try { file = await response.blob(); } catch { throw new ApiError('下载连接中断，请重新导出', 503); }
+  if (epoch !== sessionEpoch) throw new ApiError('账号已变更，请重新导出', 409);
+  return file;
 }

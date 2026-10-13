@@ -32,6 +32,14 @@ Docker Compose 只有 `app`、`cloudflared` 两个服务。Rust 自带静态页�
 
 ## 首次启动
 
+远程维护可通过 Tailscale SSH 或普通 SSH 完成，应用公网访问仍由 Cloudflare Tunnel 提供。服务器需要加入 Tailnet，并允许对应客户端访问 SSH；具体采用哪种认证方式按服务器已有配置决定。
+
+在 Codex 托管云环境中，Tailscale 由出口代理 sidecar 管理，需在环境设置配置 VPN，并为服务器的 Tailscale IPv4（精确 `/32`）或可解析域名配置 TCP 放行。HTTP 的“全部放开”不建立 VPN 或 SSH 的 TCP 授权。在工作容器安装独立 Tailscale 不能替代这项配置。
+
+接通后使用运行环境技能提供的校验版 `socat`，通过 `proxy:8088` 把授权 SSH 目标转发到本机 loopback 端口，再用 SSH 登录。保留 SSH 主机密钥校验，先核对服务器公钥指纹；SSH 应用认证与 VPN 接入分别配置。凭证通过受支持的私有配置提供，不提交到仓库。
+
+当前阶段先完成程序与部署包；SSH 转发工具已准备，Tailscale VPN 和真实服务器接入留到部署阶段配置／验收，现阶段无需提供服务器登录信息。
+
 ```bash
 git clone --branch feat/tencent-informed-web https://github.com/q9good/skarmar.git
 cd skarmar/deploy/host
@@ -83,6 +91,8 @@ docker compose logs --tail 50 cloudflared
 实际 Tunnel 的 HTTPS、网络可靠性和手机访问速度，必须在用户主机与域名上验证。本机容器验证不能替代这一步。
 
 ## 备份与恢复
+
+查阅和归档记录可在 **我的账号 → 导出 Excel** 下载七张工作表，详见 [Excel 导出](excel-export.md)。导出不包含账号凭证；系统恢复使用下述 SQLite 备份。
 
 在线备份使用 SQLite Backup API，完整性检查后复制到主机，SHA-256 校验复制结果；无需暂停记录。
 

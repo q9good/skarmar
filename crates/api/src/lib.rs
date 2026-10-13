@@ -28,6 +28,16 @@ impl Repository for Database {
         .await
         .map_err(|_| ApiError::storage())?
     }
+
+    async fn export(&self, command: Command) -> Result<Vec<u8>> {
+        let snapshot = self.execute(command).await?;
+        // The transaction has committed. Compression never blocks the DB mutex or Tokio workers.
+        tokio::task::spawn_blocking(move || {
+            skarma_http::export::workbook(serde_json::from_value(snapshot)?)
+        })
+        .await
+        .map_err(|_| ApiError::storage())?
+    }
 }
 
 pub fn router(db: Database, web_origin: HeaderValue, assets: &str) -> Router {

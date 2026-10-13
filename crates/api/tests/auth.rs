@@ -369,8 +369,7 @@ fn bootstrap_and_recovery_are_local_only_and_deployment_config_fails_closed() {
     );
 }
 
-#[tokio::test]
-async fn queued_business_request_is_rechecked_after_session_revocation() {
+async fn queued_request(path: &str) {
     #[derive(Clone)]
     struct Paused {
         db: Database,
@@ -384,6 +383,10 @@ async fn queued_business_request_is_rechecked_after_session_revocation() {
                 self.release.notified().await;
             }
             self.db.execute(command).await
+        }
+        async fn export(&self, command: Command) -> store::Result<Vec<u8>> {
+            let snapshot = self.execute(command).await?;
+            skarma_http::export::workbook(serde_json::from_value(snapshot)?)
         }
     }
     let (db, _) = fixture();
@@ -403,10 +406,11 @@ async fn queued_business_request_is_rechecked_after_session_revocation() {
         release: release.clone(),
     };
     let app = skarma_http::router(repo);
+    let path = path.to_owned();
     let task = tokio::spawn(async move {
         app.oneshot(
             Request::builder()
-                .uri("/api/state")
+                .uri(path)
                 .header("cookie", format!("skarma_session={token}"))
                 .body(Body::empty())
                 .unwrap(),
@@ -422,4 +426,14 @@ async fn queued_business_request_is_rechecked_after_session_revocation() {
     .unwrap();
     release.notify_one();
     assert_eq!(task.await.unwrap().status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn queued_business_request_is_rechecked_after_session_revocation() {
+    queued_request("/api/state").await;
+}
+
+#[tokio::test]
+async fn queued_export_is_rechecked_after_session_revocation() {
+    queued_request("/api/export.xlsx").await;
 }

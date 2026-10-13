@@ -270,6 +270,14 @@ pub fn state(db: &dyn Sql) -> Result<AppState> {
     })
 }
 
+pub fn export_snapshot(db: &dyn Sql) -> Result<ExportSnapshot> {
+    Ok(ExportSnapshot {
+        state: state(db)?,
+        goal_history: list(db, "goal_revisions")?,
+        exported_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+    })
+}
+
 pub fn create_goal(db: &dyn Sql, input: NewGoal) -> Result<Goal> {
     valid_id(&input.id)?;
     if input.title.trim().is_empty() || input.title.len() > 300 || input.criteria.len() > 5000 {
