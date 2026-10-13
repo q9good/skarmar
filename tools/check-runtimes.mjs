@@ -7,6 +7,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
+import { authContract, ownerPassword } from './auth-contract.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 await mkdir(resolve(root, '.local'), { recursive: true });
@@ -14,11 +15,11 @@ const scratch = await mkdtemp(resolve(root, '.local/runtime-contract-'));
 let child;
 let mf;
 
-async function startNative(database) {
+async function startNative(database, settings = {}) {
   let nativeLog = '';
   child = spawn(resolve(root, 'target/debug/skarma-api'), [], {
     cwd: root,
-    env: { ...process.env, SKARMA_STORAGE: 'sqlite', SKARMA_DATABASE: database, SKARMA_PORT: '0', SKARMA_DEMO: '1' },
+    env: { ...process.env, SKARMA_STORAGE: 'sqlite', SKARMA_DATABASE: database, SKARMA_PORT: '0', SKARMA_DEMO: '1', SKARMA_AUTH: 'demo', SKARMA_PRODUCTION: '0', ...settings },
     stdio: ['ignore', 'ignore', 'pipe'],
   });
   child.stderr.on('data', data => { nativeLog += data.toString(); });
@@ -153,7 +154,7 @@ try {
   const database = resolve(scratch, 'native.db');
   let origin = await startNative(database);
   await contract('native SQLite', (path, init) => fetch(origin + path, init), async sql => {
-    execFileSync('python3', ['-c', 'import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as db:\n db.execute("PRAGMA foreign_keys=ON")\n db.executescript(sys.argv[2])', database, sql]);
+    execFileSync('python3', ['-c', 'import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as db:\n db.execute("PRAGMA foreign_keys=ON")\n db.executescript(sys.argv[2])', database, sql], { stdio: ['ignore', 'pipe', 'pipe'] });
   });
   const nativeSnapshot = await (await fetch(origin + '/api/state')).json();
   child.kill('SIGTERM'); await once(child, 'exit');
@@ -169,7 +170,7 @@ try {
     ],
     compatibilityDate: '2026-07-30',
     durableObjectsPersist: resolve(scratch, 'cf'),
-    bindings: { SKARMA_STORAGE: 'durable_object', SKARMA_DEMO: '1', SKARMA_SPACE: 'contract' },
+    bindings: { SKARMA_STORAGE: 'durable_object', SKARMA_DEMO: '1', SKARMA_SPACE: 'contract', SKARMA_AUTH: 'demo', SKARMA_PRODUCTION: '0' },
     durableObjects: { SKARMA_DB: { className: 'TestSpace', useSQLite: true } },
     script: `
       import backend, { SkarmaSpace } from './crates/worker/build/index.js';
@@ -204,6 +205,28 @@ try {
   mf = new Miniflare(options);
   assert.deepEqual(await (await mf.dispatchFetch('https://contract.local/api/state')).json(), cfSnapshot);
   console.log('PASS Rust Worker / DO SQLite: restart preserves records and does not reseed');
+  await mf.dispose(); mf = undefined;
+  child.kill('SIGTERM'); await once(child, 'exit');
+  const authDatabase = resolve(scratch, 'auth-native.db');
+  execFileSync(resolve(root, 'target/debug/skarma-api'), ['admin-init', '--username', 'owner', '--name', 'Contract owner', '--password-stdin'], {
+    env: { ...process.env, SKARMA_DATABASE: authDatabase, SKARMA_STORAGE: 'sqlite' }, input: ownerPassword + '\n', stdio: ['pipe', 'ignore', 'pipe'],
+  });
+  origin = await startNative(authDatabase, { SKARMA_AUTH: 'required', SKARMA_DEMO: '0', SKARMA_PUBLIC_URL: 'https://contract.local', SKARMA_PRODUCTION: '1' });
+  await authContract('authenticated native SQLite', (path, init) => fetch(origin + path, init), async () => {
+    execFileSync('python3', ['-c', 'import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as db: db.execute("UPDATE auth_sessions SET expires_at=0")', authDatabase]);
+  });
+  const authOptions = { ...options, durableObjectsPersist: resolve(scratch, 'auth-cf'), bindings: {
+    SKARMA_STORAGE: 'durable_object', SKARMA_DEMO: '0', SKARMA_AUTH: 'required', SKARMA_PRODUCTION: '1',
+    SKARMA_SPACE: 'contract', SKARMA_PUBLIC_URL: 'https://contract.local',
+    SKARMA_INITIAL_ADMIN_USER: 'owner', SKARMA_INITIAL_ADMIN_PASSWORD: ownerPassword,
+  } };
+  mf = new Miniflare(authOptions);
+  const authNamespace = await mf.getDurableObjectNamespace('SKARMA_DB');
+  const authStub = authNamespace.get(authNamespace.idFromName('contract'));
+  await authContract('authenticated Rust Worker / DO', (path, init) => mf.dispatchFetch('https://contract.local' + path, init), async () => {
+    const response = await authStub.fetch('https://contract.internal/test-sql', { method: 'POST', body: JSON.stringify({ sql: 'UPDATE auth_sessions SET expires_at=0' }) });
+    assert.equal(response.status, 200); await response.text();
+  });
 } finally {
   if (mf) await mf.dispose();
   if (child?.pid && child.exitCode === null) { child.kill('SIGTERM'); await once(child, 'exit'); }

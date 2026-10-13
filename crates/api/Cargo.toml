@@ -7,12 +7,13 @@ edition = "2024"
 skarma-core = { path = "../core" }
 skarma-http = { path = "../http" }
 axum = "0.8"
-rusqlite = { version = "0.38", features = ["bundled"] }
+rusqlite = { version = "0.38", features = ["bundled", "backup"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
 tower-http = { version = "0.6", features = ["cors", "fs"] }
 uuid = { version = "1", features = ["v4", "serde"] }
+rpassword = "7.4"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

@@ -92,3 +92,16 @@ pub fn update_follow_up(
 pub fn seed_demo(db: &mut Connection) -> Result<()> {
     transaction(db, skarma_core::store::seed_demo)
 }
+
+pub fn bootstrap_admin(
+    db: &mut Connection,
+    input: skarma_core::auth::NewUser,
+) -> Result<skarma_core::auth::User> {
+    transaction(db, |sql| skarma_core::auth::bootstrap_admin(sql, input))
+}
+
+pub fn recover_admin(db: &mut Connection, username: &str, password: &str) -> Result<()> {
+    transaction(db, |sql| {
+        skarma_core::auth::recover_admin(sql, username, password)
+    })
+}

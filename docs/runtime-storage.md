@@ -1,6 +1,6 @@
 # 本地与 Cloudflare 双运行环境
 
-日期：2026-10-09。两种入口已实现并在本机验收，Cloudflare 线上部署尚未执行。
+日期：2026-10-13。两种入口已实现并在本机验收，Cloudflare 线上部署尚未执行。认证规则已加入共用 Rust 代码；正式目标为 [主机 + Cloudflare Tunnel](host-deployment.md)。
 
 ## 架构与配置
 
@@ -56,6 +56,9 @@ npm run web:build
 SKARMA_STORAGE=sqlite bash tools/start-local.sh
 ```
 
+默认需要登录。首次使用运行 `bash tools/start-local.sh admin-init --username owner --name 家长`，
+与启动脚本使用相同数据库；已有管理员时跳过。合成数据的免登录示例可显式 `SKARMA_AUTH=demo`。
+
 使用指定文件且不生成样例：
 
 ```bash
@@ -82,7 +85,7 @@ Wrangler 默认将模拟对象持久化在被 Git 忽略的 `.wrangler/state`。
 npm run cf:dev -- --port 8788 --persist-to .local/cf-test
 ```
 
-使用没有示例数据的基础配置，在准备好工具后执行 `npx --no-install wrangler dev --local`。
+基础配置要求生产认证及实际 HTTPS `SKARMA_PUBLIC_URL`，初始化账号需要私有 secret；见 [账号部署说明](host-deployment.md)。
 
 受限云环境可运行 `bash tools/install-cloud.sh`，它安装固定 Worker 构建工具、Wasm target、npm 依赖并构建两个入口；`start-cloudflare.sh` 会激活可写目录中的工具与缓存。
 
@@ -117,4 +120,4 @@ npm run cf:check
 本次 21 项 Rust 测试、双存储 API 合约与重启验收、原生和 Wasm Clippy、类型检查／Web 构建通过。Worker 入口还通过了手机尺寸浏览器工作流和直接导航 API 的 JSON 404 检查。
 `cf:check` 只执行部署包预检查，不创建或更新 Cloudflare 线上资源。
 
-当前仍是未完成生产登录的原型。Cloudflare 运行行为已在本机 workerd 验证；线上免费 CPU 用量、真正的手机网络访问、账户绑定与备份恢复还需部署阶段验收。参见 [部署调研](cloudflare-deployment-research.md)。
+当前已实现账号登录、管理员成员管理和会话撤销。原生 SQLite 的一致性备份／离线恢复与本机 Worker 行为由自动验收覆盖；线上免费 CPU 用量、真正的手机网络访问与用户主机还需部署阶段验收。参见 [主机部署](host-deployment.md) 和 [部署调研](cloudflare-deployment-research.md)。

@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod config;
 pub mod model;
 pub mod sql;
@@ -10,9 +11,14 @@ use sql::Sql;
 use store::Result;
 
 /// Internal command transport, shared by both runtimes. Not a public HTTP endpoint.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 #[serde(tag = "command", content = "input", rename_all = "snake_case")]
 pub enum Command {
+    Authenticated {
+        token: String,
+        command: Box<Command>,
+    },
+    Auth(auth::AuthCommand),
     State,
     GoalHistory {
         id: String,
@@ -37,6 +43,14 @@ pub enum Command {
 /// Returning Err must roll back all writes, including goal revisions and operation IDs.
 pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
     Ok(match command {
+        Command::Authenticated { token, command } => {
+            auth::session(db, &token)?;
+            if matches!(*command, Command::Auth(_) | Command::Authenticated { .. }) {
+                return Err(store::ApiError::invalid("认证请求不能嵌套"));
+            }
+            execute(db, *command)?
+        }
+        Command::Auth(command) => auth::execute(db, command)?,
         Command::State => serde_json::to_value(store::state(db)?)?,
         Command::GoalHistory { id } => serde_json::to_value(store::goal_history(db, &id)?)?,
         Command::CreateGoal(input) => serde_json::to_value(store::create_goal(db, input)?)?,

@@ -3,7 +3,7 @@ use axum::{
     http::{Request, StatusCode},
 };
 use rusqlite::Connection;
-use skarma_api::{Database, model::*, router, store};
+use skarma_api::{Database, model::*, router_with_auth, store};
 use std::sync::{Arc, Mutex};
 use tower::ServiceExt;
 use uuid::Uuid;
@@ -378,10 +378,15 @@ async fn concurrent_http_updates_only_accept_one_writer() {
     let id = Uuid::new_v4().to_string();
     let data = input(&db);
     store::save_session(&mut db, &id, request(data.clone(), None, "save_draft")).unwrap();
-    let app = router(
+    let app = router_with_auth(
         Database(Arc::new(Mutex::new(db))),
         "http://localhost:8081".parse().unwrap(),
         "/tmp/skarma-no-assets",
+        skarma_http::auth::AuthConfig {
+            demo: true,
+            space: "workflow-test".into(),
+            ..Default::default()
+        },
     );
     let make = |plan: &str| {
         let mut edited = data.clone();

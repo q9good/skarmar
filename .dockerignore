@@ -1,0 +1,17 @@
+.git
+node_modules
+**/node_modules
+target
+.local
+.wrangler
+**/dist
+**/build
+**/.expo
+**/__pycache__
+**/.env
+**/.env.*
+deploy/host/secrets
+deploy/host/backups
+*.db
+*.db-wal
+*.db-shm

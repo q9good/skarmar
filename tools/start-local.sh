@@ -11,4 +11,5 @@ fi
 export SKARMA_DEMO="${SKARMA_DEMO:-1}"
 export SKARMA_STORAGE="${SKARMA_STORAGE:-sqlite}"
 export SKARMA_DATABASE="${SKARMA_DATABASE:-.local/demo.db}"
-exec cargo run --locked -p skarma-api
+export SKARMA_AUTH="${SKARMA_AUTH:-required}"
+exec cargo run --locked -p skarma-api -- "$@"

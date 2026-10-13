@@ -1,38 +1,232 @@
 use rusqlite::Connection;
-use skarma_api::{Database, router, store};
-use skarma_core::config::{Config, Runtime};
+use skarma_api::{Database, router_with_auth, store};
+use skarma_core::{
+    auth::{AccountRole, NewUser},
+    config::{Config, Runtime},
+};
+use skarma_http::auth::AuthConfig;
 use std::{
     env,
+    io::{Read, Write},
     path::Path,
     sync::{Arc, Mutex},
 };
 
+fn password(stdin: bool) -> Result<String, Box<dyn std::error::Error>> {
+    if stdin {
+        let mut value = String::new();
+        std::io::stdin().take(130).read_to_string(&mut value)?;
+        Ok(value.trim_end_matches(['\r', '\n']).into())
+    } else {
+        let first = rpassword::prompt_password("密码（至少 12 个字符）: ")?;
+        let second = rpassword::prompt_password("再次输入密码: ")?;
+        if first != second {
+            return Err("两次密码不一致".into());
+        }
+        Ok(first)
+    }
+}
+fn option(args: &[String], name: &str) -> Option<String> {
+    args.iter()
+        .position(|arg| arg == name)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
+}
+fn healthcheck() -> Result<(), Box<dyn std::error::Error>> {
+    let port: u16 = env::var("SKARMA_PORT")
+        .unwrap_or_else(|_| "3001".into())
+        .parse()?;
+    let mut stream = std::net::TcpStream::connect_timeout(
+        &format!("127.0.0.1:{port}").parse()?,
+        std::time::Duration::from_secs(3),
+    )?;
+    stream.set_read_timeout(Some(std::time::Duration::from_secs(3)))?;
+    stream
+        .write_all(b"GET /api/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")?;
+    let mut response = String::new();
+    stream.read_to_string(&mut response)?;
+    if !response.starts_with("HTTP/1.1 200") || !response.contains("\"status\":\"ok\"") {
+        return Err("health check failed".into());
+    }
+    Ok(())
+}
+
+fn restore_stdin(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let parent = Path::new(path)
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    std::fs::create_dir_all(parent)?;
+    let temp = parent.join(format!(".restore-{}.db", uuid::Uuid::new_v4().simple()));
+    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(&temp)?;
+        let bytes = std::io::copy(
+            &mut std::io::stdin().take(10 * 1024 * 1024 * 1024 + 1),
+            &mut file,
+        )?;
+        if bytes > 10 * 1024 * 1024 * 1024 {
+            return Err("恢复文件超过 10 GB".into());
+        }
+        file.sync_all()?;
+        drop(file);
+        let mut header = [0u8; 16];
+        std::fs::File::open(&temp)?.read_exact(&mut header)?;
+        if &header != b"SQLite format 3\0" {
+            return Err("恢复文件不是 SQLite 数据库，当前数据库未修改".into());
+        }
+        let source = Connection::open(&temp)?;
+        let check: String = source.query_row("PRAGMA quick_check", [], |row| row.get(0))?;
+        if check != "ok" {
+            return Err("恢复文件检查失败，当前数据库未修改".into());
+        }
+        let tables:i64=source.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('goals','sessions')",[],|row|row.get(0))?;
+        if tables != 2 {
+            return Err("恢复文件缺少应用数据表，当前数据库未修改".into());
+        }
+        // Migrate and validate the private copy before replacing the real database.
+        store::initialize(&source)?;
+        store::state(&source)?;
+        source.execute("DELETE FROM auth_sessions", [])?;
+        source.backup("main", path, None)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+        }
+        Ok(())
+    })();
+    let _ = std::fs::remove_file(&temp);
+    let _ = std::fs::remove_file(format!("{}-wal", temp.display()));
+    let _ = std::fs::remove_file(format!("{}-shm", temp.display()));
+    result
+}
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().skip(1).collect();
+    let command = args.first().map(String::as_str).unwrap_or("serve");
+    if command == "healthcheck" {
+        return healthcheck();
+    }
+    if !matches!(
+        command,
+        "serve" | "admin-init" | "admin-reset" | "backup" | "restore-stdin"
+    ) {
+        return Err("命令: serve / admin-init --username USER --name NAME / admin-reset --username USER / backup PATH".into());
+    }
     let config = Config::load(Runtime::Local, |key| env::var(key).ok())?;
-    // This first prototype intentionally serves only the local development machine.
-    // Public deployment needs authenticated identities and profile authorization.
+    let auth = if command == "serve" {
+        Some(AuthConfig::load(&config, |key| env::var(key).ok())?)
+    } else {
+        None
+    };
     let path = env::var("SKARMA_DATABASE").unwrap_or_else(|_| ".local/skarma.db".into());
-    if let Some(parent) = Path::new(&path).parent() {
+    if command == "restore-stdin" {
+        if !args.iter().any(|arg| arg == "--offline") {
+            return Err("恢复前必须停止服务，并明确传入 --offline".into());
+        }
+        restore_stdin(&path)?;
+        eprintln!("恢复完成；所有会话已撤销，请重新登录");
+        return Ok(());
+    }
+    if command == "backup" {
+        let target = args.get(1).ok_or("backup 需要目标文件名")?;
+        let target = Path::new(target);
+        if let Some(parent) = target.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent)?;
+        }
+        let db = Connection::open_with_flags(&path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+        let check: String = db.query_row("PRAGMA quick_check", [], |row| row.get(0))?;
+        if check != "ok" {
+            return Err("数据库检查失败，备份已中止".into());
+        }
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let file = options.open(target)?;
+        drop(file);
+        if let Err(e) = db.backup("main", target, None) {
+            let _ = std::fs::remove_file(target);
+            return Err(e.into());
+        }
+        let copy = Connection::open_with_flags(target, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+        let check: String = copy.query_row("PRAGMA quick_check", [], |row| row.get(0))?;
+        if check != "ok" {
+            return Err("备份检查失败".into());
+        }
+        eprintln!("数据库一致性备份完成");
+        return Ok(());
+    }
+    if let Some(parent) = Path::new(&path)
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+    {
         std::fs::create_dir_all(parent)?;
     }
-    let mut connection = Connection::open(path)?;
+    let mut connection = Connection::open(&path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
+    }
     connection.busy_timeout(std::time::Duration::from_secs(5))?;
+    connection.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;")?;
     store::initialize(&connection)?;
+    if matches!(command, "admin-init" | "admin-reset") {
+        let username = option(&args, "--username").ok_or("请用 --username 指定账号")?;
+        let password = password(args.iter().any(|arg| arg == "--password-stdin"))?;
+        if command == "admin-init" {
+            store::bootstrap_admin(
+                &mut connection,
+                NewUser {
+                    display_name: option(&args, "--name").unwrap_or_else(|| username.clone()),
+                    username,
+                    password,
+                    role: AccountRole::Admin,
+                },
+            )?;
+            eprintln!("管理员已创建");
+        } else {
+            store::recover_admin(&mut connection, &username, &password)?;
+            eprintln!("管理员密码已重置，旧会话已撤销");
+        }
+        return Ok(());
+    }
     if config.demo {
         store::seed_demo(&mut connection)?;
     }
-    let origin = env::var("SKARMA_WEB_ORIGIN")
-        .unwrap_or_else(|_| "http://localhost:8081".into())
+    let auth = auth.unwrap();
+    let origin = env::var("SKARMA_PUBLIC_URL")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .or_else(|| env::var("SKARMA_WEB_ORIGIN").ok())
+        .unwrap_or_else(|| "http://localhost:8081".into())
+        .trim_end_matches('/')
         .parse()?;
     let assets = env::var("SKARMA_WEB_ASSETS").unwrap_or_else(|_| "apps/client/dist".into());
     let db = Database(Arc::new(Mutex::new(connection)));
     let port: u16 = env::var("SKARMA_PORT")
         .unwrap_or_else(|_| "3001".into())
         .parse()?;
-    let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;
+    let bind: std::net::IpAddr = env::var("SKARMA_BIND")
+        .unwrap_or_else(|_| "127.0.0.1".into())
+        .parse()?;
+    let listener = tokio::net::TcpListener::bind((bind, port)).await?;
     let port = listener.local_addr()?.port();
-    eprintln!("skarma development server listening on port {port}");
-    axum::serve(listener, router(db, origin, &assets)).await?;
+    eprintln!(
+        "skarma server listening on port {port}; authentication {}",
+        if auth.demo { "demo" } else { "required" }
+    );
+    axum::serve(listener, router_with_auth(db, origin, &assets, auth)).await?;
     Ok(())
 }

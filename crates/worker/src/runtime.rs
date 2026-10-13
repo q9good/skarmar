@@ -68,11 +68,22 @@ async fn fetch(req: HttpRequest, env: Env, _ctx: Context) -> Result<axum::http::
         Ok(cfg) => cfg,
         Err(error) => return Ok(axum::response::IntoResponse::into_response(error)),
     };
+    let auth = match skarma_http::auth::AuthConfig::load(&cfg, |key| {
+        env.var(key).ok().map(|value| value.to_string())
+    }) {
+        Ok(auth) => auth,
+        Err(message) => {
+            return Ok(axum::response::IntoResponse::into_response(ApiError(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                message,
+            )));
+        }
+    };
     let repo = DurableRepository {
         env,
         space: cfg.space,
     };
-    Ok(skarma_http::router(repo).call(req).await?)
+    Ok(skarma_http::router_with_auth(repo, auth).call(req).await?)
 }
 
 struct DurableSql(SqlStorage);
@@ -137,6 +148,26 @@ impl DurableObject for SkarmaSpace {
             }
         };
         let command: Command = req.json().await?;
+        // Optional private bootstrap for a future authenticated Worker deployment.
+        // Provision through Wrangler secrets; there is no public bootstrap endpoint.
+        let initial_admin = self
+            .env
+            .secret("SKARMA_INITIAL_ADMIN_PASSWORD")
+            .ok()
+            .map(|password| skarma_core::auth::NewUser {
+                username: self
+                    .env
+                    .var("SKARMA_INITIAL_ADMIN_USER")
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|_| "owner".into()),
+                display_name: self
+                    .env
+                    .var("SKARMA_INITIAL_ADMIN_NAME")
+                    .map(|value| value.to_string())
+                    .unwrap_or_else(|_| "管理员".into()),
+                password: password.to_string(),
+                role: skarma_core::auth::AccountRole::Admin,
+            });
         let output = Rc::new(RefCell::new(None));
         let result_slot = output.clone();
         let storage = self.state.storage();
@@ -146,6 +177,13 @@ impl DurableObject for SkarmaSpace {
             .transaction(move |_txn| async move {
                 let result = (|| {
                     skarma_core::store::initialize(&sql)?;
+                    if let Some(input) = initial_admin
+                        && sql
+                            .query("SELECT id FROM auth_users LIMIT 1", &[])?
+                            .is_empty()
+                    {
+                        skarma_core::auth::bootstrap_admin(&sql, input)?;
+                    }
                     if cfg.demo {
                         skarma_core::store::seed_demo(&sql)?;
                     }

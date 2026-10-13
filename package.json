@@ -10,7 +10,9 @@
     "typecheck": "npm run typecheck --workspace apps/client",
     "cf:dev": "bash tools/start-cloudflare.sh",
     "cf:check": "wrangler deploy --dry-run --outdir .local/worker-dry-run",
-    "test:runtimes": "node tools/check-runtimes.mjs"
+    "test:runtimes": "node tools/check-runtimes.mjs",
+    "test:host": "node tools/check-host.mjs",
+    "test:container": "node tools/check-container.mjs"
   },
   "devDependencies": {
     "miniflare": "4.20260730.0",

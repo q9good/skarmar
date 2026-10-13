@@ -4,6 +4,7 @@ import {
   View, useWindowDimensions, StatusBar,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AuthBoundary, AccountPanel, useAuth } from './src/auth';
 import {
   ApiError, request, isReviewable, isTrainable, type AppState, type FollowUp, type Goal, type Level,
   type GoalProgress, type GoalUpdate, type GoalRevision,
@@ -60,6 +61,13 @@ function inputOf(session: Session): SessionInput {
 }
 
 export default function App() {
+  return <AuthBoundary><Workspace /></AuthBoundary>;
+}
+
+function Workspace() {
+  const auth = useAuth();
+  const scope = `${auth.identity.space}:${auth.identity.user.id}`;
+  const [showAccount, setShowAccount] = useState(false);
   const [data, setData] = useState<AppState>(emptyState);
   const [tab, setTab] = useState<Tab>('today');
   const [loading, setLoading] = useState(true);
@@ -78,10 +86,10 @@ export default function App() {
   const { width } = useWindowDimensions();
 
   const persist = useCallback((next: Draft) => {
-    const task = persistence.current.catch(() => undefined).then(() => saveDraft(next));
+    const task = persistence.current.catch(() => undefined).then(() => saveDraft(scope, next));
     persistence.current = task;
     return task;
-  }, []);
+  }, [scope]);
 
   const refresh = useCallback(async () => {
     const next = await request<AppState>('/state');
@@ -91,7 +99,7 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    Promise.allSettled([refresh(), readDraft()]).then(results => {
+    Promise.allSettled([refresh(), readDraft(scope)]).then(results => {
       if (!active) return;
       const [remote, local] = results;
       if (remote.status === 'rejected') setError('暂时无法连接，请重试。已有本机草稿仍可继续编辑。');
@@ -100,7 +108,7 @@ export default function App() {
       setLoading(false);
     });
     return () => { active = false; };
-  }, [refresh]);
+  }, [refresh, scope]);
 
   useEffect(() => {
     if (!draft) return;
@@ -170,7 +178,7 @@ export default function App() {
       setDraft(null); setEditing(false); setDetail(result.session);
       // Await prior writes before clearing, so a delayed autosave cannot resurrect the draft.
       await persistence.current;
-      await clearDraft();
+      await clearDraft(scope);
       setMessage('这次训练已完成，困难与经验已按填写内容保存。');
     } else {
       const saved = { id: result.session.id, version: result.session.version, input: inputOf(result.session) };
@@ -183,9 +191,9 @@ export default function App() {
 
   const resolveConflict = (useRemote: boolean) => safely(async () => {
     if (!draft || !conflict) return;
-    await AsyncStorage.setItem(`skarma:conflict-backup:${draft.id}`, JSON.stringify(draft));
+    await AsyncStorage.setItem(`skarma:${scope}:conflict-backup:${draft.id}`, JSON.stringify(draft));
     if (conflict.status === 'completed') {
-      setDraft(null); await persistence.current; await clearDraft();
+      setDraft(null); await persistence.current; await clearDraft(scope);
       setDetail(conflict); setEditing(false);
       setMessage('已查看完成版本，本机修改另存为备份。');
     } else {
@@ -208,12 +216,12 @@ export default function App() {
     <View style={[styles.shell, width > 700 && { maxWidth: 960 }]}>
       <View style={styles.header}>
         <View style={styles.brand}><Text style={styles.star}>✦</Text><Text style={styles.brandName}>skarma</Text></View>
-        <Text style={styles.prototype}>体验版 · 示例空间</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="我的账号" style={{ maxWidth: '55%', flexShrink: 1 }} disabled={busy || auth.identity.demo} onPress={() => setShowAccount(true)}><Text numberOfLines={1} style={styles.prototype}>{auth.identity.demo ? '体验版 · 示例空间' : `${auth.identity.user.display_name} · 账号`}</Text></Pressable>
       </View>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}
         {message ? <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{message}</Text></View> : null}
-        {loading ? <ActivityIndicator color={colors.green} style={{ marginVertical: 40 }} /> :
+        {showAccount ? <AccountPanel back={() => setShowAccount(false)} logout={async () => { await persistence.current; await auth.logout(); }} /> : loading ? <ActivityIndicator color={colors.green} style={{ marginVertical: 40 }} /> :
           editing && draft ? <>
             <View style={styles.sectionHeader}><Text style={styles.title}>一次训练</Text>
               <Button title="返回" secondary onPress={() => setEditing(false)} disabled={busy} /></View>
@@ -235,7 +243,7 @@ export default function App() {
           </> : detail ? <SessionDetail session={detail} data={data} back={() => setDetail(null)} goFollowups={() => { setDetail(null); setTab('followups'); }} />
           : selectedGoal ? <>
             <View style={styles.sectionHeader}><Text style={styles.title}>{selectedGoal.title}</Text><Button title="返回" secondary onPress={() => setSelectedGoal(null)} /></View>
-            <GoalReview key={selectedGoal.id} goal={selectedGoal} goals={data.goals}
+            <GoalReview key={selectedGoal.id} scope={scope} goal={selectedGoal} goals={data.goals}
               source={id => { const s = data.sessions.find(s => s.id === id); if (s) openSession(s); }}
               save={async body => {
                 try {
@@ -315,7 +323,7 @@ export default function App() {
       <View style={styles.navigation}>
         {tabs.map(([key, icon, label]) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={label}
           accessibilityState={{ selected: tab === key && !editing }} style={styles.navItem} disabled={busy}
-          onPress={() => { setTab(key); setEditing(false); setDetail(null); setSelectedGoal(null); setError(''); setMessage(''); }}>
+          onPress={() => { setShowAccount(false); setTab(key); setEditing(false); setDetail(null); setSelectedGoal(null); setError(''); setMessage(''); }}>
           <Text style={[styles.navIcon, tab === key && { color: colors.green }]}>{icon}</Text>
           <Text style={[styles.navLabel, tab === key && { color: colors.green, fontWeight: '600' }]}>{label}</Text>
         </Pressable>)}
@@ -443,7 +451,8 @@ function goalUpdate(goal: Goal): GoalUpdate {
   return { ...fields, expected_version: version, change_note: '' };
 }
 
-function GoalReview({ goal, goals, save, source }: {
+function GoalReview({ scope, goal, goals, save, source }: {
+  scope: string;
   goal: Goal; goals: Goal[]; save: (body: GoalUpdate) => Promise<Goal>; source: (id: string) => void;
 }) {
   const [form, setForm] = useState<GoalUpdate>(() => goalUpdate(goal));
@@ -473,7 +482,7 @@ function GoalReview({ goal, goals, save, source }: {
   const useLatest = async () => {
     setSaving(true); setError('');
     try {
-      await AsyncStorage.setItem(`skarma:goal-conflict-backup:${goal.id}`, JSON.stringify(form));
+      await AsyncStorage.setItem(`skarma:${scope}:goal-conflict-backup:${goal.id}`, JSON.stringify(form));
       setForm(goalUpdate(goal)); setNotice('已采用最新目标，本机原填写内容另存为备份。');
     } catch { setError('备份未保存，当前填写内容已保留。'); }
     finally { setSaving(false); }

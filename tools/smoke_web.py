@@ -10,6 +10,9 @@ from playwright.sync_api import expect, sync_playwright
 BASE = os.environ.get("SKARMA_TEST_URL", "http://127.0.0.1:3001")
 OUTPUT = Path(".local/screenshots")
 OUTPUT.mkdir(parents=True, exist_ok=True)
+with urlopen(f"{BASE}/api/auth/me") as response:
+    identity = json.load(response)
+SCOPE = f"{identity['space']}:{identity['user']['id']}"
 
 
 def state():
@@ -142,7 +145,7 @@ with sync_playwright() as playwright:
     expect(page.get_by_role("button", name="保存目标复盘", exact=True)).to_be_disabled()
     page.get_by_role("button", name="备份我的填写并采用最新目标", exact=True).click()
     expect(page.get_by_role("textbox", name="达成标准", exact=True)).to_have_value("【浏览器验收】另一位记录者的标准")
-    assert page.evaluate("key => localStorage.getItem(key)", f"skarma:goal-conflict-backup:{secondary_id}")
+    assert page.evaluate("key => localStorage.getItem(key)", f"skarma:{SCOPE}:goal-conflict-backup:{secondary_id}")
 
     page.get_by_role("button", name="今天", exact=True).click()
     expect(page.get_by_text("待复盘目标 · 1", exact=True)).to_be_visible()

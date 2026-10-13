@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SaveRequest, SessionInput } from './api';
 
-export const DRAFT_KEY = 'skarma:training-draft:v1';
+export const draftKey = (scope: string) => `skarma:${scope}:training-draft:v2`;
 export type Draft = {
   id: string; version: number | null; input: SessionInput;
   pending?: SaveRequest;
@@ -26,10 +26,10 @@ export function emptyInput(): SessionInput {
     has_experience: false, experience: '', experience_kind: 'task',
   };
 }
-export const saveDraft = (draft: Draft) => AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-export const clearDraft = () => AsyncStorage.removeItem(DRAFT_KEY);
-export async function readDraft(): Promise<Draft | null> {
-  const value = await AsyncStorage.getItem(DRAFT_KEY);
+export const saveDraft = (scope: string, draft: Draft) => AsyncStorage.setItem(draftKey(scope), JSON.stringify(draft));
+export const clearDraft = (scope: string) => AsyncStorage.removeItem(draftKey(scope));
+export async function readDraft(scope: string): Promise<Draft | null> {
+  const value = await AsyncStorage.getItem(draftKey(scope));
   if (!value) return null;
   const draft = JSON.parse(value) as Draft;
   if (typeof draft.id !== 'string' || !draft.input || !Array.isArray(draft.input.targets)) {

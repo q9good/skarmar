@@ -24,7 +24,7 @@ fn unversioned_database_is_upgraded_without_replacing_data() {
         db.query_row("SELECT count(*) FROM schema_migrations", [], |row| row
             .get::<_, i64>(0))
             .unwrap(),
-        2
+        3
     );
 }
 
@@ -40,6 +40,6 @@ fn incompatible_database_version_is_rejected_without_modification() {
         db.query_row("SELECT count(*) FROM schema_migrations", [], |row| row
             .get::<_, i64>(0))
             .unwrap(),
-        3
+        4
     );
 }

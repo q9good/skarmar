@@ -43,12 +43,23 @@ const base = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
+let unauthorized: (() => void) | undefined;
+let sessionEpoch = 0;
+export function onUnauthorized(handler?: () => void) { unauthorized = handler; }
+export function advanceAuthSession() { sessionEpoch += 1; }
 export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const response = await fetch(`${base}/api${path}`, {
-    method, headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+  const epoch = sessionEpoch;
+  let response: Response;
+  try { response = await fetch(`${base}/api${path}`, {
+    method, credentials: 'include', cache: 'no-store',
+    headers: { 'X-Skarma-Request': '1', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const data = await response.json();
-  if (!response.ok) throw new ApiError(data.error ?? '操作未完成，请保留草稿后重试', response.status);
+  }); } catch { throw new ApiError('暂时无法连接，请保留草稿后重试', 503); }
+  if (response.status === 401 && epoch === sessionEpoch && path !== '/auth/login' && path !== '/auth/me') unauthorized?.();
+  let data: { error?: string };
+  try { data = await response.json(); } catch { throw new ApiError('服务暂时无法响应，请稍后重试', response.ok ? 502 : response.status); }
+  if (!response.ok) {
+    throw new ApiError(data.error ?? '操作未完成，请保留草稿后重试', response.status);
+  }
   return data as T;
 }

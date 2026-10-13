@@ -96,6 +96,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
     const MIGRATIONS: &[(i64, &str)] = &[
         (1, include_str!("../migrations/001_initial.sql")),
         (2, include_str!("../migrations/002_goal_revisions.sql")),
+        (3, include_str!("../migrations/003_auth.sql")),
     ];
     db.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);")?;
     let applied = db

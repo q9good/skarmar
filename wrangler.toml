@@ -18,6 +18,9 @@ run_worker_first = ["/api", "/api/*"]
 SKARMA_STORAGE = "durable_object"
 SKARMA_DEMO = "0"
 SKARMA_SPACE = "default"
+SKARMA_AUTH = "required"
+SKARMA_PRODUCTION = "1"
+# Set SKARMA_PUBLIC_URL to the actual HTTPS origin before any Worker deployment.
 
 [durable_objects]
 bindings = [{ name = "SKARMA_DB", class_name = "SkarmaSpace" }]
@@ -31,6 +34,8 @@ new_sqlite_classes = ["SkarmaSpace"]
 SKARMA_STORAGE = "durable_object"
 SKARMA_DEMO = "1"
 SKARMA_SPACE = "demo"
+SKARMA_AUTH = "demo"
+SKARMA_PRODUCTION = "0"
 
 [env.demo.durable_objects]
 bindings = [{ name = "SKARMA_DB", class_name = "SkarmaSpace" }]

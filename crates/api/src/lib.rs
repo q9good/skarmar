@@ -31,7 +31,21 @@ impl Repository for Database {
 }
 
 pub fn router(db: Database, web_origin: HeaderValue, assets: &str) -> Router {
-    skarma_http::router(db)
+    router_with_auth(
+        db,
+        web_origin,
+        assets,
+        skarma_http::auth::AuthConfig::default(),
+    )
+}
+
+pub fn router_with_auth(
+    db: Database,
+    web_origin: HeaderValue,
+    assets: &str,
+    auth: skarma_http::auth::AuthConfig,
+) -> Router {
+    skarma_http::router_with_auth(db, auth)
         .fallback_service(
             ServeDir::new(assets).not_found_service(ServeFile::new(format!("{assets}/index.html"))),
         )
@@ -39,6 +53,10 @@ pub fn router(db: Database, web_origin: HeaderValue, assets: &str) -> Router {
             CorsLayer::new()
                 .allow_origin(web_origin)
                 .allow_methods([Method::GET, Method::POST, Method::PUT])
-                .allow_headers([axum::http::header::CONTENT_TYPE]),
+                .allow_headers([
+                    axum::http::header::CONTENT_TYPE,
+                    axum::http::HeaderName::from_static("x-skarma-request"),
+                ])
+                .allow_credentials(true),
         )
 }

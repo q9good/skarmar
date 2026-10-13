@@ -20,6 +20,7 @@ Rust 与 Node、且 npm cache 可写的开发机。
 ```bash
 npm ci
 npm run web:build
+bash tools/start-local.sh admin-init --username owner --name 家长
 bash tools/start-local.sh
 ```
 
@@ -28,6 +29,7 @@ Rust。API 同时提供 Web 静态资源，开发端口为 3001，仅监听 127.
 本轮 worktree 位于 `/workspace/worktrees/skarmar-web`，分支 `feat/tencent-informed-web`。
 为与原 checkout 的开发服务并行，可在此 worktree 根目录使用 `SKARMA_PORT=3002 bash tools/start-local.sh`。
 脚本默认使用 `.local/demo.db`，仅在没有目标时加入明确的示例目标，不清空现有数据库。
+首次使用先执行上面的 `admin-init`，隐藏输入密码；账号与启动服务使用同一数据库。已有账号时跳过初始化。
 首次安装 Rust 时按 rust-toolchain.toml 安装对应版本及 rustfmt、clippy。
 
 UI 修改需要热更新时，保持 API 运行，在 `apps/client` 执行：
@@ -37,7 +39,7 @@ EXPO_PUBLIC_API_URL=http://localhost:3001 EXPO_NO_TELEMETRY=1 npx expo start --w
 ```
 
 这是本机开发配置；本机 localhost 与云环境开发端口不能直接作为手机公网服务。
-公开使用前须实现登录、服务端授权并完成正式部署。Web 静态构建采用同源 API，
+已实现账号登录、管理员成员管理与服务端会话校验；主机正式部署见 [Tunnel 部署指南](host-deployment.md)。Web 静态构建采用同源 API，
 二期 App 的远程 API 地址与原生登录另行配置和验证。
 
 ## 检查
@@ -54,10 +56,13 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 python -m unittest discover -s tools -p 'test_*.py' -v
 npm run typecheck
 npm run web:build
+npm run test:host
+npm run test:runtimes
 ```
 
 Rust 集成测试覆盖草稿／完成规则、角色与目标范围、来源生成、历史快照、重复操作、
-版本冲突、并发 HTTP 更新，以及故障注入后的数据库事务回滚；新增配置和迁移验收后共 21 项。
+版本冲突、并发 HTTP 更新，以及故障注入后的数据库事务回滚；新增 7 项认证验收后共 28 项。
+认证覆盖会话 Cookie、退出和过期、来源校验、失败限速、成员权限、密码修改，以及排队请求在事务内重新验证身份。
 新增目标验收覆盖状态与归档独立、长期内化保留、完成目标复习、复盘日期、目标历史的事务回滚、
 旧字段兼容及显式重新保存计划后采用新目标版本。Python 测试使用合成数据和虚构凭证，验证字段
 映射、分页完整性、悬空关系分类及读取工具的凭证／输出边界。
@@ -65,7 +70,7 @@ Rust 集成测试覆盖草稿／完成规则、角色与目标范围、来源生
 浏览器验收用可删除的独立数据库运行服务器：
 
 ```bash
-SKARMA_DATABASE=.local/validation.db SKARMA_DEMO=1 bash tools/start-local.sh
+SKARMA_DATABASE=.local/validation.db SKARMA_DEMO=1 SKARMA_AUTH=demo bash tools/start-local.sh
 python tools/smoke_web.py
 ```
 
@@ -84,12 +89,13 @@ worktree 使用不同端口时，同时设置服务器的 `SKARMA_PORT=3002` 与
 ## 数据与阶段边界
 
 两份需求附件与 token 位于仓库外。开发示例不导入真实个训正文，不将个人凭证作为
-客户端配置。当前服务没有生产登录与档案授权，实际业务数据进入系统前应先完成这些
-能力；具体未完项见 product-plan.md 的“本次工程选择与原型边界”。
+客户端配置。当前账号授权针对一个共享空间；逐档案权限和正式数据导入仍需实现。
+主机、真实域名与手机网络验收尚待执行，具体未完项见 product-plan.md 的“本次工程选择与原型边界”。
 
 两种存储都把实体内容存为 JSON，关系与幂等操作使用 SQL 约束。共享迁移位于
 `crates/core/migrations`，已验收旧原型库补建迁移版本记录、重复启动保留数据及拒绝更高版本库。
 两个入口还通过同一套 API 合约验收，包括 SQL 中途失败全回滚和重启保留数据。
-正式数据导入、备份导出／恢复、更多版本升级和公开访问权限仍待实现和验收。
+原生存储的一致性备份／离线恢复已有验收，Docker 镜像与部署脚本可用 `npm run test:container` 验证（先构建镜像）。
+正式数据导入、更多版本升级、逐档案权限和真实主机公网访问仍待实现或验收。
 
 腾讯线上核验和附件关系审计的命令、证据边界见 [腾讯核验说明](tencent-audit.md)。
