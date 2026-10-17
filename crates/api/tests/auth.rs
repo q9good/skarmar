@@ -96,6 +96,477 @@ async fn login(app: &Router, user: &str, password: &str) -> String {
     cookie.split(';').next().unwrap().into()
 }
 
+fn registration(username: &str, email: &str) -> Value {
+    json!({
+        "username": username,
+        "display_name": "新成员",
+        "email": email,
+        "password": "synthetic-registration-password"
+    })
+}
+
+#[tokio::test]
+async fn registration_requires_admin_approval_before_login_and_never_exposes_hashes() {
+    let (db, app) = fixture();
+    let input = registration(" applicant ", " Applicant@Example.Test ");
+    let (status, headers, body) = send(&app, "POST", "/api/auth/register", None, Some(input)).await;
+    assert_eq!(status, StatusCode::ACCEPTED);
+    assert_eq!(body, json!({"ok":true}));
+    assert!(headers.get("set-cookie").is_none());
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/login",
+            None,
+            Some(json!({"username":"applicant","password":"synthetic-registration-password"}))
+        )
+        .await
+        .0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/registrations", None, None)
+            .await
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    let owner = login(&app, "owner", PASSWORD).await;
+    let (status, _, requests) =
+        send(&app, "GET", "/api/auth/registrations", Some(&owner), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(requests.as_array().unwrap().len(), 1);
+    let pending = &requests[0];
+    assert_eq!(pending["username"], "applicant");
+    assert_eq!(pending["email"], "applicant@example.test");
+    assert!(pending["created_at"].is_string());
+    assert!(pending.get("password").is_none());
+    assert!(pending.get("password_hash").is_none());
+    let id = pending["id"].as_str().unwrap();
+    let hash_before: String =
+        db.0.lock()
+            .unwrap()
+            .query_row(
+                "SELECT password_hash FROM auth_registration_requests WHERE id=?1",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+    assert!(hash_before.starts_with("$argon2id$"));
+    let path = format!("/api/auth/registrations/{id}/approve");
+    assert_eq!(
+        send(&app, "POST", &path, None, None).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    let (status, _, body) = send(&app, "POST", &path, Some(&owner), None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, json!({"ok":true}));
+    assert_eq!(
+        send(&app, "POST", &path, Some(&owner), None).await.0,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/registrations", Some(&owner), None)
+            .await
+            .2,
+        json!([])
+    );
+    let stored: (String, String, String) =
+        db.0.lock()
+            .unwrap()
+            .query_row(
+                "SELECT email,password_hash,role FROM auth_users WHERE username='applicant'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+    assert_eq!(stored.0, "applicant@example.test");
+    assert_eq!(stored.1, hash_before);
+    assert_eq!(stored.2, "member");
+    let member = login(&app, "applicant", "synthetic-registration-password").await;
+    assert_eq!(
+        send(&app, "GET", "/api/state", Some(&member), None).await.0,
+        StatusCode::OK
+    );
+}
+
+#[tokio::test]
+async fn member_cannot_review_and_rejection_allows_new_application() {
+    let (_, app) = fixture();
+    let owner = login(&app, "owner", PASSWORD).await;
+    let (_, _, member) = send(&app, "POST", "/api/auth/users", Some(&owner),
+        Some(json!({"username":"member","display_name":"成员","password":"synthetic-member-password","role":"member"}))).await;
+    assert!(member["id"].is_string());
+    let member_cookie = login(&app, "member", "synthetic-member-password").await;
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("candidate", "candidate@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::ACCEPTED
+    );
+    let requests = send(&app, "GET", "/api/auth/registrations", Some(&owner), None)
+        .await
+        .2;
+    let id = requests[0]["id"].as_str().unwrap();
+    for action in ["approve", "reject"] {
+        let path = format!("/api/auth/registrations/{id}/{action}");
+        assert_eq!(
+            send(&app, "POST", &path, Some(&member_cookie), None)
+                .await
+                .0,
+            StatusCode::FORBIDDEN
+        );
+    }
+    assert_eq!(
+        send(
+            &app,
+            "GET",
+            "/api/auth/registrations",
+            Some(&member_cookie),
+            None
+        )
+        .await
+        .0,
+        StatusCode::FORBIDDEN
+    );
+    let path = format!("/api/auth/registrations/{id}/reject");
+    assert_eq!(
+        send(&app, "POST", &path, Some(&owner), None).await.0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        send(&app, "POST", &path, Some(&owner), None).await.0,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("candidate", "candidate@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::ACCEPTED
+    );
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/login",
+            None,
+            Some(json!({"username":"candidate","password":"synthetic-registration-password"}))
+        )
+        .await
+        .0,
+        StatusCode::UNAUTHORIZED
+    );
+}
+
+#[tokio::test]
+async fn registration_validates_email_conflicts_and_commits_throttle_counters() {
+    let (db, app) = fixture();
+    for email in [
+        "missing-at",
+        "a@localhost",
+        "a@-bad.test",
+        "a..b@example.test",
+    ] {
+        assert_eq!(
+            send(
+                &app,
+                "POST",
+                "/api/auth/register",
+                None,
+                Some(registration("candidate", email))
+            )
+            .await
+            .0,
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+    }
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("owner", "different@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("candidate", "candidate@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::ACCEPTED
+    );
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("candidate", "different@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("other", "candidate@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    for _ in 0..3 {
+        assert_eq!(
+            send(
+                &app,
+                "POST",
+                "/api/auth/register",
+                None,
+                Some(registration("candidate", "different@example.test"))
+            )
+            .await
+            .0,
+            StatusCode::CONFLICT
+        );
+    }
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("candidate", "different@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    assert_eq!(
+        db.0.lock()
+            .unwrap()
+            .query_row(
+                "SELECT attempts FROM auth_registration_limits WHERE key='user:candidate'",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+        5
+    );
+    assert_eq!(
+        db.0.lock()
+            .unwrap()
+            .query_row(
+                "SELECT COUNT(*) FROM auth_registration_requests",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+        1
+    );
+}
+
+#[tokio::test]
+async fn approval_conflict_keeps_pending_request_for_review() {
+    let (db, app) = fixture();
+    let owner = login(&app, "owner", PASSWORD).await;
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("candidate", "candidate@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::ACCEPTED
+    );
+    let id = send(&app, "GET", "/api/auth/registrations", Some(&owner), None)
+        .await
+        .2[0]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    db.0.lock()
+        .unwrap()
+        .execute(
+            "UPDATE auth_users SET email='candidate@example.test' WHERE username='owner'",
+            [],
+        )
+        .unwrap();
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            &format!("/api/auth/registrations/{id}/approve"),
+            Some(&owner),
+            None
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/registrations", Some(&owner), None)
+            .await
+            .2
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(
+        db.0.lock()
+            .unwrap()
+            .query_row(
+                "SELECT COUNT(*) FROM auth_users WHERE username='candidate'",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+        0
+    );
+}
+
+#[tokio::test]
+async fn registration_queue_and_global_attempts_are_bounded() {
+    let (db, app) = fixture();
+    {
+        let conn = db.0.lock().unwrap();
+        for n in 0..100 {
+            conn.execute(
+                "INSERT INTO auth_registration_requests(id,username,display_name,email,password_hash,created_at) VALUES (?1,?2,'待审','pending@example.test' || ?3,'hash','2026-01-01')",
+                rusqlite::params![format!("pending-{n}"),format!("pending{n}"),n.to_string()],
+            ).unwrap();
+        }
+    }
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("newperson", "newperson@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    assert_eq!(
+        db.0.lock()
+            .unwrap()
+            .query_row(
+                "SELECT COUNT(*) FROM auth_registration_requests",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+        100
+    );
+
+    let (db, app) = fixture();
+    for n in 0..60 {
+        let status = send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("owner", &format!("attempt{n}@example.test"))),
+        )
+        .await
+        .0;
+        assert!(matches!(
+            status,
+            StatusCode::CONFLICT | StatusCode::TOO_MANY_REQUESTS
+        ));
+    }
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/register",
+            None,
+            Some(registration("fresh", "fresh@example.test"))
+        )
+        .await
+        .0,
+        StatusCode::TOO_MANY_REQUESTS
+    );
+    let conn = db.0.lock().unwrap();
+    assert_eq!(
+        conn.query_row(
+            "SELECT attempts FROM auth_registration_limits WHERE key='global'",
+            [],
+            |row| row.get::<_, i64>(0)
+        )
+        .unwrap(),
+        60
+    );
+    assert_eq!(
+        conn.query_row(
+            "SELECT COUNT(*) FROM auth_registration_limits WHERE key='user:fresh'",
+            [],
+            |row| row.get::<_, i64>(0)
+        )
+        .unwrap(),
+        0
+    );
+}
+
+#[tokio::test]
+async fn registration_rejects_large_anonymous_bodies_before_hashing() {
+    let (db, app) = fixture();
+    let oversized = registration("candidate", "candidate@example.test")
+        .to_string()
+        .replace("synthetic-registration-password", &"a".repeat(9 * 1024));
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/auth/register")
+        .header("content-type", "application/json")
+        .header("x-skarma-request", "1")
+        .header("origin", "https://app.example.test")
+        .body(Body::from(oversized))
+        .unwrap();
+    assert_eq!(
+        app.oneshot(request).await.unwrap().status(),
+        StatusCode::PAYLOAD_TOO_LARGE
+    );
+    assert_eq!(
+        db.0.lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM auth_registration_limits", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .unwrap(),
+        0
+    );
+}
+
 #[tokio::test]
 async fn private_records_require_a_live_session_and_logout_revokes_it() {
     let (db, app) = fixture();

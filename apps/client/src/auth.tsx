@@ -5,6 +5,7 @@ import { downloadWorkbook } from './download';
 
 export type Account = { id: string; username: string; display_name: string; role: 'admin' | 'member'; active: boolean };
 export type Identity = { user: Account; space: string; demo: boolean };
+type Registration = { id: string; username: string; display_name: string; email: string; created_at: string };
 type Auth = { identity: Identity; logout: () => Promise<void>; passwordChanged: () => void };
 const Context = createContext<Auth | null>(null);
 export function useAuth() { const value = useContext(Context); if (!value) throw new Error('尚未登录'); return value; }
@@ -16,12 +17,14 @@ function Action({ title, onPress, disabled, secondary }: { title: string; onPres
     <Text style={[s.buttonText, secondary && { color: '#34765B' }]}>{title}</Text>
   </Pressable>;
 }
-function Input({ label, value, change, secret, username, disabled, submit }: {
-  label: string; value: string; change: (text: string) => void; secret?: boolean; username?: boolean; disabled?: boolean; submit?: () => void;
+function Input({ label, value, change, secret, username, email, newPassword, disabled, submit }: {
+  label: string; value: string; change: (text: string) => void; secret?: boolean; username?: boolean; email?: boolean;
+  newPassword?: boolean; disabled?: boolean; submit?: () => void;
 }) {
   return <View style={s.field}><Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} value={value}
     onChangeText={change} secureTextEntry={secret} autoCapitalize="none" autoCorrect={false} editable={!disabled}
-    autoComplete={username ? 'username' : secret ? 'current-password' : 'off'} maxLength={secret ? 128 : 120}
+    autoComplete={username ? 'username' : email ? 'email' : secret ? newPassword ? 'new-password' : 'current-password' : 'off'}
+    keyboardType={email ? 'email-address' : 'default'} maxLength={secret ? 128 : email ? 254 : 120}
     onSubmitEditing={submit} style={s.input} /></View>;
 }
 
@@ -60,9 +63,16 @@ export function AuthBoundary({ children }: { children: React.ReactNode }) {
 function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Identity) => void }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [registering, setRegistering] = useState(false);
+  const [registrationUsername, setRegistrationUsername] = useState('');
+  const [registrationName, setRegistrationName] = useState('');
+  const [registrationEmail, setRegistrationEmail] = useState('');
+  const [registrationPassword, setRegistrationPassword] = useState('');
+  const [registrationConfirmation, setRegistrationConfirmation] = useState('');
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const submit = async () => {
     if (busy) return;
     if (!username.trim() || !password) { setError('请填写账号和密码'); return; }
@@ -71,18 +81,52 @@ function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Iden
     catch (error) { setError(messageOf(error)); }
     finally { setBusy(false); }
   };
+  const register = async () => {
+    if (busy) return;
+    if (!registrationUsername.trim() || !registrationName.trim() || !registrationEmail.trim() || !registrationPassword) {
+      setError('请填写账号、称呼、邮箱和密码'); return;
+    }
+    if (registrationPassword !== registrationConfirmation) { setError('两次密码不一致'); return; }
+    setBusy(true); setError('');
+    try {
+      await request('/auth/register', 'POST', {
+        username: registrationUsername, display_name: registrationName,
+        email: registrationEmail, password: registrationPassword,
+      });
+      setUsername(registrationUsername.trim());
+      setRegistrationPassword(''); setRegistrationConfirmation('');
+      setRegistering(false); setVisible(false);
+      setSuccess('注册申请已提交。管理员审批通过后，就可以使用刚设置的密码登录。');
+    } catch (error) { setError(messageOf(error)); }
+    finally { setBusy(false); }
+  };
   return <ScrollView style={s.page} contentContainerStyle={s.loginContainer} keyboardShouldPersistTaps="handled">
     <View style={s.loginCard}>
       <View style={s.brand}><Text style={s.star}>✦</Text><Text style={s.brandName}>skarma</Text></View>
       <Text style={s.eyebrow}>记录小进步，陪伴每一天。</Text>
-      <Text style={s.title}>欢迎回来</Text><Text style={s.body}>登录你的账号，继续今天的安排与观察。</Text>
+      <Text style={s.title}>{registering ? '申请注册' : '欢迎回来'}</Text>
+      <Text style={s.body}>{registering ? '填写申请后由管理员审批，审批通过前无法登录。' : '登录你的账号，继续今天的安排与观察。'}</Text>
       {notice ? <Text accessibilityRole="alert" style={s.notice}>{notice}</Text> : null}
+      {success ? <Text accessibilityRole="alert" style={s.notice}>{success}</Text> : null}
       {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
-      <Input label="账号" value={username} change={setUsername} username disabled={busy} />
-      <Input label="密码" value={password} change={setPassword} secret={!visible} disabled={busy} submit={() => void submit()} />
-      <Pressable accessibilityRole="button" onPress={() => setVisible(value => !value)}><Text style={s.link}>{visible ? '隐藏密码' : '显示密码'}</Text></Pressable>
-      <Action title={busy ? '正在登录…' : '登录'} onPress={() => void submit()} disabled={busy} />
-      <Text style={s.hint}>首次使用或忘记密码，请联系空间管理员。</Text>
+      {registering ? <>
+        <Input label="账号" value={registrationUsername} change={setRegistrationUsername} username disabled={busy} />
+        <Input label="称呼" value={registrationName} change={setRegistrationName} disabled={busy} />
+        <Input label="邮箱" value={registrationEmail} change={setRegistrationEmail} email disabled={busy} />
+        <Input label="密码" value={registrationPassword} change={setRegistrationPassword} secret={!visible} newPassword disabled={busy} />
+        <Input label="再次输入密码" value={registrationConfirmation} change={setRegistrationConfirmation} secret={!visible} newPassword disabled={busy} submit={() => void register()} />
+        <Text style={s.hint}>密码至少 12 个字符。邮箱供管理员核对申请使用。</Text>
+        <Pressable accessibilityRole="button" onPress={() => setVisible(value => !value)}><Text style={s.link}>{visible ? '隐藏密码' : '显示密码'}</Text></Pressable>
+        <Action title={busy ? '正在提交…' : '提交注册申请'} onPress={() => void register()} disabled={busy} />
+        <Action title="返回登录" secondary onPress={() => { setRegistering(false); setVisible(false); setError(''); }} disabled={busy} />
+      </> : <>
+        <Input label="账号" value={username} change={setUsername} username disabled={busy} />
+        <Input label="密码" value={password} change={setPassword} secret={!visible} disabled={busy} submit={() => void submit()} />
+        <Pressable accessibilityRole="button" onPress={() => setVisible(value => !value)}><Text style={s.link}>{visible ? '隐藏密码' : '显示密码'}</Text></Pressable>
+        <Action title={busy ? '正在登录…' : '登录'} onPress={() => void submit()} disabled={busy} />
+        <Action title="申请注册" secondary onPress={() => { setRegistering(true); setVisible(false); setError(''); setSuccess(''); }} disabled={busy} />
+        <Text style={s.hint}>刚提交申请？请等待管理员批准后再登录。忘记密码请联系空间管理员。</Text>
+      </>}
       <Text style={s.footer}>Every star shines at its own pace.</Text>
     </View>
   </ScrollView>;
@@ -91,6 +135,8 @@ function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Iden
 export function AccountPanel({ back, logout }: { back: () => void; logout: () => Promise<void> }) {
   const auth = useAuth();
   const [users, setUsers] = useState<Account[]>([]);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -101,7 +147,12 @@ export function AccountPanel({ back, logout }: { back: () => void; logout: () =>
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const load = useCallback(async () => { setUsers(await request<Account[]>('/auth/users')); }, []);
+  const load = useCallback(async () => {
+    const [members, pending] = await Promise.all([
+      request<Account[]>('/auth/users'), request<Registration[]>('/auth/registrations'),
+    ]);
+    setUsers(members); setRegistrations(pending);
+  }, []);
   useEffect(() => {
     if (auth.identity.user.role === 'admin') load().catch(error => setError(messageOf(error)));
   }, [auth.identity.user.role, load]);
@@ -134,6 +185,32 @@ export function AccountPanel({ back, logout }: { back: () => void; logout: () =>
       })} />
     </View>
     {auth.identity.user.role === 'admin' && <>
+      <View style={s.card}><View style={s.row}><Text style={s.cardTitle}>待审批申请 · {registrations.length}</Text>
+        <Action title="刷新" secondary disabled={busy} onPress={() => void act(load)} /></View>
+        {registrations.length === 0 ? <Text style={s.hint}>目前没有待审批的注册申请。</Text> : null}
+        {registrations.map(item => <View key={item.id} style={s.pending}>
+          <Text style={s.body}>{item.display_name} · {item.username}</Text>
+          <Text style={s.hint}>申请人填写的邮箱（未验证）：{item.email} · {new Date(item.created_at).toLocaleString()}</Text>
+          <View style={s.row}>
+            <Action title="批准" disabled={busy} onPress={() => void act(async () => {
+              await request(`/auth/registrations/${item.id}/approve`, 'POST');
+              setRejectingId(null);
+              setRegistrations(current => current.filter(entry => entry.id !== item.id));
+              try { await load(); setNotice(`${item.display_name} 的申请已批准，可以登录。`); }
+              catch { setNotice(`${item.display_name} 的申请已批准，可以登录。成员列表暂未刷新。`); }
+            })} />
+            <Action title={rejectingId === item.id ? '取消拒绝' : '拒绝'} secondary disabled={busy}
+              onPress={() => setRejectingId(value => value === item.id ? null : item.id)} />
+            {rejectingId === item.id && <Action title="确认拒绝" disabled={busy} onPress={() => void act(async () => {
+              await request(`/auth/registrations/${item.id}/reject`, 'POST');
+              setRejectingId(null);
+              setRegistrations(current => current.filter(entry => entry.id !== item.id));
+              try { await load(); setNotice(`${item.display_name} 的申请已拒绝。`); }
+              catch { setNotice(`${item.display_name} 的申请已拒绝。列表暂未刷新。`); }
+            })} />}
+          </View>
+        </View>)}
+      </View>
       <View style={s.card}><Text style={s.cardTitle}>添加成员</Text><Text style={s.hint}>成员可查看和填写本空间的全部记录。管理员还可管理账号。</Text>
         <Input label="新成员账号" value={username} change={setUsername} username disabled={busy} />
         <Input label="成员称呼" value={name} change={setName} disabled={busy} />
@@ -174,6 +251,7 @@ const s = StyleSheet.create({
   eyebrow: { color: '#6C7B73', fontSize: 13, marginBottom: 15 }, title: { color: '#243D36', fontSize: 25, fontWeight: '700', flexShrink: 1 },
   body: { fontSize: 14, color: '#243D36', lineHeight: 23 }, hint: { color: '#6C7B73', fontSize: 12, lineHeight: 21 },
   card: { padding: 18, borderRadius: 18, borderWidth: 1, borderColor: '#E0E6DD', backgroundColor: '#FFFFFF', gap: 12 }, cardTitle: { fontSize: 16, fontWeight: '600', color: '#243D36' },
+  pending: { borderTopWidth: 1, borderColor: '#E0E6DD', paddingTop: 12, gap: 9 },
   field: { gap: 7 }, label: { fontSize: 13, color: '#243D36', fontWeight: '500' }, input: { minHeight: 48, borderWidth: 1, borderColor: '#E0E6DD', borderRadius: 10, padding: 12, color: '#243D36', backgroundColor: '#FCFCF9' },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   button: { backgroundColor: '#34765B', borderRadius: 12, padding: 13, minHeight: 46, alignItems: 'center', justifyContent: 'center' }, secondary: { backgroundColor: '#E9F2E9' }, buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },

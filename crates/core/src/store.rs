@@ -98,6 +98,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         (2, include_str!("../migrations/002_goal_revisions.sql")),
         (3, include_str!("../migrations/003_auth.sql")),
         (4, include_str!("../migrations/004_pathways.sql")),
+        (5, include_str!("../migrations/005_registration.sql")),
     ];
     db.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);")?;
     let applied = db

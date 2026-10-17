@@ -29,6 +29,29 @@ export async function authContract(label, send, expire) {
   await call('POST', '/api/auth/login', { username: 'owner', password: 'incorrect' }, undefined, 401);
   const owner = await login('owner', ownerPassword);
   await call('GET', '/api/state', undefined, owner);
+  const application = {
+    username: 'applicant', display_name: 'Contract applicant',
+    email: 'applicant@example.test', password: 'synthetic-applicant-password',
+  };
+  const submitted = await call('POST', '/api/auth/register', application, undefined, 202);
+  assert.deepEqual(submitted.data, { ok: true });
+  assert.equal(submitted.response.headers.get('set-cookie'), null);
+  await call('POST', '/api/auth/login', { username: 'applicant', password: application.password }, undefined, 401);
+  await call('GET', '/api/auth/registrations', undefined, undefined, 401);
+  const pending = (await call('GET', '/api/auth/registrations', undefined, owner)).data;
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].username, 'applicant');
+  assert.equal(pending[0].email, application.email);
+  assert.equal(pending[0].password_hash, undefined);
+  await call('POST', `/api/auth/registrations/${pending[0].id}/approve`, undefined, owner);
+  const applicant = await login('applicant', application.password);
+  await call('GET', '/api/auth/registrations', undefined, applicant, 403);
+  const rejected = { ...application, username: 'rejected', email: 'rejected@example.test' };
+  await call('POST', '/api/auth/register', rejected, undefined, 202);
+  const next = (await call('GET', '/api/auth/registrations', undefined, owner)).data;
+  assert.equal(next.length, 1);
+  await call('POST', `/api/auth/registrations/${next[0].id}/reject`, undefined, owner);
+  await call('POST', '/api/auth/login', { username: 'rejected', password: rejected.password }, undefined, 401);
   const { data: member } = await call('POST', '/api/auth/users', {
     username: 'teacher', display_name: 'Contract teacher', role: 'member', password: 'synthetic-member-password',
   }, owner);
@@ -56,5 +79,5 @@ export async function authContract(label, send, expire) {
   await expire();
   await call('GET', '/api/state', undefined, owner, 401);
   await call('GET', '/api/export.xlsx', undefined, owner, 401);
-  console.log(`PASS ${label}: login, secure cookies, CSRF, member permissions, disable/reset, password change, logout and expiry`);
+  console.log(`PASS ${label}: registration approval/rejection, login, secure cookies, CSRF, member permissions, disable/reset, password change, logout and expiry`);
 }

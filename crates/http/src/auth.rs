@@ -1,7 +1,7 @@
 use crate::Repository;
 use axum::{
     Json, Router,
-    extract::{Path, Request, State},
+    extract::{DefaultBodyLimit, Path, Request, State},
     http::{HeaderMap, HeaderValue, Method, StatusCode, Uri, header},
     middleware::Next,
     response::{IntoResponse, Response},
@@ -11,7 +11,10 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use skarma_core::{
     Command,
-    auth::{AuthCommand, LoginOutcome, NewUser, SESSION_SECONDS, UserUpdate, unauthorized},
+    auth::{
+        AuthCommand, LoginOutcome, NewUser, RegistrationInput, RegistrationOutcome,
+        SESSION_SECONDS, UserUpdate, unauthorized,
+    },
     config::Config,
     store::{ApiError, Result},
 };
@@ -210,6 +213,36 @@ struct Login {
     username: String,
     password: String,
 }
+async fn register<R: Repository>(
+    State(state): State<AuthState<R>>,
+    Json(input): Json<RegistrationInput>,
+) -> Result<Response> {
+    if state.config.demo {
+        return Err(ApiError(StatusCode::FORBIDDEN, "示例模式不接受注册".into()));
+    }
+    let outcome: RegistrationOutcome = serde_json::from_value(
+        state
+            .repo
+            .execute(Command::Auth(AuthCommand::Register { input }))
+            .await?,
+    )?;
+    match outcome {
+        RegistrationOutcome::Accepted => {
+            Ok((StatusCode::ACCEPTED, Json(json!({"ok":true}))).into_response())
+        }
+        RegistrationOutcome::Conflict => {
+            Err(ApiError::conflict("账号或邮箱已被使用，或申请正在等待审批"))
+        }
+        RegistrationOutcome::RateLimited => Err(ApiError(
+            StatusCode::TOO_MANY_REQUESTS,
+            "申请次数较多，请稍后再试".into(),
+        )),
+        RegistrationOutcome::QueueFull => Err(ApiError(
+            StatusCode::TOO_MANY_REQUESTS,
+            "待审批申请较多，请稍后再试".into(),
+        )),
+    }
+}
 async fn login<R: Repository>(
     State(state): State<AuthState<R>>,
     Json(input): Json<Login>,
@@ -296,6 +329,49 @@ async fn users<R: Repository>(
             .await?,
     ))
 }
+async fn registrations<R: Repository>(
+    State(state): State<AuthState<R>>,
+    headers: HeaderMap,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        state
+            .repo
+            .execute(Command::Auth(AuthCommand::ListRegistrations {
+                token: token(&headers, &state.config)?,
+            }))
+            .await?,
+    ))
+}
+async fn approve_registration<R: Repository>(
+    State(state): State<AuthState<R>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        state
+            .repo
+            .execute(Command::Auth(AuthCommand::ApproveRegistration {
+                token: token(&headers, &state.config)?,
+                id,
+            }))
+            .await?,
+    ))
+}
+async fn reject_registration<R: Repository>(
+    State(state): State<AuthState<R>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        state
+            .repo
+            .execute(Command::Auth(AuthCommand::RejectRegistration {
+                token: token(&headers, &state.config)?,
+                id,
+            }))
+            .await?,
+    ))
+}
 async fn create_user<R: Repository>(
     State(state): State<AuthState<R>>,
     headers: HeaderMap,
@@ -355,10 +431,23 @@ async fn password<R: Repository>(
 pub(crate) fn routes<R: Repository>(state: AuthState<R>) -> Router {
     Router::new()
         .route("/auth/login", post(login::<R>))
+        .route(
+            "/auth/register",
+            post(register::<R>).layer(DefaultBodyLimit::max(8 * 1024)),
+        )
         .route("/auth/me", get(me::<R>))
         .route("/auth/logout", post(logout::<R>))
         .route("/auth/password", put(password::<R>))
         .route("/auth/users", get(users::<R>).post(create_user::<R>))
         .route("/auth/users/{id}", put(update_user::<R>))
+        .route("/auth/registrations", get(registrations::<R>))
+        .route(
+            "/auth/registrations/{id}/approve",
+            post(approve_registration::<R>),
+        )
+        .route(
+            "/auth/registrations/{id}/reject",
+            post(reject_registration::<R>),
+        )
         .with_state(state)
 }
