@@ -75,6 +75,37 @@ async fn create_goal<R: Repository>(
         execute(&repo, proof, Command::CreateGoal(input)).await?,
     ))
 }
+
+async fn create_pathway<R: Repository>(
+    State(repo): State<R>,
+    proof: Option<Extension<auth::SessionProof>>,
+    Json(input): Json<NewPathway>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        execute(&repo, proof, Command::CreatePathway(input)).await?,
+    ))
+}
+
+async fn update_pathway<R: Repository>(
+    State(repo): State<R>,
+    Path(id): Path<String>,
+    proof: Option<Extension<auth::SessionProof>>,
+    Json(request): Json<UpdatePathway>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        execute(&repo, proof, Command::UpdatePathway { id, request }).await?,
+    ))
+}
+
+async fn create_experience<R: Repository>(
+    State(repo): State<R>,
+    proof: Option<Extension<auth::SessionProof>>,
+    Json(input): Json<NewExperience>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        execute(&repo, proof, Command::CreateExperience(input)).await?,
+    ))
+}
 async fn update_goal<R: Repository>(
     State(repo): State<R>,
     Path(id): Path<String>,
@@ -147,6 +178,9 @@ pub fn router_with_auth<R: Repository>(repo: R, config: auth::AuthConfig) -> Rou
         .route("/state", get(read_state::<R>))
         .route("/export.xlsx", get(export_workbook::<R>))
         .route("/goals", post(create_goal::<R>))
+        .route("/pathways", post(create_pathway::<R>))
+        .route("/pathways/{id}", put(update_pathway::<R>))
+        .route("/experiences", post(create_experience::<R>))
         .route("/goals/{id}", put(update_goal::<R>))
         .route("/goals/{id}/history", get(goal_history::<R>))
         .route("/sessions/{id}", put(save_session::<R>))

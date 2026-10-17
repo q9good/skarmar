@@ -116,7 +116,7 @@ export function AccountPanel({ back, logout }: { back: () => void; logout: () =>
     {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
     {notice ? <Text accessibilityRole="alert" style={s.notice}>{notice}</Text> : null}
     {Platform.OS === 'web' && <View style={s.card}><Text style={s.cardTitle}>导出数据</Text>
-      <Text style={s.body}>将本空间已保存的全部数据下载为 Excel：训练记录、逐目标明细、目标、困难、经验和目标历史。</Text>
+      <Text style={s.body}>将本空间已保存的全部数据下载为 Excel：训练记录、逐目标明细、目标、途径、困难、经验、历史及关联关系。</Text>
       <Text style={s.hint}>包含已保存的训练草稿。本机尚未保存的草稿不包含在内；导出不会修改记录。</Text>
       <Action title={busy ? '正在处理…' : '导出 Excel'} disabled={busy} onPress={() => void act(async () => {
         await downloadWorkbook(); setNotice('Excel 已交给浏览器下载，请在下载列表中查看。');

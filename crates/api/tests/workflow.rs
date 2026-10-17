@@ -104,7 +104,10 @@ fn completion_preserves_id_and_snapshot_and_generates_children_once() {
     assert_eq!(state.sessions.len(), 1);
     assert_eq!(state.difficulties.len(), 1);
     assert_eq!(state.experiences.len(), 1);
-    assert_eq!(state.difficulties[0].source_session_id, id);
+    assert_eq!(
+        state.difficulties[0].source_session_id.as_deref(),
+        Some(id.as_str())
+    );
     assert_eq!(state.experiences[0].status, "pending");
     let archived = &second.session.input.targets[0].goal_id;
     assert_eq!(
@@ -315,6 +318,9 @@ fn follow_up_requires_evidence_and_detects_stale_versions() {
         status: "verified".into(),
         conclusion: conclusion.into(),
         next_review_date: None,
+        content: None,
+        goal_ids: None,
+        pathway_ids: None,
     };
     assert_eq!(
         store::update_follow_up(&mut db, "experiences", &id, update("", 1))

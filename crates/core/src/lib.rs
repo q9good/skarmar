@@ -25,6 +25,12 @@ pub enum Command {
         id: String,
     },
     CreateGoal(NewGoal),
+    CreatePathway(NewPathway),
+    UpdatePathway {
+        id: String,
+        request: UpdatePathway,
+    },
+    CreateExperience(NewExperience),
     UpdateGoal {
         id: String,
         request: UpdateGoal,
@@ -56,6 +62,13 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         Command::ExportSnapshot => serde_json::to_value(store::export_snapshot(db)?)?,
         Command::GoalHistory { id } => serde_json::to_value(store::goal_history(db, &id)?)?,
         Command::CreateGoal(input) => serde_json::to_value(store::create_goal(db, input)?)?,
+        Command::CreatePathway(input) => serde_json::to_value(store::create_pathway(db, input)?)?,
+        Command::UpdatePathway { id, request } => {
+            serde_json::to_value(store::update_pathway(db, &id, request)?)?
+        }
+        Command::CreateExperience(input) => {
+            serde_json::to_value(store::create_experience(db, input)?)?
+        }
         Command::UpdateGoal { id, request } => {
             serde_json::to_value(store::update_goal(db, &id, request)?)?
         }

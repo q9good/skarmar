@@ -192,12 +192,16 @@ pub struct SaveResult {
 pub struct FollowUp {
     pub id: String,
     pub version: u64,
-    pub source_session_id: String,
+    pub source_session_id: Option<String>,
     pub content: String,
     pub kind: Option<String>,
     pub status: String,
     pub next_review_date: Option<String>,
     pub conclusion: String,
+    #[serde(default)]
+    pub goal_ids: Vec<String>,
+    #[serde(default)]
+    pub pathway_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -206,6 +210,58 @@ pub struct UpdateFollowUp {
     pub status: String,
     pub next_review_date: Option<String>,
     pub conclusion: String,
+    #[serde(default)]
+    pub content: Option<String>,
+    /// Omitted bindings preserve existing relationships, including for older clients.
+    #[serde(default)]
+    pub goal_ids: Option<Vec<String>>,
+    #[serde(default)]
+    pub pathway_ids: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PathwayStatus {
+    Active,
+    Archived,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Pathway {
+    pub id: String,
+    pub version: u64,
+    pub title: String,
+    pub description: String,
+    pub steps: String,
+    pub status: PathwayStatus,
+    pub goal_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NewPathway {
+    pub id: String,
+    pub title: String,
+    pub description: String,
+    pub steps: String,
+    pub goal_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct UpdatePathway {
+    pub expected_version: u64,
+    pub title: String,
+    pub description: String,
+    pub steps: String,
+    pub status: PathwayStatus,
+    pub goal_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NewExperience {
+    pub id: String,
+    pub content: String,
+    pub goal_ids: Vec<String>,
+    pub pathway_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -214,6 +270,8 @@ pub struct AppState {
     pub sessions: Vec<Session>,
     pub difficulties: Vec<FollowUp>,
     pub experiences: Vec<FollowUp>,
+    #[serde(default)]
+    pub pathways: Vec<Pathway>,
 }
 
 /// Business data captured in a single transaction. Never includes account/session tables.

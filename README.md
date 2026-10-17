@@ -44,16 +44,19 @@ backed by a Rust HTTP API. iOS and Android apps are planned for phase two.
 The prototype supports training plans, per-goal results, difficulty and experience
 follow-up, draft recovery, and versioned goal reviews. It shares Rust business rules and API
 routes across native SQLite and Cloudflare Durable Objects storage. Account login,
-administrator member management, authenticated Excel export, and self-hosted deployment through Cloudflare Tunnel
-are implemented. Remote host deployment is still pending.
+administrator member management, reusable pathways with many-to-many goal mappings,
+experience bindings, and authenticated Excel export are implemented. Self-hosting supports
+private HTTPS through Tailscale Serve and public access through Cloudflare Tunnel.
+Remote host deployment is still pending.
 
 - [Product plan and requirements (中文)](docs/product-plan.md)
 - [Development and validation (中文)](docs/development.md)
 - [Tencent snapshot and live audit status (中文)](docs/tencent-audit.md)
 - [Cloudflare free deployment research and Rust verification (中文)](docs/cloudflare-deployment-research.md)
 - [Native / Cloudflare configuration and startup (中文)](docs/runtime-storage.md)
-- [Host + Cloudflare Tunnel deployment, login and backups (中文)](docs/host-deployment.md)
+- [Host deployment with Tailscale / Cloudflare, login and backups (中文)](docs/host-deployment.md)
 - [Excel download and included data (中文)](docs/excel-export.md)
+- [Purpose, reusable pathways and experience bindings (中文)](docs/purpose-pathway-experience.md)
 
 ```bash
 npm ci

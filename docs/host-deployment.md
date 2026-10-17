@@ -1,23 +1,25 @@
-# 常开主机 + Cloudflare Tunnel 部署
+# 常开主机部署：Tailscale 验收与 Cloudflare Tunnel
 
-日期：2026-10-13。目标是一台有出站网络、没有公网 IP 的常开主机。代码、登录和部署配置已准备；当前尚未连接用户主机或发布真实 Tunnel。
+日期：2026-10-17。目标是一台有出站网络、没有公网 IP 的常开主机。先通过 Tailscale Serve 私有 HTTPS 验收；需要让家人／老师直接通过浏览器访问时，再接入 Cloudflare Tunnel。当前尚未连接用户主机或发布真实入口。
 
 ## 部署结构
 
 ```mermaid
 flowchart LR
-    Phone[手机 Web / 后续 App] --> HTTPS[Cloudflare HTTPS 域名]
+    Private[已加入 Tailnet 的手机 / 电脑] --> Serve[Tailscale Serve 私有 HTTPS]
+    Serve --> App
+    Phone[家人 / 老师的浏览器] --> HTTPS[可选 Cloudflare HTTPS 域名]
     HTTPS --> Tunnel[主机 cloudflared 出站隧道]
     Tunnel --> App[Rust API + Expo 静态 Web]
     App --> DB[主机持久卷中的 SQLite]
     DB --> Backup[一致性备份 / 其他设备副本]
 ```
 
-Docker Compose 只有 `app`、`cloudflared` 两个服务。Rust 自带静态页面与 `/api` 路由，浏览器使用同域 API。主机端口仅映射到 `127.0.0.1`；公网入口是 Tunnel。域名必须与 `SKARMA_PUBLIC_URL` 一致。
+Docker Compose 定义 `app` 和可选的 `cloudflared`；Tailscale 使用主机已有客户端。Rust 自带静态页面与 `/api` 路由，浏览器使用同域 API。主机端口仅映射到 `127.0.0.1`；Serve 和 Tunnel 均代理该应用。浏览器访问的网址必须与 `SKARMA_PUBLIC_URL` 一致，每次部署选择一个正式入口。
 
 先按 Linux + Docker Engine / Compose 准备；镜像在主机上原生构建，可用于 x86_64 / ARM64。当前实际容器验收针对 x86_64，ARM64 与用户主机网络仍需现场验收。Windows / NAS 可使用 Linux 容器，需按实际 Docker 环境调整启动方式。
 
-需要：Docker、足够构建内存和磁盘、有出站网络的主机、Cloudflare 账号，以及由 Cloudflare 管理的域名。Tunnel 本身可使用免费计划，域名注册与主机电力、网络费用另计。计算与数据库在主机，不使用 Workers / DO 配额。
+需要：Docker、足够构建内存和磁盘、有出站网络的主机。私有验收使用 Tailscale 和 Tailnet 的 HTTPS 证书功能，手机／电脑也需加入 Tailnet 并通过访问规则。Cloudflare Tunnel 阶段再准备 Cloudflare 账号和由它管理的域名。Tunnel 本身可使用免费计划，域名注册与主机电力、网络费用另计；Tailscale 用户与设备额度按实际账号计划核对。计算与数据库在主机，不使用 Workers / DO 配额。
 
 ## 账号与会话
 
@@ -32,13 +34,13 @@ Docker Compose 只有 `app`、`cloudflared` 两个服务。Rust 自带静态页�
 
 ## 首次启动
 
-远程维护可通过 Tailscale SSH 或普通 SSH 完成，应用公网访问仍由 Cloudflare Tunnel 提供。服务器需要加入 Tailnet，并允许对应客户端访问 SSH；具体采用哪种认证方式按服务器已有配置决定。
+远程维护可通过 Tailscale SSH 或普通 SSH 完成。服务器需要加入 Tailnet，并允许对应客户端访问 SSH；具体采用哪种认证方式按服务器已有配置决定。开始部署前核对系统／CPU、Docker、磁盘、已有服务和 Compose 项目，避免占用其他应用的端口或持久卷。
 
 在 Codex 托管云环境中，Tailscale 由出口代理 sidecar 管理，需在环境设置配置 VPN，并为服务器的 Tailscale IPv4（精确 `/32`）或可解析域名配置 TCP 放行。HTTP 的“全部放开”不建立 VPN 或 SSH 的 TCP 授权。在工作容器安装独立 Tailscale 不能替代这项配置。
 
 接通后使用运行环境技能提供的校验版 `socat`，通过 `proxy:8088` 把授权 SSH 目标转发到本机 loopback 端口，再用 SSH 登录。保留 SSH 主机密钥校验，先核对服务器公钥指纹；SSH 应用认证与 VPN 接入分别配置。凭证通过受支持的私有配置提供，不提交到仓库。
 
-当前阶段先完成程序与部署包；SSH 转发工具已准备，Tailscale VPN 和真实服务器接入留到部署阶段配置／验收，现阶段无需提供服务器登录信息。
+本次已进入实际部署阶段；远程执行前需明确服务器 Tailscale IP／完整域名、SSH 用户／端口／认证方式，并完成上述 VPN 与 TCP 配置。不要把当前 Codex 工作容器当作用户的常开主机。
 
 ```bash
 git clone --branch feat/tencent-informed-web https://github.com/q9good/skarmar.git
@@ -46,7 +48,7 @@ cd skarmar/deploy/host
 cp .env.example .env
 ```
 
-编辑 `.env`，将网址换成实际域名，例如 `https://training.your-domain.com`。空间名设置后保持稳定，本机草稿用它分组。生产设置为 `SKARMA_PRODUCTION=1`，示例数据关闭，认证必需。配置不完整时服务拒绝启动。
+编辑 `.env`，填写下一节的实际私有 HTTPS 网址；选择直接接 Tunnel 时则填写自己的 Cloudflare 域名。空间名设置后保持稳定，本机草稿用它分组。生产设置为 `SKARMA_PRODUCTION=1`，示例数据关闭，认证必需。配置不完整时服务拒绝启动。
 
 ```bash
 docker compose build
@@ -57,7 +59,34 @@ docker compose exec -T app skarma-api healthcheck
 
 创建管理员时会在终端隐藏输入两次密码（至少 12 个字符）。数据库写入持久卷，容器重建后继续使用。`admin-init` 只在没有任何账号时成功，不能覆盖已有账号。首次启动不会导入腾讯记录。
 
-## 创建并接入 Tunnel
+## 先用 Tailscale Serve 验收
+
+以下命令在用户常开主机执行。先查看当前 Tailnet 身份和已有 Serve 配置，取得主机的完整 `device.tailnet.ts.net` 域名：
+
+```bash
+tailscale status
+tailscale serve status
+```
+
+将 `.env` 的 `SKARMA_PUBLIC_URL` 设为 `https://device.tailnet.ts.net`（使用实际域名），按上一节启动 `app`。确认主机 loopback 健康检查成功，再启用 Serve：
+
+```bash
+curl --fail http://127.0.0.1:3001/api/health
+tailscale serve --bg --https=443 http://127.0.0.1:3001
+tailscale serve status
+```
+
+`--bg` 让配置在客户端重启后继续生效。首次使用可能要求 Tailnet 管理员按 CLI 显示的链接启用 HTTPS 证书；完成后以 `serve status` 显示的私有 HTTPS 地址为准。主机的 Tailscale 和 Docker 服务都需开机启动。
+
+如果已有 Serve 服务占用 443，保留它，为本应用选择空闲 HTTPS 端口，例如 `--https=8443`，并将 `SKARMA_PUBLIC_URL` 同步改为 `https://device.tailnet.ts.net:8443`。不要执行全局 `tailscale serve reset`；撤销本应用时，仅关闭对应端口的配置，例如 `tailscale serve --https=8443 off`。
+
+手机／电脑连接同一 Tailnet 后访问该 HTTPS 地址，仍需使用应用账号登录。仅加入 Tailnet 不替代应用账号。不要用 `http://100.x.x.x:3001` 作为正式入口：生产会话需要 HTTPS，且应用端口仅绑定主机 loopback。
+
+先完成下方手机验收与一次备份。此阶段无需 Cloudflare 账号、域名或 Tunnel token。Serve 的具体行为以主机 `tailscale serve --help` 为准，参考 [官方 Serve 指南](https://tailscale.com/kb/1312/serve) 与 [CLI](https://tailscale.com/kb/1242/tailscale-serve)。
+
+## 再接入 Cloudflare Tunnel（可选）
+
+需要不安装 Tailscale 的设备访问时，先备份，在 `.env` 将 `SKARMA_PUBLIC_URL` 改为实际 Cloudflare HTTPS 域名，再执行 `docker compose up -d app`。应用、持久卷与数据保持原位。网址改变后，用户改用新地址重新登录；旧地址的浏览器本机草稿不会自动迁移，应先保存。
 
 1. 在 [Cloudflare 控制台](https://dash.cloudflare.com/?to=/:account/tunnels) 的 **Networking → Tunnels** 创建隧道，获取 connector token。
 2. 在主机终端运行下列脚本，隐藏输入 token。token 保存在被 Git 忽略的私有 `secrets` 目录，不放入 `.env`、镜像或前端代码。
@@ -86,13 +115,14 @@ docker compose logs --tail 50 cloudflared
 2. 管理员创建老师账号；老师能填写记录，但不能管理成员。
 3. 手机保存计划、完成训练、刷新；电脑与手机看见相同正式记录。
 4. 修改密码或停用账号后，旧设备在刷新／提交时返回登录页。
-5. 重启主机，隧道和应用恢复，数据库保留；分别检查手机 Wi-Fi 与蜂窝网络的访问效果。
+5. 建立目的与途径多对多映射，分别创建目的原则、途径细节和双重绑定经验，确认手机刷新和 Excel 导出关系一致。
+6. 执行一次备份；重启主机后，应用与所选入口恢复，数据库保留。手机连接 Tailscale 后分别用 Wi-Fi 与蜂窝访问；接入 Tunnel 后还应关闭手机 Tailscale，验证新域名访问。
 
 实际 Tunnel 的 HTTPS、网络可靠性和手机访问速度，必须在用户主机与域名上验证。本机容器验证不能替代这一步。
 
 ## 备份与恢复
 
-查阅和归档记录可在 **我的账号 → 导出 Excel** 下载七张工作表，详见 [Excel 导出](excel-export.md)。导出不包含账号凭证；系统恢复使用下述 SQLite 备份。
+查阅和归档记录可在 **我的账号 → 导出 Excel** 下载十张工作表，包含途径及两类经验绑定，详见 [Excel 导出](excel-export.md)。导出不包含账号凭证；系统恢复使用下述 SQLite 备份。
 
 在线备份使用 SQLite Backup API，完整性检查后复制到主机，SHA-256 校验复制结果；无需暂停记录。
 
@@ -118,7 +148,7 @@ docker compose exec app skarma-api admin-reset --username owner
 
 ## 升级与开发验收
 
-升级前备份，在仓库执行 `git pull --ff-only`，再进入 `deploy/host` 执行 `docker compose build` 和 `docker compose --profile tunnel up -d`。SQL 迁移保留旧记录；数据库版本高于程序支持版本时拒绝启动。
+升级前备份，在仓库执行 `git pull --ff-only`，再进入 `deploy/host` 执行 `docker compose build` 和 `docker compose up -d app`；使用 Tunnel 时再执行 `docker compose --profile tunnel up -d`。SQL 迁移保留旧记录；数据库版本高于程序支持版本时拒绝启动。
 
 开发电脑可运行 `bash tools/start-local.sh admin-init --username owner --name 家长`，然后 `bash tools/start-local.sh`。两条命令使用同一数据库，无账号的启动页面会要求登录。仅用于合成数据的免登录示例，需显式 `SKARMA_AUTH=demo SKARMA_DEMO=1`，生产模式禁止。
 

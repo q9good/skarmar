@@ -41,6 +41,7 @@ try {
   execFileSync('bash', ['tools/start-local.sh', 'admin-init', '--username', 'owner', '--name', '测试管理员', '--password-stdin'], { cwd: root, env, input: ownerPassword + '\n', stdio: ['pipe', 'ignore', 'pipe'] });
   origin = await start();
   execFileSync('python3', ['tools/smoke_auth_web.py'], { cwd: root, env: { ...process.env, SKARMA_TEST_URL: origin }, stdio: 'inherit' });
+  execFileSync('python3', ['tools/smoke_knowledge_web.py'], { cwd: root, env: { ...process.env, SKARMA_TEST_URL: origin }, stdio: 'inherit' });
   let cookie = await login(); await addGoal(cookie, 'Before snapshot');
   const snapshot = await state(cookie);
   const backup = resolve(scratch, 'snapshot.db');

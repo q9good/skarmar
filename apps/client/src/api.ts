@@ -28,11 +28,20 @@ export type Session = SessionInput & {
   target_snapshots: (Target & { goal_snapshot: Goal })[];
 };
 export type FollowUp = {
-  id: string; version: number; source_session_id: string; content: string;
+  id: string; version: number; source_session_id: string | null; content: string;
   kind: 'general' | 'task' | null; status: string;
   next_review_date: string | null; conclusion: string;
+  goal_ids: string[]; pathway_ids: string[];
 };
-export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[] };
+export type FollowUpUpdate = {
+  expected_version: number; status: string; conclusion: string; next_review_date: string | null;
+  content?: string; goal_ids?: string[]; pathway_ids?: string[];
+};
+export type Pathway = {
+  id: string; version: number; title: string; description: string; steps: string;
+  status: 'active' | 'archived'; goal_ids: string[];
+};
+export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[]; pathways: Pathway[] };
 export type SaveRequest = {
   operation_id: string; expected_version: number | null;
   action: 'save_draft' | 'complete'; session: SessionInput;

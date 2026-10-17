@@ -5,9 +5,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthBoundary, AccountPanel, useAuth } from './src/auth';
+import { ExperienceBindings, ExperienceCreator, PathwayLibrary, RelatedKnowledge } from './src/knowledge';
 import {
   ApiError, request, isReviewable, isTrainable, type AppState, type FollowUp, type Goal, type Level,
-  type GoalProgress, type GoalUpdate, type GoalRevision,
+  type GoalProgress, type GoalUpdate, type GoalRevision, type Pathway, type FollowUpUpdate,
   type Role, type SaveRequest, type SaveResult, type Session, type SessionInput,
 } from './src/api';
 import { clearDraft, emptyInput, localDate, readDraft, saveDraft, uuid, type Draft } from './src/draft';
@@ -19,9 +20,9 @@ const progressLabels: Record<GoalProgress, string> = { cultivating: '持续培�
   not_started: '未开始', in_progress: '进行中', achieved: '已达成', completed: '已完成', overdue: '已逾期（历史状态）' };
 const roles: Record<Role, string> = { primary: '主目标', secondary: '副目标', review: '复习' };
 const activities = ['桌面教学', '感统活动', '游戏', '家务劳动', '生活自理', '户外活动', '阅读'];
-const tabs = [ ['today', '☀', '今天'], ['goals', '◎', '目标'], ['history', '▤', '记录'], ['followups', '◇', '跟进'] ] as const;
+const tabs = [ ['today', '☀', '今天'], ['goals', '◎', '目标'], ['pathways', '↗', '途径'], ['history', '▤', '记录'], ['followups', '◇', '跟进'] ] as const;
 type Tab = typeof tabs[number][0];
-const emptyState: AppState = { goals: [], sessions: [], difficulties: [], experiences: [] };
+const emptyState: AppState = { goals: [], sessions: [], difficulties: [], experiences: [], pathways: [] };
 
 function Button({ title, onPress, secondary = false, disabled = false }: {
   title: string; onPress: () => void; secondary?: boolean; disabled?: boolean;
@@ -52,7 +53,7 @@ function Field({ label, value, onChange, multiline = false, placeholder = '', di
   </View>;
 }
 
-function Card({ children }: { children: React.ReactNode }) { return <View style={styles.card}>{children}</View>; }
+function Card({ children, testID }: { children: React.ReactNode; testID?: string }) { return <View testID={testID} style={styles.card}>{children}</View>; }
 function Hint({ children }: { children: React.ReactNode }) { return <Text style={styles.hint}>{children}</Text>; }
 
 function inputOf(session: Session): SessionInput {
@@ -81,6 +82,7 @@ function Workspace() {
   const [detail, setDetail] = useState<Session | null>(null);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [showGoalForm, setShowGoalForm] = useState(false);
+  const [showExperienceForm, setShowExperienceForm] = useState(false);
   const [conflict, setConflict] = useState<Session | null>(null);
   const persistence = useRef<Promise<void>>(Promise.resolve());
   const { width } = useWindowDimensions();
@@ -121,8 +123,8 @@ function Workspace() {
 
   const safely = async (action: () => Promise<void>) => {
     setBusy(true); setError(''); setMessage('');
-    try { await action(); }
-    catch (e) { setError(e instanceof Error ? e.message : '操作未完成，请重试'); }
+    try { await action(); return true; }
+    catch (e) { setError(e instanceof Error ? e.message : '操作未完成，请重试'); return false; }
     finally { setBusy(false); }
   };
 
@@ -209,7 +211,7 @@ function Workspace() {
   const todaySessions = data.sessions.filter(s => s.business_date === today);
   const due = data.difficulties.filter(d => d.status !== 'resolved' && d.next_review_date && d.next_review_date <= today);
   const dueGoals = data.goals.filter(g => g.next_review_date && g.next_review_date <= today);
-  const pageTitle = { today: '今天', goals: '目标', history: '训练记录', followups: '困难与经验' }[tab];
+  const pageTitle = { today: '今天', goals: '目标', pathways: '途径', history: '训练记录', followups: '困难与经验' }[tab];
 
   return <View style={styles.root}>
     <StatusBar barStyle="dark-content" />
@@ -258,6 +260,7 @@ function Workspace() {
                   throw e;
                 }
               }} />
+            <RelatedKnowledge data={data} goalId={selectedGoal.id} />
             <Text style={styles.subtitle}>相关训练</Text>
             {data.sessions.filter(s => s.targets.some(t => t.goal_id === selectedGoal.id)).map(s => <SessionCard key={s.id} session={s} onPress={() => openSession(s)} />)}
             {!data.sessions.some(s => s.targets.some(t => t.goal_id === selectedGoal.id)) && <Hint>开始记录后，这里会呈现相关训练与逐目标结果。</Hint>}
@@ -289,7 +292,7 @@ function Workspace() {
               {data.goals.filter(g => g.level === 'long').map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}
             </>}
             {tab === 'goals' && <>
-              <Hint>长期方向持续关注，中短期目标进入训练，达成后保留归档与复习。</Hint>
+              <Hint>目标记录想实现的目的；途径记录具体怎样做。长期方向持续关注，中短期目标进入训练。</Hint>
               <Button title={showGoalForm ? '收起新目标' : '＋ 新建目标'} secondary onPress={() => setShowGoalForm(v => !v)} />
               {showGoalForm && <GoalForm goals={data.goals} busy={busy} create={input => void safely(async () => {
                 await request<Goal>('/goals', 'POST', { id: uuid(), ...input });
@@ -300,6 +303,10 @@ function Workspace() {
                 {data.goals.filter(g => g.level === level).map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}
               </View>)}
             </>}
+            {tab === 'pathways' && <PathwayLibrary data={data} saved={(pathway: Pathway) => {
+              setData(current => ({ ...current, pathways: [pathway, ...current.pathways.filter(item => item.id !== pathway.id)] }));
+              setMessage('途径已保存。');
+            }} />}
             {tab === 'history' && <>
               <Hint>计划和课后结果始终属于同一次训练。每次记录都能回到当时的目标与观察。</Hint>
               {data.sessions.length ? [...data.sessions].sort((a, b) => b.business_date.localeCompare(a.business_date))
@@ -309,13 +316,18 @@ function Workspace() {
             {tab === 'followups' && <>
               <Hint>训练中的困难进入后续跟进；成功片段先保存为待验证经验。</Hint>
               <Text style={styles.subtitle}>困难跟进 · {data.difficulties.length}</Text>
-              {data.difficulties.length ? data.difficulties.map(item => <FollowUpCard key={item.id} item={item} kind="difficulties" busy={busy}
+              {data.difficulties.length ? data.difficulties.map(item => <FollowUpCard key={item.id} item={item} kind="difficulties" busy={busy} goals={data.goals} pathways={data.pathways}
                 source={() => { const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
-                update={body => void safely(async () => { await request(`/difficulties/${item.id}`, 'PUT', body); await refresh(); setMessage('跟进已保存。'); })} />) : <Hint>完成训练时填写困难，这里会保留来源与跟进过程。</Hint>}
+                update={body => safely(async () => { await request(`/difficulties/${item.id}`, 'PUT', body); await refresh(); setMessage('跟进已保存。'); })} />) : <Hint>完成训练时填写困难，这里会保留来源与跟进过程。</Hint>}
+              <Button title={showExperienceForm ? '收起新经验' : '＋ 新建经验／原则'} secondary onPress={() => setShowExperienceForm(value => !value)} />
+              {showExperienceForm && <ExperienceCreator data={data} cancel={() => setShowExperienceForm(false)} saved={item => {
+                setData(current => ({ ...current, experiences: [item, ...current.experiences.filter(existing => existing.id !== item.id)] }));
+                setShowExperienceForm(false); setMessage('独立经验已保存，待验证。');
+              }} />}
               <Text style={styles.subtitle}>成功经验 · {data.experiences.length}</Text>
-              {data.experiences.length ? data.experiences.map(item => <FollowUpCard key={item.id} item={item} kind="experiences" busy={busy}
+              {data.experiences.length ? data.experiences.map(item => <FollowUpCard key={item.id} item={item} kind="experiences" busy={busy} goals={data.goals} pathways={data.pathways}
                 source={() => { const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
-                update={body => void safely(async () => { await request(`/experiences/${item.id}`, 'PUT', body); await refresh(); setMessage('验证记录已保存。'); })} />) : <Hint>已保存不等于已验证。复用前，请补充适用情况和验证依据。</Hint>}
+                update={body => safely(async () => { await request(`/experiences/${item.id}`, 'PUT', body); await refresh(); setMessage('验证记录已保存。'); })} />) : <Hint>已保存不等于已验证。复用前，请补充适用情况和验证依据。</Hint>}
             </>}
           </>}
         <Text style={styles.footer}>Every star shines at its own pace.</Text>
@@ -569,28 +581,43 @@ function SessionDetail({ session, data, back, goFollowups }: { session: Session;
   </>;
 }
 
-function FollowUpCard({ item, kind, busy, source, update }: {
-  item: FollowUp; kind: 'difficulties' | 'experiences'; busy: boolean; source: () => void;
-  update: (input: { expected_version: number; status: string; conclusion: string; next_review_date: string | null }) => void;
+function FollowUpCard({ item, kind, busy, source, update, goals, pathways }: {
+  item: FollowUp; kind: 'difficulties' | 'experiences'; busy: boolean; source: () => void; goals: Goal[]; pathways: Pathway[];
+  update: (input: FollowUpUpdate) => Promise<boolean>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState(item.status);
   const [conclusion, setConclusion] = useState(item.conclusion);
   const [date, setDate] = useState(item.next_review_date ?? '');
-  useEffect(() => { setStatus(item.status); setConclusion(item.conclusion); setDate(item.next_review_date ?? ''); }, [item.version]);
+  const [content, setContent] = useState(item.content);
+  const [goalIds, setGoalIds] = useState(item.goal_ids);
+  const [pathwayIds, setPathwayIds] = useState(item.pathway_ids);
+  const [version, setVersion] = useState(item.version);
+  const reset = () => { setStatus(item.status); setConclusion(item.conclusion); setDate(item.next_review_date ?? ''); setContent(item.content); setGoalIds(item.goal_ids); setPathwayIds(item.pathway_ids); setVersion(item.version); };
+  useEffect(() => { if (!expanded) reset(); }, [item.version, expanded]);
   const options = kind === 'difficulties' ? [['pending', '待确认'], ['active', '跟进中'], ['resolved', '已解决']] :
     [['pending', '待验证'], ['verified', '已验证'], ['stopped', '停用']];
-  return <Card>
+  return <Card testID={`followup-${item.id}`}>
     <Text style={styles.badge}>{options.find(o => o[0] === item.status)?.[1]}{item.kind ? ` · ${item.kind === 'general' ? '长期普适' : '中短期任务'}` : ''}</Text>
     <Text style={styles.body}>{item.content}</Text>
+    {kind === 'experiences' && <>
+      <Hint>{item.goal_ids.length ? `目的原则：${item.goal_ids.map(id => goals.find(goal => goal.id === id)?.title ?? '待核对').join('、')}` : '尚未绑定目的'}</Hint>
+      <Hint>{item.pathway_ids.length ? `途径细节：${item.pathway_ids.map(id => pathways.find(pathway => pathway.id === id)?.title ?? '待核对').join('、')}` : '尚未绑定途径'}</Hint>
+    </>}
     {item.next_review_date && <Hint>下次回看：{item.next_review_date}</Hint>}
     {item.conclusion ? <Hint>结论：{item.conclusion}</Hint> : null}
-    <View style={styles.row}><Button title="查看来源训练" secondary onPress={source} /><Button title={expanded ? '收起' : '更新跟进'} secondary onPress={() => setExpanded(v => !v)} /></View>
+    <View style={styles.row}>{item.source_session_id ? <Button title="查看来源训练" secondary onPress={source} /> : <Hint>独立记录 · 无来源训练</Hint>}<Button title={expanded ? '收起' : '更新跟进'} secondary disabled={busy} onPress={() => setExpanded(v => !v)} /></View>
     {expanded && <>
+      {version !== item.version && <><Hint>记录已被更新，当前填写仍保留。请核对最新记录后再保存。</Hint><Button title="载入最新跟进内容" secondary onPress={reset} disabled={busy} /></>}
+      {kind === 'experiences' && <>
+        <Field label="经验内容" value={content} onChange={setContent} multiline disabled={busy} />
+        <ExperienceBindings goals={goals} pathways={pathways} goalIds={goalIds} pathwayIds={pathwayIds} changeGoals={setGoalIds} changePathways={setPathwayIds} disabled={busy} />
+      </>}
       <View style={styles.row}>{options.map(([v, title]) => <Chip key={v} title={title} selected={status === v} onPress={() => setStatus(v)} disabled={busy} />)}</View>
       <Field label={kind === 'difficulties' ? '跟进结论' : '验证依据'} value={conclusion} onChange={setConclusion} multiline disabled={busy} />
       <Field label="下次回看日期（可选）" value={date} onChange={setDate} placeholder="YYYY-MM-DD" disabled={busy} />
-      <Button title="保存跟进" disabled={busy} onPress={() => update({ expected_version: item.version, status, conclusion, next_review_date: date || null })} />
+      <Button title="保存跟进" disabled={busy} onPress={() => void update({ expected_version: version, status, conclusion, next_review_date: date || null,
+        ...(kind === 'experiences' ? { content, goal_ids: goalIds, pathway_ids: pathwayIds } : {}) }).then(ok => { if (ok) setVersion(version + 1); })} />
     </>}
   </Card>;
 }

@@ -97,6 +97,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         (1, include_str!("../migrations/001_initial.sql")),
         (2, include_str!("../migrations/002_goal_revisions.sql")),
         (3, include_str!("../migrations/003_auth.sql")),
+        (4, include_str!("../migrations/004_pathways.sql")),
     ];
     db.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);")?;
     let applied = db
@@ -267,6 +268,7 @@ pub fn state(db: &dyn Sql) -> Result<AppState> {
         sessions: list(db, "sessions")?,
         difficulties: list(db, "difficulties")?,
         experiences: list(db, "experiences")?,
+        pathways: list(db, "pathways")?,
     })
 }
 
@@ -276,6 +278,180 @@ pub fn export_snapshot(db: &dyn Sql) -> Result<ExportSnapshot> {
         goal_history: list(db, "goal_revisions")?,
         exported_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
     })
+}
+
+fn validate_links(db: &dyn Sql, table: &str, ids: &[String]) -> Result<()> {
+    if ids.len() > 100 {
+        return Err(ApiError::invalid("单条记录最多关联 100 个目的或途径"));
+    }
+    let mut unique = HashSet::new();
+    for id in ids {
+        valid_id(id)?;
+        if !unique.insert(id) {
+            return Err(ApiError::invalid("关联项不能重复"));
+        }
+        if get::<serde_json::Value>(db, table, id)?.is_none() {
+            return Err(ApiError::invalid("关联的目的或途径不存在，请刷新后核对"));
+        }
+    }
+    Ok(())
+}
+
+fn validate_pathway(title: &str, description: &str, steps: &str) -> Result<()> {
+    if title.trim().is_empty()
+        || title.len() > 300
+        || description.len() > 5_000
+        || steps.len() > 10_000
+    {
+        return Err(ApiError::invalid(
+            "请填写途径名称，并控制名称、说明与步骤的长度",
+        ));
+    }
+    Ok(())
+}
+
+fn save_pathway_links(db: &dyn Sql, pathway: &Pathway) -> Result<()> {
+    db.execute(
+        "DELETE FROM goal_pathways WHERE pathway_id=?1",
+        params![pathway.id],
+    )?;
+    for goal_id in &pathway.goal_ids {
+        db.execute(
+            "INSERT INTO goal_pathways(goal_id,pathway_id) VALUES (?1,?2)",
+            params![goal_id.as_str(), pathway.id],
+        )?;
+    }
+    Ok(())
+}
+
+pub fn create_pathway(db: &dyn Sql, input: NewPathway) -> Result<Pathway> {
+    valid_id(&input.id)?;
+    validate_pathway(&input.title, &input.description, &input.steps)?;
+    validate_links(db, "goals", &input.goal_ids)?;
+    if let Some(existing) = get::<Pathway>(db, "pathways", &input.id)? {
+        if existing.version == 1
+            && existing.title == input.title.trim()
+            && existing.description == input.description
+            && existing.steps == input.steps
+            && existing.goal_ids == input.goal_ids
+        {
+            return Ok(existing);
+        }
+        return Err(ApiError::conflict("途径已存在，请刷新后核对"));
+    }
+    let pathway = Pathway {
+        id: input.id,
+        version: 1,
+        title: input.title.trim().into(),
+        description: input.description,
+        steps: input.steps,
+        status: PathwayStatus::Active,
+        goal_ids: input.goal_ids,
+    };
+    db.execute(
+        "INSERT INTO pathways(id,data) VALUES (?1,?2)",
+        params![pathway.id, json(&pathway)?],
+    )?;
+    save_pathway_links(db, &pathway)?;
+    Ok(pathway)
+}
+
+pub fn update_pathway(db: &dyn Sql, id: &str, request: UpdatePathway) -> Result<Pathway> {
+    let previous: Pathway = get(db, "pathways", id)?.ok_or_else(ApiError::missing)?;
+    if previous.version != request.expected_version {
+        return Err(ApiError::conflict(
+            "途径已被更新，请保留填写内容并核对最新版本",
+        ));
+    }
+    validate_pathway(&request.title, &request.description, &request.steps)?;
+    validate_links(db, "goals", &request.goal_ids)?;
+    let updated = Pathway {
+        id: previous.id,
+        version: previous.version + 1,
+        title: request.title.trim().into(),
+        description: request.description,
+        steps: request.steps,
+        status: request.status,
+        goal_ids: request.goal_ids,
+    };
+    db.execute(
+        "UPDATE pathways SET data=?1 WHERE id=?2",
+        params![json(&updated)?, id],
+    )?;
+    save_pathway_links(db, &updated)?;
+    Ok(updated)
+}
+
+fn valid_experience_content(content: &str) -> Result<()> {
+    if content.trim().is_empty() || content.len() > 20_000 {
+        return Err(ApiError::invalid(
+            "请填写经验内容；内容过长时请拆成多条记录",
+        ));
+    }
+    Ok(())
+}
+
+fn save_experience_links(db: &dyn Sql, item: &FollowUp) -> Result<()> {
+    db.execute(
+        "DELETE FROM experience_goals WHERE experience_id=?1",
+        params![item.id],
+    )?;
+    db.execute(
+        "DELETE FROM experience_pathways WHERE experience_id=?1",
+        params![item.id],
+    )?;
+    for goal_id in &item.goal_ids {
+        db.execute(
+            "INSERT INTO experience_goals(experience_id,goal_id) VALUES (?1,?2)",
+            params![item.id, goal_id.as_str()],
+        )?;
+    }
+    for pathway_id in &item.pathway_ids {
+        db.execute(
+            "INSERT INTO experience_pathways(experience_id,pathway_id) VALUES (?1,?2)",
+            params![item.id, pathway_id.as_str()],
+        )?;
+    }
+    Ok(())
+}
+
+pub fn create_experience(db: &dyn Sql, input: NewExperience) -> Result<FollowUp> {
+    valid_id(&input.id)?;
+    valid_experience_content(&input.content)?;
+    if input.goal_ids.is_empty() && input.pathway_ids.is_empty() {
+        return Err(ApiError::invalid("请为独立经验选择至少一个目的或途径"));
+    }
+    validate_links(db, "goals", &input.goal_ids)?;
+    validate_links(db, "pathways", &input.pathway_ids)?;
+    if let Some(existing) = get::<FollowUp>(db, "experiences", &input.id)? {
+        if existing.version == 1
+            && existing.source_session_id.is_none()
+            && existing.content == input.content.trim()
+            && existing.goal_ids == input.goal_ids
+            && existing.pathway_ids == input.pathway_ids
+        {
+            return Ok(existing);
+        }
+        return Err(ApiError::conflict("经验已存在，请刷新后核对"));
+    }
+    let item = FollowUp {
+        id: input.id,
+        version: 1,
+        source_session_id: None,
+        content: input.content.trim().into(),
+        kind: None,
+        status: "pending".into(),
+        next_review_date: None,
+        conclusion: String::new(),
+        goal_ids: input.goal_ids,
+        pathway_ids: input.pathway_ids,
+    };
+    db.execute(
+        "INSERT INTO experiences(id,source_session_id,data) VALUES (?1,NULL,?2)",
+        params![item.id, json(&item)?],
+    )?;
+    save_experience_links(db, &item)?;
+    Ok(item)
 }
 
 pub fn create_goal(db: &dyn Sql, input: NewGoal) -> Result<Goal> {
@@ -503,12 +679,14 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
         let item = FollowUp {
             id: Uuid::new_v4().to_string(),
             version: 1,
-            source_session_id: id.into(),
+            source_session_id: Some(id.into()),
             content: result.session.input.difficulty.trim().into(),
             kind: None,
             status: "pending".into(),
             next_review_date: None,
             conclusion: String::new(),
+            goal_ids: vec![],
+            pathway_ids: vec![],
         };
         db.execute(
             "INSERT INTO difficulties(id,source_session_id,data) VALUES (?1,?2,?3)",
@@ -520,12 +698,14 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
         let item = FollowUp {
             id: Uuid::new_v4().to_string(),
             version: 1,
-            source_session_id: id.into(),
+            source_session_id: Some(id.into()),
             content: result.session.input.experience.trim().into(),
             kind: Some(result.session.input.experience_kind.clone()),
             status: "pending".into(),
             next_review_date: None,
             conclusion: String::new(),
+            goal_ids: vec![],
+            pathway_ids: vec![],
         };
         db.execute(
             "INSERT INTO experiences(id,source_session_id,data) VALUES (?1,?2,?3)",
@@ -568,6 +748,28 @@ pub fn update_follow_up(
     let mut item: FollowUp = get(db, table, id)?.ok_or_else(ApiError::missing)?;
     if item.version != request.expected_version {
         return Err(ApiError::conflict("跟进记录已更新，请重新核对"));
+    }
+    if table == "difficulties"
+        && (request.goal_ids.is_some()
+            || request.pathway_ids.is_some()
+            || request.content.is_some())
+    {
+        return Err(ApiError::invalid("目的与途径绑定仅用于经验"));
+    }
+    if table == "experiences" {
+        if let Some(content) = request.content {
+            valid_experience_content(&content)?;
+            item.content = content.trim().into();
+        }
+        if let Some(goals) = request.goal_ids {
+            item.goal_ids = goals;
+        }
+        if let Some(pathways) = request.pathway_ids {
+            item.pathway_ids = pathways;
+        }
+        validate_links(db, "goals", &item.goal_ids)?;
+        validate_links(db, "pathways", &item.pathway_ids)?;
+        save_experience_links(db, &item)?;
     }
     item.version += 1;
     item.status = request.status;

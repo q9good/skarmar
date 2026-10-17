@@ -138,13 +138,13 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
         .collect();
     sheet(&mut book, "说明", &["项目", "说明"], [
         vec!["导出时间（UTC）".into(), snapshot.exported_at.clone()],
-        vec!["范围".into(), "当前空间中已保存的全部目标、训练草稿、完成记录、困难、经验及目标历史。浏览器中尚未保存的草稿不在文件内。".into()],
+        vec!["范围".into(), "当前空间中已保存的全部目标、途径、训练草稿、完成记录、困难、经验、目标历史及显式关联。浏览器中尚未保存的草稿不在文件内。".into()],
         vec!["历史快照".into(), "逐目标明细中的「当时」字段来自训练保存的目标快照。快照缺失时留空并标记，不使用当前目标覆盖历史。".into()],
         vec!["空白值".into(), "空白表示未填写或未知，不代表零分或已完成。日期、ID、版本及正文按文本保留。".into()],
-        vec!["记录关联".into(), "通过目标ID、上级目标ID、训练ID及来源训练ID关联各表；目标历史保留每次复盘的完整版本。".into()],
+        vec!["记录关联".into(), "通过目标ID、上级目标ID、途径ID、经验ID、训练ID及来源训练ID关联各表。目的途径关系与经验关联反映当前显式绑定；目标历史保留已记录版本。".into()],
         vec!["活动列表".into(), "训练活动以单元格内换行分隔，每行一个活动。".into()],
         vec!["用途".into(), "文件可用 Excel / WPS 打开、筛选和归档。恢复系统仍使用数据库备份；当前不支持 Excel 导入。".into()],
-        vec!["目标／训练／困难／经验／历史版本数量".into(), format!("{} / {} / {} / {} / {}", state.goals.len(), state.sessions.len(), state.difficulties.len(), state.experiences.len(), snapshot.goal_history.len())],
+        vec!["目标／途径／训练／困难／经验／历史版本数量".into(), format!("{} / {} / {} / {} / {} / {}", state.goals.len(), state.pathways.len(), state.sessions.len(), state.difficulties.len(), state.experiences.len(), snapshot.goal_history.len())],
     ])?;
     sheet(
         &mut book,
@@ -282,9 +282,10 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                 vec![
                     item.id.clone(),
                     item.version.to_string(),
-                    item.source_session_id.clone(),
-                    source_dates
-                        .get(item.source_session_id.as_str())
+                    optional(&item.source_session_id),
+                    item.source_session_id
+                        .as_deref()
+                        .and_then(|id| source_dates.get(id))
                         .copied()
                         .unwrap_or_default()
                         .into(),
@@ -322,6 +323,89 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
             cells
         }),
     )?;
+    sheet(
+        &mut book,
+        "途径",
+        &["途径ID", "版本", "途径名称", "作用说明", "具体步骤", "状态"],
+        state.pathways.iter().map(|pathway| {
+            vec![
+                pathway.id.clone(),
+                pathway.version.to_string(),
+                pathway.title.clone(),
+                pathway.description.clone(),
+                pathway.steps.clone(),
+                match pathway.status {
+                    PathwayStatus::Active => "活动",
+                    PathwayStatus::Archived => "已归档",
+                }
+                .into(),
+            ]
+        }),
+    )?;
+    let goals: HashMap<_, _> = state
+        .goals
+        .iter()
+        .map(|goal| (goal.id.as_str(), goal))
+        .collect();
+    let pathways: HashMap<_, _> = state
+        .pathways
+        .iter()
+        .map(|pathway| (pathway.id.as_str(), pathway))
+        .collect();
+    sheet(
+        &mut book,
+        "目的途径关系",
+        &["目的ID", "目的名称", "途径ID", "途径名称"],
+        state.pathways.iter().flat_map(|pathway| {
+            let goals = &goals;
+            pathway.goal_ids.iter().map(move |goal_id| {
+                vec![
+                    goal_id.clone(),
+                    goals
+                        .get(goal_id.as_str())
+                        .map(|goal| goal.title.clone())
+                        .unwrap_or_default(),
+                    pathway.id.clone(),
+                    pathway.title.clone(),
+                ]
+            })
+        }),
+    )?;
+    sheet(
+        &mut book,
+        "经验关联",
+        &["经验ID", "经验版本", "关联类型", "关联ID", "关联名称"],
+        state.experiences.iter().flat_map(|item| {
+            let goals = &goals;
+            let pathways = &pathways;
+            item.goal_ids
+                .iter()
+                .map(move |id| {
+                    vec![
+                        item.id.clone(),
+                        item.version.to_string(),
+                        "目的".into(),
+                        id.clone(),
+                        goals
+                            .get(id.as_str())
+                            .map(|goal| goal.title.clone())
+                            .unwrap_or_default(),
+                    ]
+                })
+                .chain(item.pathway_ids.iter().map(move |id| {
+                    vec![
+                        item.id.clone(),
+                        item.version.to_string(),
+                        "途径".into(),
+                        id.clone(),
+                        pathways
+                            .get(id.as_str())
+                            .map(|pathway| pathway.title.clone())
+                            .unwrap_or_default(),
+                    ]
+                }))
+        }),
+    )?;
     book.save_to_buffer()
 }
 
@@ -349,6 +433,7 @@ mod tests {
                 sessions: vec![],
                 difficulties: vec![],
                 experiences: vec![],
+                pathways: vec![],
             },
             goal_history: vec![],
         }
@@ -365,12 +450,14 @@ mod tests {
         snapshot.state.difficulties.push(FollowUp {
             id: "test".into(),
             version: 1,
-            source_session_id: String::new(),
+            source_session_id: None,
             content: "😀".repeat(16_384),
             kind: None,
             status: "pending".into(),
             next_review_date: None,
             conclusion: String::new(),
+            goal_ids: vec![],
+            pathway_ids: vec![],
         });
         assert_eq!(
             workbook(snapshot).unwrap_err().0,

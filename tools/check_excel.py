@@ -7,7 +7,7 @@ import zipfile
 from xml.etree import ElementTree as ET
 
 NS = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-SHEETS = ['说明', '目标', '训练记录', '逐目标明细', '困难', '经验', '目标历史']
+SHEETS = ['说明', '目标', '训练记录', '逐目标明细', '困难', '经验', '目标历史', '途径', '目的途径关系', '经验关联']
 
 
 def read_workbook(data):
@@ -56,7 +56,7 @@ def read_workbook(data):
 def verify_fixture(payload):
     sheets = read_workbook(base64.b64decode(payload['file']))
     state = payload['state']
-    expected = {'目标': ('goals', '目标ID'), '训练记录': ('sessions', '训练ID'), '困难': ('difficulties', '记录ID'), '经验': ('experiences', '记录ID')}
+    expected = {'目标': ('goals', '目标ID'), '训练记录': ('sessions', '训练ID'), '困难': ('difficulties', '记录ID'), '经验': ('experiences', '记录ID'), '途径': ('pathways', '途径ID')}
     for name, (key, id_column) in expected.items():
         assert {row[id_column] for row in sheets[name]} == {item['id'] for item in state[key]}, name
         assert len(sheets[name]) == len(state[key]), name
@@ -64,6 +64,11 @@ def verify_fixture(payload):
     revisions = payload['history']
     assert {(row['目标ID'], row['版本']) for row in sheets['目标历史']} == {(r['goal']['id'], str(r['goal']['version'])) for r in revisions}
     assert len(sheets['目标历史']) == len(revisions)
+    assert {(row['目的ID'], row['途径ID']) for row in sheets['目的途径关系']} == {(goal, pathway['id']) for pathway in state['pathways'] for goal in pathway['goal_ids']}
+    assert len(sheets['目的途径关系']) == sum(len(pathway['goal_ids']) for pathway in state['pathways'])
+    links = {(row['经验ID'], row['关联类型'], row['关联ID']) for row in sheets['经验关联']}
+    assert links == {(item['id'], kind, target) for item in state['experiences'] for kind, key in [('目的', 'goal_ids'), ('途径', 'pathway_ids')] for target in item[key]}
+    assert len(sheets['经验关联']) == sum(len(item['goal_ids']) + len(item['pathway_ids']) for item in state['experiences'])
     if 'fixture' in payload:
         fixture = payload['fixture']
         goal = next(row for row in sheets['目标'] if row['目标ID'] == fixture['goal'])
@@ -98,7 +103,7 @@ def verify_fixture(payload):
     all_text = json.dumps(sheets, ensure_ascii=False)
     for private in ['password_hash', 'token_hash', 'auth_sessions', 'synthetic-owner-contract-password']:
         assert private not in all_text
-    print('PASS Excel: seven sheets, complete rows/relations, saved historical snapshots, literal text and no credentials')
+    print('PASS Excel: ten sheets, complete purpose/pathway/experience relations, historical snapshots and literal text')
 
 
 if __name__ == '__main__':

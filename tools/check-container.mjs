@@ -50,7 +50,9 @@ try {
   assert.equal((await fetch(origin + '/api/export.xlsx')).status, 401);
   assert.equal(compose(['exec', '-T', 'app', 'id', '-u']).trim(), '10001');
   let cookie = await login(); assert.match(cookie, /^__Host-skarma_session=/);
-  await api('/goals', cookie, { id: randomUUID(), title: 'Container snapshot', level: 'long', parent_id: null, area: '', criteria: '' });
+  const goal = (await api('/goals', cookie, { id: randomUUID(), title: 'Container snapshot', level: 'long', parent_id: null, area: '', criteria: '' })).data;
+  const pathway = (await api('/pathways', cookie, { id: randomUUID(), title: 'Container pathway', description: 'A reusable way', steps: 'step one', goal_ids: [goal.id] })).data;
+  await api('/experiences', cookie, { id: randomUUID(), content: 'Container principle and detail', goal_ids: [goal.id], pathway_ids: [pathway.id] });
   const snapshot = (await api('/state', cookie)).data;
   await verifyExport(cookie);
   compose(['restart', 'app']); await ready();
@@ -67,7 +69,7 @@ try {
   assert.equal((await fetch(origin + '/api/export.xlsx', { headers: { cookie } })).status, 401);
   cookie = await login(); assert.deepEqual((await api('/state', cookie)).data, snapshot);
   await verifyExport(cookie);
-  console.log('PASS deployment container: non-root, login, authenticated XLSX, persistent restart, healthcheck, backup and full-state restore');
+  console.log('PASS deployment container: non-root, login, XLSX, purpose/pathway/experience restart persistence, healthcheck, backup and full-state restore');
 } finally {
   compose(['down', '--volumes', '--remove-orphans']);
   for (const file of artifacts) await rm(file, { force: true });
