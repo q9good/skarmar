@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthBoundary, AccountPanel, useAuth } from './src/auth';
 import { ExperienceBindings, ExperienceCreator, PathwayLibrary, RelatedKnowledge } from './src/knowledge';
+import { PlanningOverview } from './src/planning-view';
 import {
   ApiError, request, isReviewable, isTrainable, type AppState, type FollowUp, type Goal, type Level,
   type GoalProgress, type GoalUpdate, type GoalRevision, type Pathway, type FollowUpUpdate,
@@ -20,7 +21,7 @@ const progressLabels: Record<GoalProgress, string> = { cultivating: '持续培�
   not_started: '未开始', in_progress: '进行中', achieved: '已达成', completed: '已完成', overdue: '已逾期（历史状态）' };
 const roles: Record<Role, string> = { primary: '主目标', secondary: '副目标', review: '复习' };
 const activities = ['桌面教学', '感统活动', '游戏', '家务劳动', '生活自理', '户外活动', '阅读'];
-const tabs = [ ['today', '☀', '今天'], ['goals', '◎', '目标'], ['pathways', '↗', '途径'], ['history', '▤', '记录'], ['followups', '◇', '跟进'] ] as const;
+const tabs = [ ['today', '☀', '今天'], ['planning', '◔', '规划'], ['goals', '◎', '目标'], ['pathways', '↗', '途径'], ['history', '▤', '记录'], ['followups', '◇', '跟进'] ] as const;
 type Tab = typeof tabs[number][0];
 const emptyState: AppState = { goals: [], sessions: [], difficulties: [], experiences: [], pathways: [] };
 
@@ -83,6 +84,7 @@ function Workspace() {
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [showExperienceForm, setShowExperienceForm] = useState(false);
+  const [pathwayToOpen, setPathwayToOpen] = useState<Pathway | undefined>();
   const [conflict, setConflict] = useState<Session | null>(null);
   const persistence = useRef<Promise<void>>(Promise.resolve());
   const { width } = useWindowDimensions();
@@ -138,6 +140,20 @@ function Workspace() {
       setDraft({ id: uuid(), version: null, input: emptyInput() });
       setEditing(true); setDetail(null); setConflict(null); setError(''); setMessage('');
     } catch (e) { setError((e as Error).message); }
+  };
+
+  const planGoal = (goal: Goal) => {
+    if (!storageReady) { setError('无法读取已有本机草稿，请先恢复存储访问后继续。'); return; }
+    if (draft?.pending) { setEditing(true); setError('请先确认上次提交结果，再添加目标。'); return; }
+    try {
+      const next = draft ?? { id: uuid(), version: null, input: emptyInput() };
+      if (!next.input.targets.some(target => target.goal_id === goal.id)) {
+        const role: Role = isReviewable(goal) ? 'review' : next.input.targets.some(target => target.role === 'primary') ? 'secondary' : 'primary';
+        setDraft({ ...next, input: { ...next.input, targets: [...next.input.targets, { goal_id: goal.id, role, plan: '', progress: '', outcome: null, next_step: '' }] } });
+      }
+      setEditing(true); setDetail(null); setSelectedGoal(null); setConflict(null); setError('');
+      setMessage('目标已加入当前计划，请核对角色与活动安排。');
+    } catch (error) { setError((error as Error).message); }
   };
 
   const openSession = (session: Session) => {
@@ -211,7 +227,7 @@ function Workspace() {
   const todaySessions = data.sessions.filter(s => s.business_date === today);
   const due = data.difficulties.filter(d => d.status !== 'resolved' && d.next_review_date && d.next_review_date <= today);
   const dueGoals = data.goals.filter(g => g.next_review_date && g.next_review_date <= today);
-  const pageTitle = { today: '今天', goals: '目标', pathways: '途径', history: '训练记录', followups: '困难与经验' }[tab];
+  const pageTitle = { today: '今天', planning: '规划总览', goals: '目标', pathways: '途径', history: '训练记录', followups: '困难与经验' }[tab];
 
   return <View style={styles.root}>
     <StatusBar barStyle="dark-content" />
@@ -229,6 +245,7 @@ function Workspace() {
               <Button title="返回" secondary onPress={() => setEditing(false)} disabled={busy} /></View>
             <Hint>{draft.pending ? '上次提交结果尚未确认，请重试同一次提交。' :
               localSaved ? '草稿已保存在本机 · 正式保存后可在其他设备继续' : '正在保存本机草稿…'}</Hint>
+            <Button title="查看规划总览" secondary onPress={() => { setEditing(false); setTab('planning'); }} disabled={busy} />
             {conflict ? <Card>
               <Text style={styles.cardTitle}>发现另一个版本</Text>
               <Text style={styles.body}>最新安排：{conflict.plan || '未填写'}</Text>
@@ -273,6 +290,7 @@ function Workspace() {
                 <Text style={styles.heroTitle}>把今天的小进步，{width < 500 ? '\n' : ''}留下来。</Text>
                 <Text style={styles.heroText}>课前安排，课后回填。{width < 500 ? '\n' : ' '}让每一次观察都能成为下一步的依据。</Text>
                 <Button title="＋ 新建训练计划" onPress={startNew} disabled={busy} />
+                <Button title="先看规划总览" secondary onPress={() => setTab('planning')} />
               </View>
               {draft ? <Card><Text style={styles.cardTitle}>继续你的草稿</Text><Hint>{draft.input.business_date} · {draft.version ? '已有计划，可继续回填' : '本机尚未提交'}</Hint>
                 <Button title="继续填写" secondary onPress={() => setEditing(true)} /></Card> : null}
@@ -293,6 +311,7 @@ function Workspace() {
             </>}
             {tab === 'goals' && <>
               <Hint>目标记录想实现的目的；途径记录具体怎样做。长期方向持续关注，中短期目标进入训练。</Hint>
+              <Button title="查看规划总览" secondary onPress={() => setTab('planning')} />
               <Button title={showGoalForm ? '收起新目标' : '＋ 新建目标'} secondary onPress={() => setShowGoalForm(v => !v)} />
               {showGoalForm && <GoalForm goals={data.goals} busy={busy} create={input => void safely(async () => {
                 await request<Goal>('/goals', 'POST', { id: uuid(), ...input });
@@ -303,7 +322,10 @@ function Workspace() {
                 {data.goals.filter(g => g.level === level).map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}
               </View>)}
             </>}
-            {tab === 'pathways' && <PathwayLibrary data={data} saved={(pathway: Pathway) => {
+            {tab === 'planning' && <PlanningOverview data={data} today={today} disabled={busy || !storageReady}
+              hasDraft={Boolean(draft)} continueDraft={() => setEditing(true)} plan={planGoal} openGoal={setSelectedGoal}
+              openPathway={pathway => { setPathwayToOpen(pathway); setTab('pathways'); }} />}
+            {tab === 'pathways' && <PathwayLibrary data={data} initialPathway={pathwayToOpen} saved={(pathway: Pathway) => {
               setData(current => ({ ...current, pathways: [pathway, ...current.pathways.filter(item => item.id !== pathway.id)] }));
               setMessage('途径已保存。');
             }} />}
@@ -335,7 +357,7 @@ function Workspace() {
       <View style={styles.navigation}>
         {tabs.map(([key, icon, label]) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={label}
           accessibilityState={{ selected: tab === key && !editing }} style={styles.navItem} disabled={busy}
-          onPress={() => { setShowAccount(false); setTab(key); setEditing(false); setDetail(null); setSelectedGoal(null); setError(''); setMessage(''); }}>
+          onPress={() => { setShowAccount(false); setTab(key); setPathwayToOpen(undefined); setEditing(false); setDetail(null); setSelectedGoal(null); setError(''); setMessage(''); }}>
           <Text style={[styles.navIcon, tab === key && { color: colors.green }]}>{icon}</Text>
           <Text style={[styles.navLabel, tab === key && { color: colors.green, fontWeight: '600' }]}>{label}</Text>
         </Pressable>)}

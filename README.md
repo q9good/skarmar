@@ -57,6 +57,7 @@ Remote host deployment is still pending.
 - [Host deployment with Tailscale / Cloudflare, login and backups (中文)](docs/host-deployment.md)
 - [Excel download and included data (中文)](docs/excel-export.md)
 - [Purpose, reusable pathways and experience bindings (中文)](docs/purpose-pathway-experience.md)
+- [Planning overview, goal progress and balanced training coverage (中文)](docs/planning-overview.md)
 
 ```bash
 npm ci

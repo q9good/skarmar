@@ -77,8 +77,8 @@ export function RelatedKnowledge({ data, goalId, pathwayId }: { data: AppState; 
   </View>;
 }
 
-export function PathwayLibrary({ data, saved }: { data: AppState; saved: (pathway: Pathway) => void }) {
-  const [editing, setEditing] = useState<Pathway | 'new' | null>(null);
+export function PathwayLibrary({ data, saved, initialPathway }: { data: AppState; saved: (pathway: Pathway) => void; initialPathway?: Pathway }) {
+  const [editing, setEditing] = useState<Pathway | 'new' | null>(initialPathway ?? null);
   if (editing) return <>
     <PathwayForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? undefined : editing} goals={data.goals}
       saved={pathway => { saved(pathway); setEditing(null); }} cancel={() => setEditing(null)} />

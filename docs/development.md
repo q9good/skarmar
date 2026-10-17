@@ -55,6 +55,7 @@ cargo test --workspace --locked
 cargo clippy --workspace --all-targets --locked -- -D warnings
 python -m unittest discover -s tools -p 'test_*.py' -v
 npm run typecheck
+npm run test:planning
 npm run web:build
 npm run test:host
 npm run test:runtimes
@@ -81,6 +82,9 @@ worktree 使用不同端口时，同时设置服务器的 `SKARMA_PORT=3002` 与
 浏览器脚本依赖 Python Playwright 与 Chromium；当前云镜像已提供这两项。其他环境需
 安装 Playwright，并通过 CHROMIUM_EXECUTABLE 指定 Chromium 的可执行文件位置。
 
+配置了出站 HTTP 代理的开发环境，Python 的回环测试需要在 `no_proxy`／`NO_PROXY` 中包含
+`127.0.0.1,localhost`，并保留原有条目。仅为本机验证设置这些例外；远端服务继续使用环境代理。
+
 该脚本在 390 × 844 的 viewport 验证实际 UI：计划与回填共用 ID、本机草稿恢复、
 提交已在服务端完成但响应被网关错误替代后的重试、困难与经验生成、归档时快照及跟进来源跳转；
 也覆盖目标复盘、目标并发冲突时保留与备份填写内容、待复盘入口及已完成目标的候选范围。
@@ -89,6 +93,8 @@ worktree 使用不同端口时，同时设置服务器的 `SKARMA_PORT=3002` 与
 [Excel 导出](excel-export.md) 已接入“我的账号”。`test:host` 验证实际手机尺寸浏览器下载、成员入口、未保存草稿排除、异常网关文件拒绝及会话失效；`test:runtimes` 用相同 XLSX 合约验证原生／Wasm 导出的完整内容、历史快照与关系、公式字符按文字保留以及下载权限。
 
 [目的、途径与经验](purpose-pathway-experience.md) 增加独立途径目录和三组多对多关系。`test:host` 还运行 `smoke_knowledge_web.py`，验证手机多选、独立原则／细节、两类并发编辑时保留内容、归档及十表导出；`test:runtimes` 在两入口验证关系中途写入失败的事务回滚与重启保留。共享迁移 `004_pathways.sql` 保留旧经验来源与分类，不自动猜测绑定。
+
+[规划总览](planning-overview.md) 用 `react-native-svg` 15.15.4 绘制环形图，版本依据 Expo SDK 的 `bundledNativeModules.json`。`npm run test:planning` 使用 Node 24 内置 TypeScript 支持运行 11 项统计测试；`test:host` 增加 `smoke_planning_web.py`，验证真实训练的筛选、父子去重、未覆盖提醒、途径范围、草稿保留与角色分配，以及空空间／合并图例和手机、桌面布局。该功能仅消费现有登录 API，不新增 SQL 迁移。
 
 ## 数据与阶段边界
 
