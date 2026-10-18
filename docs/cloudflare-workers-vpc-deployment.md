@@ -292,6 +292,49 @@ journalctl --user -u skarma-cloudflared.service --since '10 minutes ago' --no-pa
 普通直连 TLS 失败；单次请求使用正确公共 IPv4 后可以到达 Worker。不要把节点 IP
 长期写死在全局 hosts 中；CDN 地址会变化，客户端网络也需要独立验证。
 
+### 9.1 Tailscale 显示在线，但 SSH 不通
+
+“在线”及默认 `tailscale ping` 成功不足以证明应用可达。按层检查，避免将 DISCO 与
+TSMP 混淆：
+
+| 检查 | 验证范围 |
+| --- | --- |
+| `tailscale netcheck` | 当前设备的 UDP、NAT 和中继可用性 |
+| `tailscale ping HOST` | 默认 DISCO：两个 Tailscale 进程的发现路径 |
+| `tailscale ping --tsmp HOST` | WireGuard 加密数据层，绕过目标操作系统 IP 栈 |
+| `tailscale ping --peerapi HOST` | 对方 Peer API 的 HTTP 路径 |
+| `tailscale ping --icmp HOST` | 经加密链路测试目标 IP 连通性 |
+| SSH 与私有 HTTPS | 目标应用、主机路由与防火墙的实际可用性 |
+
+含义以 [Tailscale ping 官方说明](https://tailscale.com/docs/reference/ping-types) 和
+[两设备 TCP 排障](https://tailscale.com/docs/reference/troubleshooting/network-configuration/tcp-connection-two-devices)
+为准。本次默认 DISCO 能经中继回复，而显式 TSMP、Peer API 和 SSH 均无回复；本机
+看到 WireGuard 等待握手、目标接收为 0。管理页节点密钥有效，既有访问策略允许连接。
+这比“SSH 服务可能没开”更早一层，尚不能确定主机端的最终根因。
+
+可先保留设置，断开并重连**当前维护电脑**上的 Tailscale：
+
+```bash
+tailscale down
+tailscale up
+```
+
+无参数 `up` 保留已有设置；不要加 `--reset`、退出账号或删除设备。若重连后依然没有
+数据握手，需要通过主机本机、已经连接的远程桌面或其他可用管理通道检查；在主机运行：
+
+```bash
+sudo systemctl restart tailscaled
+```
+
+再从维护电脑检查 TSMP、SSH 和原有私有应用。密码只在本机终端隐藏输入。当前 SSH
+已经不通时，不能把“再 SSH 进去重启”当作可执行的恢复方案。本次尚未取得主机重启
+服务后的结果。
+
+网页另有一项独立检查：保留 Mac 当前代理绕过列表，追加主机的精确 `*.ts.net` 名称
+和目标 IP。不要覆盖用户既有绕过项；新网络或代理重新启动后也需核对。网页绕过项
+不会修复 WireGuard 握手。与其他 VPN 并用时，按
+[官方兼容性说明](https://tailscale.com/docs/reference/faq/other-vpns)检查路由和地址冲突。
+
 ## 10. 更新、备份与回滚
 
 ### 更新应用

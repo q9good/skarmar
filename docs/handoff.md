@@ -52,7 +52,9 @@ npm run sync:push
 
 应用已经在用户常开主机原生部署，通过 Tailscale Serve 私有 HTTPS 访问；新版本在独立目录构建、先备份再切换，现有管理员和数据保留。固定入口采用 Workers VPC：`workers.dev` → Worker → VPC Service → 主机的命名 Tunnel → 原生应用和现有 SQLite，无需自有域名。网关位于 `deploy/worker-gateway`，5 项转发测试和 dry-run 通过。命名 Tunnel 的专用 token 已由用户安全保存，VPC Service 和固定 Worker 已发布，精确来源已加入应用配置。主机的 fake-IP DNS 导致初次连接超时，进程专用 hosts 覆盖后曾建立 4 条 QUIC 连接，ready 返回 200，公开首页经主机代理返回 200。
 
-截至本次排障，固定入口随后返回通用 503；Mac 到主机的新 SSH、原有私有 HTTPS 和实际 IP ping 也超时，但 Tailscale 控制连接仍显示在线且能回复 TSMP。尚未完成稳定重连和完整生产验收，T09 继续进行中，不能视为部署成功。已请用户检查原有主机终端并重启连接器返回 readiness。旧 Mac Quick Tunnel 尚未主动停止，也不能假定主机链路故障时旧入口仍可用。Mac 对 Worker 域名的系统 DNS 与公共 DNS 不同，指定正确公共地址的单次 curl 能到达网关；Python 默认客户端还遇到 Cloudflare 1010，需要与应用的来源 403 区分。详情与复现命令见 [固定 Cloudflare 网址部署手册](cloudflare-workers-vpc-deployment.md)。主机地址、资源清单与私有配置保留在私有部署记录，不写入公开交接文件。日常上课记录已独立于训练计划上线，包含在十一表 Excel 导出中。
+截至本次排障，固定入口随后返回通用 503；Mac 到主机的新 SSH、原有私有 HTTPS 和实际 IP ping 也超时。此前成功的是默认 DISCO 发现探测，不能写成 TSMP 数据探测成功。进一步核对：管理页两台设备在线、密钥有效、既有规则允许全部设备连接；Mac UDP 与中继可用且无本机健康告警，但显式 `--tsmp` 和 `--peerapi` 探测均超时，主机数据接收为 0，WireGuard 握手未完成。本机 Tailscale 已保留设置重新连接、清除网络映射缓存并 rebind，仍未恢复；Mac 的精确主机代理绕过项已补回。用户要求先恢复主机连接，任务 T16 进行中，等待在主机本机或已连接的远程桌面重启 `tailscaled` 后验收；此时不要再让用户反复从 Mac 新建 SSH 来执行远端恢复。
+
+尚未完成稳定重连和完整生产验收，T09 继续进行中，不能视为部署成功。旧 Mac Quick Tunnel 尚未主动停止，也不能假定主机链路故障时旧入口仍可用。Mac 对 Worker 域名的系统 DNS 与公共 DNS 不同，指定正确公共地址的单次 curl 能到达网关；Python 默认客户端还遇到 Cloudflare 1010，需要与应用的来源 403 区分。详情与复现命令见 [固定 Cloudflare 网址部署手册](cloudflare-workers-vpc-deployment.md)。主机地址、资源清单与私有配置保留在私有部署记录，不写入公开交接文件。日常上课记录已独立于训练计划上线，包含在十一表 Excel 导出中。
 
 数据库迁移版本 `006` 预留给尚未合并的腾讯文档导入工作区，日常上课记录使用 `007` 且不依赖 `006`。后续合并导入时须将 `006` 放在 `007` 前，并验证已运行 `007` 的数据库仍能安全补跑 `006`；不要单独把仅支持版本 6 的旧分支部署到版本 7 数据库。
 

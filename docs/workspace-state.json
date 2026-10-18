@@ -62,7 +62,7 @@
       "status": "in_progress",
       "evidence": "docs/cloudflare-workers-vpc-deployment.md",
       "verification": "用户已安全保存 Tunnel token，HTTP VPC Service 与固定 workers.dev Worker 已发布。主机 fake-IP DNS 经进程专用 hosts 覆盖后曾建立 4 条 QUIC 连接，ready=200，公开首页经主机代理=200。网关 5 项测试与 dry-run 通过；原生应用健康及精确 Worker 来源加载通过。详细部署、维护、排障与回滚手册已编写。",
-      "blocker": "随后入口出现 503，Mac 新 SSH、私有 HTTPS 与 IP ping 同时超时，尽管 Tailscale 控制连接在线；等待主机端检查与恢复后完成来源/会话保护、重连及手机网络验收。旧 Mac Quick Tunnel 尚未主动停止。"
+      "blocker": "随后入口出现 503，主机 Tailscale 的 DISCO 发现可达但 WireGuard 握手、TSMP、Peer API、SSH 与私有 HTTPS 不通；先处理 T16，恢复后完成来源/会话保护、重连及手机网络验收。旧 Mac Quick Tunnel 尚未主动停止。"
     },
     {
       "id": "T10",
@@ -103,6 +103,14 @@
       "status": "done",
       "evidence": "docs/host-deployment.md",
       "verification": "课程名称和授课老师必填，日期默认今天；内容、目标、问题和家里配合事项可选。独立保存、可修改、本机草稿刷新恢复并进入 Excel。Rust 工作区测试、Clippy、TypeScript、Web 构建和移动浏览器验收通过；evo 备份后升级到迁移版本 7，原管理员仍在，两入口均返回新版页面。"
+    },
+    {
+      "id": "T16",
+      "title": "恢复主机 Tailscale 数据层、SSH 与私有 HTTPS",
+      "status": "in_progress",
+      "evidence": "docs/cloudflare-workers-vpc-deployment.md",
+      "verification": "Mac UDP 与 DERP 可用，本机无健康告警、未使用出口节点、未启用 ShieldsUp。管理页确认主机在线、密钥有效且既有规则允许连接。显式 TSMP 和 Peer API 均超时、WireGuard 无完成握手、接收数据为 0。已保留原配置重新连接 Mac Tailscale、清除映射缓存并 rebind；已保留原代理列表补回主机精确绕过项，仍未恢复。",
+      "blocker": "需要用户通过主机本机终端或已有远程桌面重启 tailscaled，再验证 TSMP、SSH 和应用；当前新 SSH 不通，无法从 Mac 远程执行该恢复。"
     }
   ],
   "artifacts": [
