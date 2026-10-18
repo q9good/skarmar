@@ -47,7 +47,7 @@
       "title": "开发代码、任务状态、方案和示例截图的 Git 交接",
       "status": "done",
       "evidence": "docs/handoff.md",
-      "verification": "14 项 test:sync 通过；用户电脑工作区需按交接说明拉取。"
+      "verification": "14 项 test:sync 历史通过；2026-10-19 核对原云端 Set up skarmar 最后交接提交 f0ea443，并从已同步 Git 历史原样导出 17 个文件，逐文件 SHA-256 与 ZIP 完整性校验通过；私有环境配置 ZIP 不在 Git，本次未取回。"
     },
     {
       "id": "T08",
@@ -139,8 +139,8 @@
       "title": "主要大陆用户的无代理访问方案与验收",
       "status": "in_progress",
       "evidence": "docs/mainland-access-plan.md",
-      "verification": "已核对 Cloudflare Custom Domain / workers.dev / China Network 和腾讯云备案官方资料。当前健康检查经代理200，Mac 存在 TUN，不能等同大陆无代理验收。已整理保留CF自有域名、香港云、大陆云三条路径。",
-      "blocker": "需要确定域名与接入路径，并在真实大陆运营商网络做无代理端到端验收；用户已要求暂停新云端发布。"
+      "verification": "已核对 Cloudflare 自有域名路线，并补充无需自有域名的 Sealos、Railway、Render、Zeabur 完整托管候选及默认 HTTPS / 持久存储条件。未新建或购买资源，未执行候选平台部署。Mac 代理下健康200，TUN存在，不能等同大陆无代理验收。",
+      "blocker": "需要确定托管与入口路径、核对平台默认域名的正式使用条件，并在真实大陆运营商网络做无代理端到端验收；用户要求继续暂停新云端发布。"
     }
   ],
   "artifacts": [

@@ -48,6 +48,13 @@ npm run sync:push
 
 ## 目前完成与待办
 
+2026-10-19 补充：不购买自有域名也有完整应用托管路线，已核对 Sealos、Railway、
+Render 和 Zeabur 的默认地址、运行服务与持久化条件，见 [平台候选](default-https-platforms.md)。
+尚未在候选平台部署或完成大陆无代理验收，生产发布继续暂停。
+原云端「Set up skarmar」已提交的产品方案、技术设计和任务清单均能从 `f0ea443`
+恢复；已在仓库外整理原始文档包并校验。索引见 [云端方案归档](cloud-document-archive.md)。
+原任务的私有环境配置 ZIP 不在 Git，本次未取回。
+
 结构化任务清单见 [workspace-state.json](workspace-state.json)，用稳定任务 ID 记录完成、进行中、受阻和待办。已实现登录与成员管理、训练闭环、十表 Excel、目的／途径／经验关系及规划环形图。相应设计、统计口径与验证入口均已在仓库文档内。
 
 ### 当前上线方向：完整 Cloudflare 托管
