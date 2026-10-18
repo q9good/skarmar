@@ -13,6 +13,10 @@
     "test:runtimes": "node tools/check-runtimes.mjs",
     "test:host": "node tools/check-host.mjs",
     "test:planning": "node --test tools/test-planning.mjs",
+    "test:sync": "node --test tools/test-workspace-sync.mjs",
+    "sync:status": "node tools/workspace-sync.mjs status",
+    "sync:pull": "node tools/workspace-sync.mjs pull",
+    "sync:push": "node tools/workspace-sync.mjs push",
     "test:container": "node tools/check-container.mjs"
   },
   "devDependencies": {

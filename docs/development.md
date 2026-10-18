@@ -96,6 +96,8 @@ worktree 使用不同端口时，同时设置服务器的 `SKARMA_PORT=3002` 与
 
 [规划总览](planning-overview.md) 用 `react-native-svg` 15.15.4 绘制环形图，版本依据 Expo SDK 的 `bundledNativeModules.json`。`npm run test:planning` 使用 Node 24 内置 TypeScript 支持运行 11 项统计测试；`test:host` 增加 `smoke_planning_web.py`，验证真实训练的筛选、父子去重、未覆盖提醒、途径范围、草稿保留与角色分配，以及空空间／合并图例和手机、桌面布局。该功能仅消费现有登录 API，不新增 SQL 迁移。
 
+[跨环境交接](handoff.md) 用 Git 同步已提交的代码、方案、任务快照和选定合成截图。`npm run sync:status` 读取本地状态并校验产物，`sync:pull` 仅快进拉取，`sync:push` 推送已提交工作。`npm run test:sync` 的 14 项测试在独立临时仓库中验证双向同步、分叉与未提交内容保护、忽略文件保留及产物完整性，不使用用户实际仓库演练冲突。
+
 ## 数据与阶段边界
 
 两份需求附件与 token 位于仓库外。开发示例不导入真实个训正文，不将个人凭证作为

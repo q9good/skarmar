@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-18",
+  "timezone": "Asia/Shanghai",
+  "repository": "q9good/skarmar",
+  "branch": "feat/tencent-informed-web",
+  "implementationCommit": "ac7c1f59872eb9be9d0c71c007fb6487dd8e9e7f",
+  "tasks": [
+    {"id":"T01","title":"训练计划、逐目标观察、困难和经验闭环","status":"done","evidence":"docs/development.md"},
+    {"id":"T02","title":"Rust 原生 SQLite 与 Cloudflare Worker / Durable Object 双环境","status":"done","evidence":"docs/runtime-storage.md"},
+    {"id":"T03","title":"登录、成员管理、主机部署包与备份恢复","status":"done","evidence":"docs/host-deployment.md"},
+    {"id":"T04","title":"十张工作表的 Excel 全量导出","status":"done","evidence":"docs/excel-export.md"},
+    {"id":"T05","title":"目的和途径多对多、经验双类绑定","status":"done","evidence":"docs/purpose-pathway-experience.md"},
+    {"id":"T06","title":"规划总览、环形图、训练覆盖与草稿规划入口","status":"done","evidence":"docs/planning-overview.md"},
+    {"id":"T07","title":"开发代码、任务状态、方案和示例截图的 Git 交接","status":"done","evidence":"docs/handoff.md","verification":"14 项 test:sync 通过；用户电脑工作区需按交接说明拉取。"},
+    {"id":"T08","title":"连接常开主机并验收 Tailscale Serve 私有 HTTPS","status":"blocked","blocker":"云环境尚未配置平台 Tailscale VPN / TCP 接入，SSH 探测停在出口代理；服务器尚未部署。","evidence":"docs/host-deployment.md"},
+    {"id":"T09","title":"按需接入 Cloudflare Tunnel 与实际手机网络验收","status":"todo","evidence":"docs/host-deployment.md"},
+    {"id":"T10","title":"训练中选择实际使用的途径并保存版本快照","status":"todo","evidence":"docs/purpose-pathway-experience.md"},
+    {"id":"T11","title":"原生 iOS / Android、语音和训练游戏","status":"todo","evidence":"docs/product-plan.md"},
+    {"id":"T12","title":"同步云环境启动说明到新的配置草案","status":"blocked","blocker":"旧草案 stale_base；需从当前环境设置新建 setup 会话后与新草案合并，不能重发旧草案。","evidence":"docs/handoff.md"}
+  ],
+  "artifacts": [
+    {"path":"docs/artifacts/validation/login.png","title":"登录页面","sha256":"03b102e2073257c83ec763d614733221b6b5f2473752014e953e5dd0fe2f8aba","synthetic":true},
+    {"path":"docs/artifacts/validation/pathways.png","title":"途径目录","sha256":"56abc303fedd6b7d2769001b0283bbf721d1c870710f495c1e9a291cf27a4871","synthetic":true},
+    {"path":"docs/artifacts/validation/planning-charts.png","title":"规划总览环形图","sha256":"4bcf47a4065f2c1c46f57ec909a7eb0fcc7ceb5ef852cccf76792828357cf6fe","synthetic":true}
+  ]
+}
