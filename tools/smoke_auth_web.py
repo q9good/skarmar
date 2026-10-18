@@ -29,6 +29,20 @@ with sync_playwright() as p:
         page.get_by_role('button', name='登录', exact=True).click()
         expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
 
+    applicant_password = 'synthetic-applicant-browser-password'
+    page.get_by_role('button', name='申请注册', exact=True).click()
+    expect(page.get_by_text('填写申请后由管理员审批，审批通过前无法登录。')).to_be_visible()
+    page.get_by_role('textbox', name='账号', exact=True).fill('applicant')
+    page.get_by_role('textbox', name='称呼', exact=True).fill('测试申请人')
+    page.get_by_role('textbox', name='邮箱', exact=True).fill('applicant@example.test')
+    page.get_by_label('密码', exact=True).fill(applicant_password)
+    page.get_by_label('再次输入密码', exact=True).fill(applicant_password)
+    page.get_by_role('button', name='提交注册申请', exact=True).click()
+    expect(page.get_by_text('注册申请已提交。管理员审批通过后，就可以使用刚设置的密码登录。')).to_be_visible()
+    page.get_by_label('密码', exact=True).fill(applicant_password)
+    page.get_by_role('button', name='登录', exact=True).click()
+    expect(page.get_by_text('账号或密码不正确', exact=True)).to_be_visible()
+
     page.get_by_role('textbox', name='账号', exact=True).fill('owner')
     page.get_by_label('密码', exact=True).fill('wrong')
     page.get_by_role('button', name='登录', exact=True).click()
@@ -36,6 +50,10 @@ with sync_playwright() as p:
     login('owner', OWNER_PASSWORD)
     assert all(cookie['httpOnly'] for cookie in context.cookies() if 'skarma_session' in cookie['name'])
     page.get_by_role('button', name='我的账号', exact=True).click()
+    expect(page.get_by_text('待审批申请 · 1', exact=True)).to_be_visible()
+    expect(page.get_by_text('申请人填写的邮箱（未验证）：applicant@example.test', exact=False)).to_be_visible()
+    page.get_by_role('button', name='批准', exact=True).click()
+    expect(page.get_by_text('测试申请人 的申请已批准，可以登录。', exact=True)).to_be_visible()
     with page.expect_download() as export:
         page.get_by_role('button', name='导出 Excel', exact=True).click()
     assert export.value.suggested_filename.endswith('.xlsx')
