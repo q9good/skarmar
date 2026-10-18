@@ -48,6 +48,9 @@ npm run sync:push
 
 ## 目前完成与待办
 
+用户已确认老师与家人使用 iPhone / Android 混合设备，后续客户端同步须覆盖两端。
+CloudKit 不作为主路线；继续比较原生 App + 网盘同步与微信小程序 + 云开发。
+
 2026-10-19 另完成 [长期免自有域名 / 服务器调研](no-owned-infrastructure-research.md)：
 低用量成本优先时建议验证原生 App + 用户网盘 WebDAV；接受托管资源费时评估微信小程序
 与云开发内置调用；全员苹果时考虑 CloudKit。网盘多人独立授权仍需原型，微信免费体验

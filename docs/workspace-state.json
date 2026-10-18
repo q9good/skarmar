@@ -147,7 +147,7 @@
       "title": "长期免自有域名和服务器的客户端同步与托管路线调研",
       "status": "done",
       "evidence": "docs/no-owned-infrastructure-research.md",
-      "verification": "已核对网盘 WebDAV 免费配额、CloudKit 共享及会员成本、微信内置云调用免业务域名能力和发布后15天体验到期规则，并比较免费后端暂停与公共中继限制。仅调研与文档完成；未实施同步、未验证多人WebDAV共享权限或真实大陆手机网络，未开通资源和发布。"
+      "verification": "已核对网盘 WebDAV 免费配额、CloudKit 共享及会员成本、微信内置云调用免业务域名能力和发布后15天体验到期规则，并比较免费后端暂停与公共中继限制。仅调研与文档完成；未实施同步、未验证多人WebDAV共享权限或真实大陆手机网络，未开通资源和发布。 用户已确认 iPhone / Android 混用，主候选须覆盖两端，CloudKit 不作为主路线。"
     }
   ],
   "artifacts": [
