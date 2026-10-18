@@ -148,6 +148,13 @@
       "status": "done",
       "evidence": "docs/no-owned-infrastructure-research.md",
       "verification": "已核对网盘 WebDAV 免费配额、CloudKit 共享及会员成本、微信内置云调用免业务域名能力和发布后15天体验到期规则，并比较免费后端暂停与公共中继限制。仅调研与文档完成；未实施同步、未验证多人WebDAV共享权限或真实大陆手机网络，未开通资源和发布。 用户已明确只有家人使用，老师不使用；家人 iPhone / Android 混用，主候选须覆盖两端，CloudKit 不作为主路线，授课老师仅作课程业务字段。"
+    },
+    {
+      "id": "T22",
+      "title": "libp2p 家庭主同步与网盘仅备份可行性评估",
+      "status": "done",
+      "evidence": "docs/libp2p-family-sync-proposal.md",
+      "verification": "已核对官方 RN/WebRTC 路线、Circuit Relay v2 在线流转发与预约限制、手机后台调度，及现有HTTP/草稿/单库事务与多副本同步的差距。完成拟议协议、备份和双真机验收方案；未安装依赖、实现同步、验证Expo57/RN0.86真机、选定公共relay或部署。网盘仅备份时异步送达需要设备传播路径，不能承诺始终自动实时同步。"
     }
   ],
   "artifacts": [
