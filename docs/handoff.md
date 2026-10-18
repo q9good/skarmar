@@ -52,6 +52,11 @@ npm run sync:push
 
 ### 当前上线方向：完整 Cloudflare 托管
 
+2026-10-19 用户要求先解决主要大陆用户的无代理访问，暂停新的云端应用发布。
+“今天 → 长期关注”已在本地置顶并通过类型检查和 Web 构建，但尚未上线；保留该修改，
+待入口方案确认后再发布。接入选项、当前证据与验收办法见
+[大陆访问入口评估](mainland-access-plan.md)。代理下的 200 不代表大陆无代理访问已验收。
+
 用户确认不再等待旧主机连接恢复，先上线空白云端实例，之后迁移旧数据。网页、Rust Wasm API 和 SQLite-backed `SkarmaSpace` 对象已发布到新的固定 Worker；运行不依赖主机、Tailscale 或 Mac。生产设置保持登录必需、无示例数据、精确 HTTPS 来源。配置模板在 `deploy/cloud-worker/`，完整步骤见 [云端部署与维护手册](cloudflare-hosted-deployment.md)。实际账号、配置与网址仍留私有运维记录。
 
 本次 Wasm Clippy、Web 构建、TypeScript、发布包 dry-run，以及原生 / 真正 Rust Wasm 与 Miniflare DO 的共用合约全部通过；合约覆盖注册审批／拒绝、会话和权限、独立上课记录、十一表 Excel、SQL 失败回滚、并发版本和重启持久性。线上首页与 JS、健康 200、匿名 state / me 401、未知 API 404、合法来源空会话 logout 200、非法来源或无标记 403 均通过，API no-store。持有人已亲自安全设置密码，并明确确认 `owner` 成功登录；随后删除临时 bootstrap secret，Wrangler 返回删除成功。旧 Mac Quick Tunnel 已停止，关闭后新云端健康检查仍为 200。实际手机 Wi-Fi／蜂窝验收尚未执行。

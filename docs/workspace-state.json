@@ -125,6 +125,22 @@
       "status": "todo",
       "evidence": "docs/cloudflare-hosted-deployment.md",
       "blocker": "待旧主机恢复并取得一致性备份，再实现和演练受控迁移；需保留云端期间新增记录并处理冲突，当前没有自动同步或整库导入。"
+    },
+    {
+      "id": "T19",
+      "title": "今天页将长期关注置顶",
+      "status": "in_progress",
+      "evidence": "apps/client/App.tsx",
+      "verification": "长期关注与长期目标卡片已移到今天页标题下、引导区之前；TypeScript 和 Web 构建通过。",
+      "blocker": "用户要求先解决大陆访问入口，暂不发布；改动保留本地。"
+    },
+    {
+      "id": "T20",
+      "title": "主要大陆用户的无代理访问方案与验收",
+      "status": "in_progress",
+      "evidence": "docs/mainland-access-plan.md",
+      "verification": "已核对 Cloudflare Custom Domain / workers.dev / China Network 和腾讯云备案官方资料。当前健康检查经代理200，Mac 存在 TUN，不能等同大陆无代理验收。已整理保留CF自有域名、香港云、大陆云三条路径。",
+      "blocker": "需要确定域名与接入路径，并在真实大陆运营商网络做无代理端到端验收；用户已要求暂停新云端发布。"
     }
   ],
   "artifacts": [
