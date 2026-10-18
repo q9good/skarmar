@@ -106,6 +106,36 @@ fn registration(username: &str, email: &str) -> Value {
 }
 
 #[tokio::test]
+async fn daily_class_records_require_a_live_session() {
+    let (_, app) = fixture();
+    let path = format!("/api/lessons/{}", uuid::Uuid::new_v4());
+    let body = json!({"expected_version":null,"lesson":{
+        "business_date":"2026-10-18","course":"音乐课","teacher":"王老师",
+        "content":"唱歌","goals":"跟唱","problems":"","home_cooperation":""
+    }});
+    assert_eq!(
+        send(&app, "PUT", &path, None, Some(body.clone())).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    let cookie = login(&app, "owner", PASSWORD).await;
+    assert_eq!(
+        send(&app, "PUT", &path, Some(&cookie), Some(body)).await.0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/state", None, None).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/state", Some(&cookie), None).await.2["lessons"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[tokio::test]
 async fn registration_requires_admin_approval_before_login_and_never_exposes_hashes() {
     let (db, app) = fixture();
     let input = registration(" applicant ", " Applicant@Example.Test ");

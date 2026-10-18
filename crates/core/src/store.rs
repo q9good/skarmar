@@ -87,7 +87,7 @@ fn valid_id(id: &str) -> Result<()> {
 
 fn valid_date(date: &str) -> Result<()> {
     if date.len() != 10 || chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").is_err() {
-        return Err(ApiError::invalid("请选择有效的训练或跟进日期"));
+        return Err(ApiError::invalid("请选择有效日期，格式为 YYYY-MM-DD"));
     }
     Ok(())
 }
@@ -99,6 +99,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         (3, include_str!("../migrations/003_auth.sql")),
         (4, include_str!("../migrations/004_pathways.sql")),
         (5, include_str!("../migrations/005_registration.sql")),
+        (7, include_str!("../migrations/007_lessons.sql")),
     ];
     db.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);")?;
     let applied = db
@@ -270,7 +271,74 @@ pub fn state(db: &dyn Sql) -> Result<AppState> {
         difficulties: list(db, "difficulties")?,
         experiences: list(db, "experiences")?,
         pathways: list(db, "pathways")?,
+        lessons: list(db, "lessons")?,
     })
+}
+
+pub fn save_lesson(db: &dyn Sql, id: &str, request: SaveLesson) -> Result<Lesson> {
+    valid_id(id)?;
+    let input = request.lesson;
+    valid_date(&input.business_date)?;
+    if input.course.trim().is_empty() || input.teacher.trim().is_empty() {
+        return Err(ApiError::invalid("请填写课程名称和授课老师"));
+    }
+    if input.course.chars().count() > 200
+        || input.teacher.chars().count() > 100
+        || [
+            &input.content,
+            &input.goals,
+            &input.problems,
+            &input.home_cooperation,
+        ]
+        .iter()
+        .any(|value| value.chars().count() > 10_000)
+    {
+        return Err(ApiError::invalid("上课记录内容过长，请适当缩短"));
+    }
+    let input = LessonInput {
+        course: input.course.trim().into(),
+        teacher: input.teacher.trim().into(),
+        ..input
+    };
+    let current: Option<Lesson> = get(db, "lessons", id)?;
+    match (current, request.expected_version) {
+        (None, None) => {
+            let lesson = Lesson {
+                id: id.into(),
+                version: 1,
+                input,
+            };
+            db.execute(
+                "INSERT INTO lessons(id,business_date,data) VALUES (?1,?2,?3)",
+                params![lesson.id, lesson.input.business_date, json(&lesson)?],
+            )?;
+            Ok(lesson)
+        }
+        (Some(current), expected)
+            if current.input == input
+                && (Some(current.version) == expected
+                    || (current.version == 1 && expected.is_none())
+                    || expected.is_some_and(|v| v.checked_add(1) == Some(current.version))) =>
+        {
+            Ok(current)
+        }
+        (Some(current), Some(expected)) if current.version == expected => {
+            let lesson = Lesson {
+                id: id.into(),
+                version: current
+                    .version
+                    .checked_add(1)
+                    .ok_or_else(|| ApiError::invalid("记录版本超出范围"))?,
+                input,
+            };
+            db.execute(
+                "UPDATE lessons SET business_date=?1,data=?2 WHERE id=?3",
+                params![lesson.input.business_date, json(&lesson)?, id],
+            )?;
+            Ok(lesson)
+        }
+        _ => Err(ApiError::conflict("上课记录已被更新，请刷新后核对")),
+    }
 }
 
 pub fn export_snapshot(db: &dyn Sql) -> Result<ExportSnapshot> {

@@ -39,6 +39,10 @@ pub enum Command {
         id: String,
         request: SaveSession,
     },
+    SaveLesson {
+        id: String,
+        request: SaveLesson,
+    },
     UpdateFollowUp {
         table: String,
         id: String,
@@ -74,6 +78,9 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         }
         Command::SaveSession { id, request } => {
             serde_json::to_value(store::save_session(db, &id, request)?)?
+        }
+        Command::SaveLesson { id, request } => {
+            serde_json::to_value(store::save_lesson(db, &id, request)?)?
         }
         Command::UpdateFollowUp { table, id, request } => {
             serde_json::to_value(store::update_follow_up(db, &table, &id, request)?)?

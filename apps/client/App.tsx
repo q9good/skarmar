@@ -10,7 +10,7 @@ import { PlanningOverview } from './src/planning-view';
 import {
   ApiError, request, isReviewable, isTrainable, type AppState, type FollowUp, type Goal, type Level,
   type GoalProgress, type GoalUpdate, type GoalRevision, type Pathway, type FollowUpUpdate,
-  type Role, type SaveRequest, type SaveResult, type Session, type SessionInput,
+  type Role, type SaveRequest, type SaveResult, type Session, type SessionInput, type Lesson, type LessonInput,
 } from './src/api';
 import { clearDraft, emptyInput, localDate, readDraft, saveDraft, uuid, type Draft } from './src/draft';
 
@@ -23,7 +23,20 @@ const roles: Record<Role, string> = { primary: '主目标', secondary: '副目�
 const activities = ['桌面教学', '感统活动', '游戏', '家务劳动', '生活自理', '户外活动', '阅读'];
 const tabs = [ ['today', '☀', '今天'], ['planning', '◔', '规划'], ['goals', '◎', '目标'], ['pathways', '↗', '途径'], ['history', '▤', '记录'], ['followups', '◇', '跟进'] ] as const;
 type Tab = typeof tabs[number][0];
-const emptyState: AppState = { goals: [], sessions: [], difficulties: [], experiences: [], pathways: [] };
+const emptyState: AppState = { goals: [], sessions: [], difficulties: [], experiences: [], pathways: [], lessons: [] };
+type LessonDraft = { id: string; expectedVersion: number | null; input: LessonInput };
+const emptyLesson = (): LessonInput => ({ business_date: localDate(), course: '', teacher: '', content: '', goals: '', problems: '', home_cooperation: '' });
+const lessonInput = ({ id: _id, version: _version, ...input }: Lesson): LessonInput => input;
+function readLessonDraft(raw: string | null): LessonDraft | null {
+  if (!raw) return null;
+  try {
+    const value: LessonDraft = JSON.parse(raw);
+    const fields: (keyof LessonInput)[] = ['business_date', 'course', 'teacher', 'content', 'goals', 'problems', 'home_cooperation'];
+    if (typeof value.id === 'string' && (value.expectedVersion === null || Number.isSafeInteger(value.expectedVersion)) &&
+      fields.every(key => typeof value.input?.[key] === 'string')) return value;
+  } catch { /* Discard an unreadable local draft. */ }
+  return null;
+}
 
 function Button({ title, onPress, secondary = false, disabled = false }: {
   title: string; onPress: () => void; secondary?: boolean; disabled?: boolean;
@@ -69,6 +82,7 @@ export default function App() {
 function Workspace() {
   const auth = useAuth();
   const scope = `${auth.identity.space}:${auth.identity.user.id}`;
+  const lessonStorageKey = `skarma:${scope}:lesson-draft`;
   const [showAccount, setShowAccount] = useState(false);
   const [data, setData] = useState<AppState>(emptyState);
   const [tab, setTab] = useState<Tab>('today');
@@ -81,12 +95,17 @@ function Workspace() {
   const [localSaved, setLocalSaved] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
   const [detail, setDetail] = useState<Session | null>(null);
+  const [lessonDraft, setLessonDraft] = useState<LessonDraft | null>(null);
+  const [lessonDraftReady, setLessonDraftReady] = useState(false);
+  const [lessonLocalSaved, setLessonLocalSaved] = useState(false);
+  const [editingLesson, setEditingLesson] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [showGoalForm, setShowGoalForm] = useState(false);
   const [showExperienceForm, setShowExperienceForm] = useState(false);
   const [pathwayToOpen, setPathwayToOpen] = useState<Pathway | undefined>();
   const [conflict, setConflict] = useState<Session | null>(null);
   const persistence = useRef<Promise<void>>(Promise.resolve());
+  const lessonPersistence = useRef<Promise<void>>(Promise.resolve());
   const { width } = useWindowDimensions();
 
   const persist = useCallback((next: Draft) => {
@@ -97,22 +116,25 @@ function Workspace() {
 
   const refresh = useCallback(async () => {
     const next = await request<AppState>('/state');
-    setData(next);
-    return next;
+    const normalized = { ...next, lessons: next.lessons ?? [] };
+    setData(normalized);
+    return normalized;
   }, []);
 
   useEffect(() => {
     let active = true;
-    Promise.allSettled([refresh(), readDraft(scope)]).then(results => {
+    Promise.allSettled([refresh(), readDraft(scope), AsyncStorage.getItem(lessonStorageKey)]).then(results => {
       if (!active) return;
-      const [remote, local] = results;
+      const [remote, local, localLesson] = results;
       if (remote.status === 'rejected') setError('暂时无法连接，请重试。已有本机草稿仍可继续编辑。');
       if (local.status === 'fulfilled') { setDraft(local.value); setStorageReady(true); }
       else setError('无法读取本机草稿，请保留浏览器数据后重试。');
+      if (localLesson.status === 'fulfilled') { setLessonDraft(readLessonDraft(localLesson.value)); setLessonDraftReady(true); }
+      else setError('无法读取本机上课草稿，请保留浏览器数据后重试。');
       setLoading(false);
     });
     return () => { active = false; };
-  }, [refresh, scope]);
+  }, [refresh, scope, lessonStorageKey]);
 
   useEffect(() => {
     if (!draft) return;
@@ -122,6 +144,17 @@ function Workspace() {
       .catch(() => { if (active) setError('本机草稿保存失败，请勿关闭页面。'); });
     return () => { active = false; };
   }, [draft, persist]);
+
+  useEffect(() => {
+    if (!lessonDraftReady) return;
+    setLessonLocalSaved(false);
+    const raw = lessonDraft ? JSON.stringify(lessonDraft) : null;
+    const task = lessonPersistence.current.catch(() => undefined).then(() =>
+      raw ? AsyncStorage.setItem(lessonStorageKey, raw) : AsyncStorage.removeItem(lessonStorageKey));
+    lessonPersistence.current = task;
+    task.then(() => setLessonLocalSaved(true))
+      .catch(() => setError('本机上课草稿保存失败，请勿关闭页面。'));
+  }, [lessonDraft, lessonDraftReady, lessonStorageKey]);
 
   const safely = async (action: () => Promise<void>) => {
     setBusy(true); setError(''); setMessage('');
@@ -138,7 +171,7 @@ function Workspace() {
     if (dirty()) { setEditing(true); setError('请先保存当前草稿，再创建另一条训练。'); return; }
     try {
       setDraft({ id: uuid(), version: null, input: emptyInput() });
-      setEditing(true); setDetail(null); setConflict(null); setError(''); setMessage('');
+      setEditing(true); setEditingLesson(false); setDetail(null); setConflict(null); setError(''); setMessage('');
     } catch (e) { setError((e as Error).message); }
   };
 
@@ -151,7 +184,7 @@ function Workspace() {
         const role: Role = isReviewable(goal) ? 'review' : next.input.targets.some(target => target.role === 'primary') ? 'secondary' : 'primary';
         setDraft({ ...next, input: { ...next.input, targets: [...next.input.targets, { goal_id: goal.id, role, plan: '', progress: '', outcome: null, next_step: '' }] } });
       }
-      setEditing(true); setDetail(null); setSelectedGoal(null); setConflict(null); setError('');
+      setEditing(true); setEditingLesson(false); setDetail(null); setSelectedGoal(null); setConflict(null); setError('');
       setMessage('目标已加入当前计划，请核对角色与活动安排。');
     } catch (error) { setError((error as Error).message); }
   };
@@ -161,13 +194,42 @@ function Workspace() {
     if (!storageReady) { setError('无法读取已有本机草稿，请先恢复存储访问后继续。'); return; }
     if (draft?.id !== session.id && dirty()) { setError('当前本机草稿尚未提交，请先保存后切换。'); return; }
     if (draft?.id !== session.id) setDraft({ id: session.id, version: session.version, input: inputOf(session) });
-    setEditing(true); setDetail(null); setConflict(null); setError(''); setSelectedGoal(null);
+    setEditing(true); setEditingLesson(false); setDetail(null); setConflict(null); setError(''); setSelectedGoal(null);
   };
 
   const change = (value: Partial<SessionInput>) => {
     if (!draft || busy || draft.pending) return;
     setDraft({ ...draft, input: { ...draft.input, ...value } }); setMessage('');
   };
+
+  const lessonDirty = () => lessonDraft && JSON.stringify(lessonDraft.input) !== JSON.stringify(
+    data.lessons.find(item => item.id === lessonDraft.id) ? lessonInput(data.lessons.find(item => item.id === lessonDraft.id)!) : emptyLesson());
+  const startLesson = () => {
+    if (!lessonDraftReady) { setError('无法读取已有上课草稿，请先恢复本机存储访问。'); return; }
+    if (!lessonDraft || !lessonDirty()) setLessonDraft({ id: uuid(), expectedVersion: null, input: emptyLesson() });
+    setEditingLesson(true); setEditing(false); setDetail(null); setSelectedGoal(null); setError('');
+  };
+  const openLesson = (lesson: Lesson) => {
+    if (lessonDraft?.id === lesson.id && lessonDirty()) {
+      setEditingLesson(true); setError(''); return;
+    }
+    if (lessonDraft && lessonDraft.id !== lesson.id && lessonDirty()) {
+      setEditingLesson(true); setError('请先保存当前上课记录，再打开另一条。'); return;
+    }
+    setLessonDraft({ id: lesson.id, expectedVersion: lesson.version, input: lessonInput(lesson) });
+    setEditingLesson(true); setEditing(false); setDetail(null); setSelectedGoal(null); setError('');
+  };
+  const saveLesson = () => safely(async () => {
+    if (!lessonDraft) return;
+    const saved = await request<Lesson>(`/lessons/${lessonDraft.id}`, 'PUT', {
+      expected_version: lessonDraft.expectedVersion, lesson: lessonDraft.input,
+    });
+    setData(current => ({ ...current, lessons: [saved, ...current.lessons.filter(item => item.id !== saved.id)] }));
+    await lessonPersistence.current;
+    await AsyncStorage.removeItem(lessonStorageKey);
+    setLessonDraft(null); setEditingLesson(false); setMessage('上课记录已保存。');
+    try { await refresh(); } catch { setError('记录已保存，列表暂未刷新。请稍后刷新查看。'); }
+  });
 
   const submit = (action: SaveRequest['action']) => safely(async () => {
     if (!draft) return;
@@ -225,9 +287,10 @@ function Workspace() {
 
   const today = localDate();
   const todaySessions = data.sessions.filter(s => s.business_date === today);
+  const todayLessons = data.lessons.filter(item => item.business_date === today);
   const due = data.difficulties.filter(d => d.status !== 'resolved' && d.next_review_date && d.next_review_date <= today);
   const dueGoals = data.goals.filter(g => g.next_review_date && g.next_review_date <= today);
-  const pageTitle = { today: '今天', planning: '规划总览', goals: '目标', pathways: '途径', history: '训练记录', followups: '困难与经验' }[tab];
+  const pageTitle = { today: '今天', planning: '规划总览', goals: '目标', pathways: '途径', history: '全部记录', followups: '困难与经验' }[tab];
 
   return <View style={styles.root}>
     <StatusBar barStyle="dark-content" />
@@ -239,8 +302,15 @@ function Workspace() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}
         {message ? <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{message}</Text></View> : null}
-        {showAccount ? <AccountPanel back={() => setShowAccount(false)} logout={async () => { await persistence.current; await auth.logout(); }} /> : loading ? <ActivityIndicator color={colors.green} style={{ marginVertical: 40 }} /> :
-          editing && draft ? <>
+        {showAccount ? <AccountPanel back={() => setShowAccount(false)} logout={async () => { await Promise.all([persistence.current, lessonPersistence.current]); await auth.logout(); }} /> : loading ? <ActivityIndicator color={colors.green} style={{ marginVertical: 40 }} /> :
+          editingLesson && lessonDraft ? <>
+            <View style={styles.sectionHeader}><Text style={styles.title}>{lessonDraft.expectedVersion ? '修改上课记录' : '记录今天上课'}</Text>
+              <Button title="返回" secondary onPress={() => setEditingLesson(false)} disabled={busy} /></View>
+            <Hint>无需先建训练计划。课程名称和授课老师为必填项。</Hint>
+            <Hint>{lessonLocalSaved ? '上课草稿已保存在本机' : '正在保存本机上课草稿…'}</Hint>
+            <LessonEditor value={lessonDraft.input} change={patch => setLessonDraft(current => current && !busy ? { ...current, input: { ...current.input, ...patch } } : current)} disabled={busy} />
+            <Button title={busy ? '正在保存…' : '保存上课记录'} onPress={() => void saveLesson()} disabled={busy || !lessonDraft.input.course.trim() || !lessonDraft.input.teacher.trim()} />
+          </> : editing && draft ? <>
             <View style={styles.sectionHeader}><Text style={styles.title}>一次训练</Text>
               <Button title="返回" secondary onPress={() => setEditing(false)} disabled={busy} /></View>
             <Hint>{draft.pending ? '上次提交结果尚未确认，请重试同一次提交。' :
@@ -288,20 +358,25 @@ function Workspace() {
               <View style={styles.hero}>
                 <Text style={styles.eyebrow}>{today.replaceAll('-', '.')} · 每一步都值得记录</Text>
                 <Text style={styles.heroTitle}>把今天的小进步，{width < 500 ? '\n' : ''}留下来。</Text>
-                <Text style={styles.heroText}>课前安排，课后回填。{width < 500 ? '\n' : ' '}让每一次观察都能成为下一步的依据。</Text>
+                <Text style={styles.heroText}>日常上课直接记录，专项训练也可先做计划。{width < 500 ? '\n' : ' '}让每一次观察都能成为下一步的依据。</Text>
                 <Button title="＋ 新建训练计划" onPress={startNew} disabled={busy} />
+                <Button title="＋ 记录今天上课" secondary onPress={startLesson} disabled={busy} />
                 <Button title="先看规划总览" secondary onPress={() => setTab('planning')} />
               </View>
               {draft ? <Card><Text style={styles.cardTitle}>继续你的草稿</Text><Hint>{draft.input.business_date} · {draft.version ? '已有计划，可继续回填' : '本机尚未提交'}</Hint>
                 <Button title="继续填写" secondary onPress={() => setEditing(true)} /></Card> : null}
+              {lessonDraft && lessonDirty() ? <Card><Text style={styles.cardTitle}>继续填写上课记录</Text>
+                <Hint>草稿仅保存在这台设备，正式保存后其他设备才可查看。</Hint>
+                <Button title="继续填写" secondary onPress={() => { setEditingLesson(true); setEditing(false); }} /></Card> : null}
               <View style={styles.stats}>
                 <Stat number={todaySessions.length} label="今天的训练" />
                 <Stat number={todaySessions.filter(s => s.status === 'completed').length} label="已完成记录" />
                 <Stat number={due.length} label="到期困难" />
               </View>
               <Text style={styles.subtitle}>今天的安排</Text>
+              {todayLessons.map(item => <LessonCard key={item.id} lesson={item} onPress={() => openLesson(item)} />)}
               {todaySessions.length ? todaySessions.map(s => <SessionCard key={s.id} session={s} onPress={() => openSession(s)} />) :
-                <Card><Text style={styles.cardTitle}>从一次熟悉的活动开始</Text><Hint>游戏、阅读或生活中的小事，都可以成为一次有计划的训练。</Hint></Card>}
+                !todayLessons.length ? <Card><Text style={styles.cardTitle}>从今天的一堂课开始</Text><Hint>直接记下课程和老师，也可以另建训练计划。</Hint></Card> : null}
               {due.length > 0 && <Card><Text style={styles.cardTitle}>有 {due.length} 条困难到了回看时间</Text>
                 <Button title="查看跟进" secondary onPress={() => setTab('followups')} /></Card>}
               {dueGoals.length > 0 && <><Text style={styles.subtitle}>待复盘目标 · {dueGoals.length}</Text>
@@ -330,7 +405,12 @@ function Workspace() {
               setMessage('途径已保存。');
             }} />}
             {tab === 'history' && <>
-              <Hint>计划和课后结果始终属于同一次训练。每次记录都能回到当时的目标与观察。</Hint>
+              <Hint>日常上课可直接记录，不需要训练计划。训练记录仍保留当时的目标与观察。</Hint>
+              <Button title="＋ 新建上课记录" secondary onPress={startLesson} disabled={busy} />
+              <Text style={styles.subtitle}>上课记录 · {data.lessons.length}</Text>
+              {data.lessons.length ? [...data.lessons].sort((a, b) => b.business_date.localeCompare(a.business_date))
+                .map(item => <LessonCard key={item.id} lesson={item} onPress={() => openLesson(item)} />) : <Hint>还没有上课记录。</Hint>}
+              <Text style={styles.subtitle}>训练记录 · {data.sessions.length}</Text>
               {data.sessions.length ? [...data.sessions].sort((a, b) => b.business_date.localeCompare(a.business_date))
                 .map(s => <SessionCard key={s.id} session={s} onPress={() => openSession(s)} />) :
                 <Card><Text style={styles.cardTitle}>还没有训练记录</Text><Hint>从“今天”新建一条计划，完成后可以在这里回看。</Hint></Card>}
@@ -357,7 +437,7 @@ function Workspace() {
       <View style={styles.navigation}>
         {tabs.map(([key, icon, label]) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={label}
           accessibilityState={{ selected: tab === key && !editing }} style={styles.navItem} disabled={busy}
-          onPress={() => { setShowAccount(false); setTab(key); setPathwayToOpen(undefined); setEditing(false); setDetail(null); setSelectedGoal(null); setError(''); setMessage(''); }}>
+          onPress={() => { setShowAccount(false); setTab(key); setPathwayToOpen(undefined); setEditing(false); setEditingLesson(false); setDetail(null); setSelectedGoal(null); setError(''); setMessage(''); }}>
           <Text style={[styles.navIcon, tab === key && { color: colors.green }]}>{icon}</Text>
           <Text style={[styles.navLabel, tab === key && { color: colors.green, fontWeight: '600' }]}>{label}</Text>
         </Pressable>)}
@@ -368,6 +448,26 @@ function Workspace() {
 
 function Stat({ number, label }: { number: number; label: string }) {
   return <View style={styles.stat}><Text style={styles.statNumber}>{number}</Text><Text style={styles.hint}>{label}</Text></View>;
+}
+
+function LessonEditor({ value, change, disabled }: { value: LessonInput; change: (patch: Partial<LessonInput>) => void; disabled: boolean }) {
+  return <Card>
+    <Field label="上课日期" value={value.business_date} onChange={business_date => change({ business_date })} placeholder="YYYY-MM-DD" disabled={disabled} />
+    <Field label="课程名称（必填）" value={value.course} onChange={course => change({ course })} disabled={disabled} />
+    <Field label="授课老师（必填）" value={value.teacher} onChange={teacher => change({ teacher })} disabled={disabled} />
+    <Field label="上课内容" value={value.content} onChange={content => change({ content })} multiline disabled={disabled} />
+    <Field label="目标" value={value.goals} onChange={goals => change({ goals })} multiline disabled={disabled} />
+    <Field label="存在问题" value={value.problems} onChange={problems => change({ problems })} multiline disabled={disabled} />
+    <Field label="需要家里配合的" value={value.home_cooperation} onChange={home_cooperation => change({ home_cooperation })} multiline disabled={disabled} />
+  </Card>;
+}
+
+function LessonCard({ lesson, onPress }: { lesson: Lesson; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" onPress={onPress} style={styles.card}>
+    <View style={styles.sectionHeader}><Text style={styles.cardTitle}>{lesson.course}</Text><Text style={styles.badge}>{lesson.business_date}</Text></View>
+    <Hint>授课老师：{lesson.teacher}</Hint>
+    {lesson.content ? <Text style={styles.body} numberOfLines={2}>{lesson.content}</Text> : null}
+  </Pressable>;
 }
 
 function GoalCard({ goal, onPress }: { goal: Goal; onPress: () => void }) {

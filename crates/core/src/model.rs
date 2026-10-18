@@ -188,6 +188,31 @@ pub struct SaveResult {
     pub experience_id: Option<String>,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LessonInput {
+    pub business_date: String,
+    pub course: String,
+    pub teacher: String,
+    pub content: String,
+    pub goals: String,
+    pub problems: String,
+    pub home_cooperation: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct Lesson {
+    pub id: String,
+    pub version: u64,
+    #[serde(flatten)]
+    pub input: LessonInput,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SaveLesson {
+    pub expected_version: Option<u64>,
+    pub lesson: LessonInput,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FollowUp {
     pub id: String,
@@ -272,6 +297,8 @@ pub struct AppState {
     pub experiences: Vec<FollowUp>,
     #[serde(default)]
     pub pathways: Vec<Pathway>,
+    #[serde(default)]
+    pub lessons: Vec<Lesson>,
 }
 
 /// Business data captured in a single transaction. Never includes account/session tables.

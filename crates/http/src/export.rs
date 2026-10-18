@@ -138,7 +138,7 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
         .collect();
     sheet(&mut book, "说明", &["项目", "说明"], [
         vec!["导出时间（UTC）".into(), snapshot.exported_at.clone()],
-        vec!["范围".into(), "当前空间中已保存的全部目标、途径、训练草稿、完成记录、困难、经验、目标历史及显式关联。浏览器中尚未保存的草稿不在文件内。".into()],
+        vec!["范围".into(), "当前空间中已保存的全部目标、途径、训练草稿、完成记录、上课记录、困难、经验、目标历史及显式关联。浏览器中尚未保存的草稿不在文件内。".into()],
         vec!["历史快照".into(), "逐目标明细中的「当时」字段来自训练保存的目标快照。快照缺失时留空并标记，不使用当前目标覆盖历史。".into()],
         vec!["空白值".into(), "空白表示未填写或未知，不代表零分或已完成。日期、ID、版本及正文按文本保留。".into()],
         vec!["记录关联".into(), "通过目标ID、上级目标ID、途径ID、经验ID、训练ID及来源训练ID关联各表。目的途径关系与经验关联反映当前显式绑定；目标历史保留已记录版本。".into()],
@@ -190,6 +190,34 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                 if input.has_experience { "是" } else { "否" }.into(),
                 input.experience.clone(),
                 experience_kind(&input.experience_kind).into(),
+            ]
+        }),
+    )?;
+    sheet(
+        &mut book,
+        "上课记录",
+        &[
+            "记录ID",
+            "版本",
+            "上课日期",
+            "课程名称",
+            "授课老师",
+            "上课内容",
+            "上课目标",
+            "存在问题",
+            "家里需配合",
+        ],
+        state.lessons.iter().map(|lesson| {
+            vec![
+                lesson.id.clone(),
+                lesson.version.to_string(),
+                lesson.input.business_date.clone(),
+                lesson.input.course.clone(),
+                lesson.input.teacher.clone(),
+                lesson.input.content.clone(),
+                lesson.input.goals.clone(),
+                lesson.input.problems.clone(),
+                lesson.input.home_cooperation.clone(),
             ]
         }),
     )?;
@@ -434,6 +462,7 @@ mod tests {
                 difficulties: vec![],
                 experiences: vec![],
                 pathways: vec![],
+                lessons: vec![],
             },
             goal_history: vec![],
         }

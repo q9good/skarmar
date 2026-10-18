@@ -126,6 +126,16 @@ async fn save_session<R: Repository>(
         execute(&repo, proof, Command::SaveSession { id, request }).await?,
     ))
 }
+async fn save_lesson<R: Repository>(
+    State(repo): State<R>,
+    Path(id): Path<String>,
+    proof: Option<Extension<auth::SessionProof>>,
+    Json(request): Json<SaveLesson>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        execute(&repo, proof, Command::SaveLesson { id, request }).await?,
+    ))
+}
 async fn update_difficulty<R: Repository>(
     State(repo): State<R>,
     Path(id): Path<String>,
@@ -184,6 +194,7 @@ pub fn router_with_auth<R: Repository>(repo: R, config: auth::AuthConfig) -> Rou
         .route("/goals/{id}", put(update_goal::<R>))
         .route("/goals/{id}/history", get(goal_history::<R>))
         .route("/sessions/{id}", put(save_session::<R>))
+        .route("/lessons/{id}", put(save_lesson::<R>))
         .route("/difficulties/{id}", put(update_difficulty::<R>))
         .route("/experiences/{id}", put(update_experience::<R>))
         .route_layer(axum::middleware::from_fn_with_state(

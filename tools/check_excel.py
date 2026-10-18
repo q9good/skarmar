@@ -7,7 +7,7 @@ import zipfile
 from xml.etree import ElementTree as ET
 
 NS = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-SHEETS = ['说明', '目标', '训练记录', '逐目标明细', '困难', '经验', '目标历史', '途径', '目的途径关系', '经验关联']
+SHEETS = ['说明', '目标', '训练记录', '上课记录', '逐目标明细', '困难', '经验', '目标历史', '途径', '目的途径关系', '经验关联']
 
 
 def read_workbook(data):
@@ -56,7 +56,7 @@ def read_workbook(data):
 def verify_fixture(payload):
     sheets = read_workbook(base64.b64decode(payload['file']))
     state = payload['state']
-    expected = {'目标': ('goals', '目标ID'), '训练记录': ('sessions', '训练ID'), '困难': ('difficulties', '记录ID'), '经验': ('experiences', '记录ID'), '途径': ('pathways', '途径ID')}
+    expected = {'目标': ('goals', '目标ID'), '训练记录': ('sessions', '训练ID'), '上课记录': ('lessons', '记录ID'), '困难': ('difficulties', '记录ID'), '经验': ('experiences', '记录ID'), '途径': ('pathways', '途径ID')}
     for name, (key, id_column) in expected.items():
         assert {row[id_column] for row in sheets[name]} == {item['id'] for item in state[key]}, name
         assert len(sheets[name]) == len(state[key]), name
@@ -103,7 +103,7 @@ def verify_fixture(payload):
     all_text = json.dumps(sheets, ensure_ascii=False)
     for private in ['password_hash', 'token_hash', 'auth_sessions', 'synthetic-owner-contract-password']:
         assert private not in all_text
-    print('PASS Excel: ten sheets, complete purpose/pathway/experience relations, historical snapshots and literal text')
+    print('PASS Excel: eleven sheets, complete purpose/pathway/experience relations, historical snapshots and literal text')
 
 
 if __name__ == '__main__':

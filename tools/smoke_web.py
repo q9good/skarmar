@@ -36,6 +36,32 @@ with sync_playwright() as playwright:
     assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
     page.screenshot(path=str(OUTPUT / "today.png"), full_page=True)
 
+    # Daily classes can be recorded without creating a training plan.
+    page.get_by_role("button", name="＋ 记录今天上课", exact=True).click()
+    expect(page.get_by_role("button", name="保存上课记录", exact=True)).to_be_disabled()
+    page.get_by_role("textbox", name="课程名称（必填）", exact=True).fill("【浏览器验收】音乐课")
+    page.get_by_role("textbox", name="授课老师（必填）", exact=True).fill("王老师")
+    page.get_by_role("textbox", name="上课内容", exact=True).fill("一起唱歌")
+    page.get_by_role("textbox", name="需要家里配合的", exact=True).fill("在家练习")
+    expect(page.get_by_text("上课草稿已保存在本机", exact=True)).to_be_visible()
+    page.reload()
+    page.get_by_role("button", name="继续填写", exact=True).click()
+    expect(page.get_by_role("textbox", name="课程名称（必填）", exact=True)).to_have_value("【浏览器验收】音乐课")
+    expect(page.get_by_role("textbox", name="需要家里配合的", exact=True)).to_have_value("在家练习")
+    page.get_by_role("button", name="保存上课记录", exact=True).click()
+    expect(page.get_by_text("上课记录已保存。", exact=True)).to_be_visible()
+    saved_lesson = state()["lessons"][0]
+    assert saved_lesson["course"] == "【浏览器验收】音乐课"
+    assert saved_lesson["teacher"] == "王老师"
+    assert not state()["sessions"]
+    page.get_by_role("button", name="记录", exact=True).click()
+    page.get_by_text("【浏览器验收】音乐课", exact=True).click()
+    page.get_by_role("textbox", name="存在问题", exact=True).fill("暂时跟不上节奏")
+    page.get_by_role("button", name="保存上课记录", exact=True).click()
+    assert state()["lessons"][0]["version"] == 2
+    assert state()["lessons"][0]["problems"] == "暂时跟不上节奏"
+    page.get_by_role("button", name="今天", exact=True).click()
+
     page.get_by_role("button", name="＋ 新建训练计划", exact=True).click()
     page.get_by_role("button", name="游戏", exact=True).click()
     page.get_by_role("textbox", name="整次训练安排", exact=True).fill("【浏览器验收】一起完成轮流游戏")
@@ -159,4 +185,4 @@ with sync_playwright() as playwright:
     assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
     assert not errors, f"Browser runtime errors: {errors}"
     browser.close()
-print("PASS: mobile layout, plan/refill identity, local draft recovery, lost-response replay, archive snapshot, follow-up, goal review/history, conflict preservation and role candidates")
+print("PASS: mobile layout, independent class records and draft recovery, plan/refill identity, local draft recovery, lost-response replay, archive snapshot, follow-up, goal review/history, conflict preservation and role candidates")

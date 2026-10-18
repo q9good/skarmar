@@ -79,6 +79,9 @@ pub fn update_goal(db: &mut Connection, id: &str, request: UpdateGoal) -> Result
 pub fn save_session(db: &mut Connection, id: &str, request: SaveSession) -> Result<SaveResult> {
     transaction(db, |sql| skarma_core::store::save_session(sql, id, request))
 }
+pub fn save_lesson(db: &mut Connection, id: &str, request: SaveLesson) -> Result<Lesson> {
+    transaction(db, |sql| skarma_core::store::save_lesson(sql, id, request))
+}
 pub fn update_follow_up(
     db: &mut Connection,
     table: &str,

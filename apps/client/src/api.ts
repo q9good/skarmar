@@ -27,6 +27,11 @@ export type Session = SessionInput & {
   id: string; version: number; status: 'draft' | 'completed';
   target_snapshots: (Target & { goal_snapshot: Goal })[];
 };
+export type LessonInput = {
+  business_date: string; course: string; teacher: string; content: string;
+  goals: string; problems: string; home_cooperation: string;
+};
+export type Lesson = LessonInput & { id: string; version: number };
 export type FollowUp = {
   id: string; version: number; source_session_id: string | null; content: string;
   kind: 'general' | 'task' | null; status: string;
@@ -41,7 +46,7 @@ export type Pathway = {
   id: string; version: number; title: string; description: string; steps: string;
   status: 'active' | 'archived'; goal_ids: string[];
 };
-export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[]; pathways: Pathway[] };
+export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[]; pathways: Pathway[]; lessons: Lesson[] };
 export type SaveRequest = {
   operation_id: string; expected_version: number | null;
   action: 'save_draft' | 'complete'; session: SessionInput;

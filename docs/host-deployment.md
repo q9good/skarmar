@@ -1,6 +1,6 @@
 # 常开主机部署：Tailscale 验收与 Cloudflare Tunnel
 
-日期：2026-10-17。目标是一台有出站网络、没有公网 IP 的常开主机。先通过 Tailscale Serve 私有 HTTPS 验收；需要让家人／老师直接通过浏览器访问时，再接入 Cloudflare Tunnel。当前尚未连接用户主机或发布真实入口。
+日期：2026-10-18。目标是一台有出站网络、没有公网 IP 的常开主机。用户的 evo 主机目前采用原生 Rust 服务和 SQLite，通过 Tailscale Serve 提供私有 HTTPS；临时 Cloudflare Quick Tunnel 由 Mac 经 Tailscale 转发到 evo，详见 [交接状态](handoff.md)。以下 Compose 步骤保留为其他主机的可选部署方式，不表示 evo 当前使用 Docker。
 
 ## 部署结构
 
@@ -15,7 +15,7 @@ flowchart LR
     DB --> Backup[一致性备份 / 其他设备副本]
 ```
 
-Docker Compose 定义 `app` 和可选的 `cloudflared`；Tailscale 使用主机已有客户端。Rust 自带静态页面与 `/api` 路由，浏览器使用同域 API。主机端口仅映射到 `127.0.0.1`；Serve 和 Tunnel 均代理该应用。浏览器访问的网址必须与 `SKARMA_PUBLIC_URL` 一致，每次部署选择一个正式入口。
+以下 Docker Compose 定义 `app` 和可选的 `cloudflared`；Tailscale 使用主机已有客户端。Rust 自带静态页面与 `/api` 路由，浏览器使用同域 API。主机端口仅映射到 `127.0.0.1`；Serve 和 Tunnel 均代理该应用。浏览器访问的网址必须匹配 `SKARMA_PUBLIC_URL` 或已明确配置的额外 HTTPS 来源。
 
 先按 Linux + Docker Engine / Compose 准备；镜像在主机上原生构建，可用于 x86_64 / ARM64。当前实际容器验收针对 x86_64，ARM64 与用户主机网络仍需现场验收。Windows / NAS 可使用 Linux 容器，需按实际 Docker 环境调整启动方式。
 
@@ -25,6 +25,7 @@ Docker Compose 定义 `app` 和可选的 `cloudflared`；Tailscale 使用主机�
 
 - 一个部署实例对应一个共享空间。每人独立账号；所有正常成员均可查看和填写该空间全部记录，管理员额外管理成员。尚未做多孩子档案或逐记录授权。
 - 私有站点的登录页提供注册申请：申请人填写账号、称呼、邮箱和自设密码，管理员在 **我的账号 → 待审批申请** 中批准或拒绝。批准前不能登录；批准后成为普通成员。拒绝后可重新申请。首个管理员仍从主机 CLI 创建，没有默认账号或密码。
+- “今天”可直接新增日常上课记录，无需训练计划。日期默认今天，可修改；课程名称和授课老师必填，上课内容、目标、问题与家庭配合事项可选。记录在“记录”页回看和修改，也包含在 Excel 导出中。
 - 待审申请只保存 Argon2id 密码哈希，不向管理员或 API 返回密码。注册请求按账号和邮箱限速，并有全局速率与待审数量上限。备份包含待审申请及邮箱，须按账号数据保护。
 - 当前 evo 没有邮件发送服务，申请会显示在站内待审列表，管理员可手动刷新。邮件提醒管理员需另配已验证发件地址、收件邮箱和 SMTP／邮件 API 凭证；尚未发送任何通知邮件。
 - 密码使用 Argon2id 加盐哈希；数据库仅保存会话令牌的 SHA-256 哈希。
@@ -125,7 +126,7 @@ docker compose logs --tail 50 cloudflared
 
 ## 备份与恢复
 
-查阅和归档记录可在 **我的账号 → 导出 Excel** 下载十张工作表，包含途径及两类经验绑定，详见 [Excel 导出](excel-export.md)。导出不包含账号凭证；系统恢复使用下述 SQLite 备份。
+查阅和归档记录可在 **我的账号 → 导出 Excel** 下载十一张工作表，包含上课记录、途径及两类经验绑定，详见 [Excel 导出](excel-export.md)。导出不包含账号凭证；系统恢复使用下述 SQLite 备份。
 
 在线备份使用 SQLite Backup API，完整性检查后复制到主机，SHA-256 校验复制结果；无需暂停记录。
 
