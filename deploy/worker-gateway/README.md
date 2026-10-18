@@ -6,6 +6,8 @@ the host running `cloudflared`. The existing native app and SQLite database stay
 on that host. This gateway does not use the separate Durable Object app in the
 root Wrangler configuration.
 
+Detailed Chinese operations guide: [deployment, maintenance and rollback](../../docs/cloudflare-workers-vpc-deployment.md).
+
 ## Configure and deploy
 
 1. Create a named Cloudflare Tunnel and run its connector as a persistent service
@@ -18,6 +20,10 @@ root Wrangler configuration.
    mode-0600 file and use `--token-file`, rather than putting it in command-line
    arguments. Enable the service and the user's lingering manager as appropriate
    for the host, so it reconnects without an open SSH session.
+   If a confirmed fake-IP proxy DNS sends edge discovery to `198.18.x.x`, the
+   optional `refresh-edge-hosts.py` and `cloudflared-fake-ip.conf.example` provide
+   a connector-only hosts view using bubblewrap. Follow the operations guide;
+   this is not required on a normal network and does not change global DNS.
 2. Create an HTTP Workers VPC Service for that tunnel, with hostname `localhost`
    and HTTP port `3001`. It grants this binding access to the one app service.
 3. Copy `wrangler.example.toml` to `wrangler.toml` in this folder. Replace

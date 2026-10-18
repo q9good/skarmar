@@ -1,0 +1,8 @@
+# Optional systemd user-service drop-in, only for a fake-IP DNS proxy network.
+# Install as ~/.config/systemd/user/skarma-cloudflared.service.d/edge-dns.conf.
+# Requires python3, bubblewrap, and the existing local forward proxy below.
+[Service]
+Environment=GODEBUG=netdns=go
+ExecStartPre=/usr/bin/python3 %h/.local/bin/skarma-refresh-edge-hosts --proxy http://127.0.0.1:7890 --output %h/.config/skarma/cloudflared-hosts
+ExecStart=
+ExecStart=/usr/bin/bwrap --die-with-parent --ro-bind / / --ro-bind %h/.config/skarma/cloudflared-hosts /etc/hosts -- %h/.local/bin/cloudflared tunnel --no-autoupdate --edge-ip-version 4 --protocol quic --metrics 127.0.0.1:20251 --loglevel info run --token-file %h/.config/skarma/cloudflared-token

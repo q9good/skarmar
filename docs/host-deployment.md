@@ -98,6 +98,8 @@ Worker 通过 VPC Service 转发到主机上的命名 Tunnel，再到 `http://lo
 普通公开 hostname Tunnel 的自有域名要求不适用于这条路径。
 
 网关代码与配置示例见 [deploy/worker-gateway](../deploy/worker-gateway/README.md)。
+完整操作、fake-IP DNS 排障、常驻服务、验收与回滚见
+[固定 Cloudflare 网址部署手册](cloudflare-workers-vpc-deployment.md)。
 连接程序需要 `cloudflared` 2025.7.0 或更新版本，必须能出站使用 UDP 7844 的 QUIC；
 HTTP/2 不能承载 Workers VPC。主机可用用户级常驻服务保持连接，令牌保存在私有文件并
 通过 `--token-file` 读取。为服务设置自动重启，按主机情况启用用户管理器 linger。

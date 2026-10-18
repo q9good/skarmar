@@ -60,9 +60,9 @@
       "id": "T09",
       "title": "按需接入 Cloudflare Tunnel 与实际手机网络验收",
       "status": "in_progress",
-      "evidence": "docs/host-deployment.md",
-      "verification": "临时入口仍由 Mac 转发。已确认无需自有域名的 Workers VPC 方案：固定 workers.dev → VPC Service → 主机命名 Tunnel → 现有应用与 SQLite。主机经现有 IPv4 TUN 路由到两个 Cloudflare Edge 的 QUIC 握手及证书检查通过。网关的 5 项转发测试和 Wrangler dry-run 通过，主机常驻服务已准备。",
-      "blocker": "等待用户通过隐藏输入将命名 Tunnel 的专用 token 保存到主机，再启用连接器、绑定 VPC Service 并发布固定 Worker；随后仍需手机实际网络验收。"
+      "evidence": "docs/cloudflare-workers-vpc-deployment.md",
+      "verification": "用户已安全保存 Tunnel token，HTTP VPC Service 与固定 workers.dev Worker 已发布。主机 fake-IP DNS 经进程专用 hosts 覆盖后曾建立 4 条 QUIC 连接，ready=200，公开首页经主机代理=200。网关 5 项测试与 dry-run 通过；原生应用健康及精确 Worker 来源加载通过。详细部署、维护、排障与回滚手册已编写。",
+      "blocker": "随后入口出现 503，Mac 新 SSH、私有 HTTPS 与 IP ping 同时超时，尽管 Tailscale 控制连接在线；等待主机端检查与恢复后完成来源/会话保护、重连及手机网络验收。旧 Mac Quick Tunnel 尚未主动停止。"
     },
     {
       "id": "T10",

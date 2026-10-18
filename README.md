@@ -55,6 +55,7 @@ Remote host deployment is still pending.
 - [Cloudflare free deployment research and Rust verification (中文)](docs/cloudflare-deployment-research.md)
 - [Native / Cloudflare configuration and startup (中文)](docs/runtime-storage.md)
 - [Host deployment with Tailscale / Cloudflare, login and backups (中文)](docs/host-deployment.md)
+- [Stable workers.dev gateway: deployment, network diagnosis and rollback (中文)](docs/cloudflare-workers-vpc-deployment.md)
 - [Excel download and included data (中文)](docs/excel-export.md)
 - [Purpose, reusable pathways and experience bindings (中文)](docs/purpose-pathway-experience.md)
 - [Planning overview, goal progress and balanced training coverage (中文)](docs/planning-overview.md)
