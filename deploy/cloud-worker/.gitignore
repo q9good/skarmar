@@ -1,0 +1,4 @@
+# Account-specific configuration and secrets remain local.
+wrangler.toml
+.dev.vars
+.dev.vars.*

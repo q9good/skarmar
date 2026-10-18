@@ -9,6 +9,7 @@ import { resolve } from 'node:path';
 import { Miniflare } from 'miniflare';
 import { authContract, ownerPassword } from './auth-contract.mjs';
 import { knowledgeContract } from './knowledge-contract.mjs';
+import { lessonContract } from './lesson-contract.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 await mkdir(resolve(root, '.local'), { recursive: true });
@@ -148,6 +149,7 @@ async function contract(label, send, exec) {
   for (const response of responses) await response.text();
   const final = await api('GET', '/api/state');
   assert.equal(final.sessions.find(record => record.id === other).version, 2);
+  await lessonContract(label, api);
   await knowledgeContract(label, api, exec);
   console.log(`PASS ${label}: CRUD/history, late SQL rollback, atomic completion, concurrent replay, version conflict and follow-up evidence`);
 }

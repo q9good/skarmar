@@ -1,5 +1,7 @@
 # 固定 Cloudflare 网址连接常开主机：部署与维护手册
 
+当前上线方向已改为 [完整 Cloudflare 托管](cloudflare-hosted-deployment.md)，先建立空白实例再迁移旧数据。本手册保留主机 VPC 代理的操作与排障记录。
+
 核验日期：2026-10-18。本手册对应 `deploy/worker-gateway/`，适用于原生应用与 SQLite
 已经运行在常开 Linux 主机、希望获得固定 `workers.dev` 网址的情况。账号 ID、资源 ID、
 实际网址和主机地址用占位符表示，实际部署清单保存在管理员的私有记录中。

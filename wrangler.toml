@@ -1,7 +1,8 @@
 name = "skarma-web"
 main = "crates/worker/build/index.js"
 compatibility_date = "2026-10-09"
-# The prototype still needs production authentication. Local dev and dry-run work without publishing.
+# Keep the development config unpublished. Full hosted production deployment:
+# deploy/cloud-worker/wrangler.toml (private copy of the checked-in example).
 workers_dev = false
 
 [build]

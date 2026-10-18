@@ -1,6 +1,8 @@
 # 常开主机部署：Tailscale 验收与 Cloudflare Tunnel
 
-日期：2026-10-18。目标是一台有出站网络、没有公网 IP 的常开主机。用户的 evo 主机目前采用原生 Rust 服务和 SQLite，通过 Tailscale Serve 提供私有 HTTPS；临时 Cloudflare Quick Tunnel 由 Mac 经 Tailscale 转发到 evo，详见 [交接状态](handoff.md)。以下 Compose 步骤保留为其他主机的可选部署方式，不表示 evo 当前使用 Docker。
+日期：2026-10-19。目标是一台有出站网络、没有公网 IP 的常开主机。用户的 evo 主机原部署采用原生 Rust 服务和 SQLite，通过 Tailscale Serve 提供私有 HTTPS；临时 Cloudflare Quick Tunnel 曾由 Mac 经 Tailscale 转发，现已停止，详见 [交接状态](handoff.md)。以下 Compose 步骤保留为其他主机的可选部署方式，不表示 evo 使用 Docker。
+
+当前主机数据连接异常，用户已选择先上线空白的 [完整 Cloudflare 托管实例](cloudflare-hosted-deployment.md)。本文保留原主机的部署与恢复步骤；旧主机数据尚未迁移。
 
 ## 部署结构
 

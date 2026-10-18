@@ -1,5 +1,7 @@
 # Cloudflare 免费部署调研
 
+2026-10-18 更新：已发布网页、Rust API 与 SQLite-backed Durable Object 的完整云端实例，当前操作见 [Cloudflare 托管手册](cloudflare-hosted-deployment.md)。下文保留早期调研和当时验收记录，其中“尚未上线”等表述属于历史快照。
+
 核验日期：2026-10-09（北京时间）。本次查阅当前官方文档、已发布 Rust SDK 和官方示例，并用本地 Workers 运行时验证关键路径。后续已实现完整原型的本地／Worker 双入口与存储适配，见下节；尚未创建 Cloudflare 线上资源。
 
 ## 当前实现进展

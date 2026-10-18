@@ -1,7 +1,9 @@
 // Real HTTP authentication contract, shared by native and Worker validation.
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { excelContract } from './excel-contract.mjs';
 import { knowledgeContract } from './knowledge-contract.mjs';
+import { lessonContract } from './lesson-contract.mjs';
 export const ownerPassword = 'synthetic-owner-contract-password';
 export async function authContract(label, send, expire) {
   async function call(method, path, body, cookie, expected = 200, origin = 'https://contract.local') {
@@ -26,6 +28,7 @@ export async function authContract(label, send, expire) {
   await call('GET', '/api/export.xlsx', undefined, undefined, 401);
   await call('POST', '/api/pathways', {}, undefined, 401);
   await call('POST', '/api/experiences', {}, undefined, 401);
+  await call('PUT', `/api/lessons/${randomUUID()}`, {}, undefined, 401);
   await call('POST', '/api/auth/login', { username: 'owner', password: 'incorrect' }, undefined, 401);
   const owner = await login('owner', ownerPassword);
   await call('GET', '/api/state', undefined, owner);
@@ -57,6 +60,7 @@ export async function authContract(label, send, expire) {
   }, owner);
   let teacher = await login('teacher', 'synthetic-member-password');
   await call('GET', '/api/state', undefined, teacher);
+  await lessonContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
   await knowledgeContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
   await excelContract(label, send, teacher);
   await call('PUT', `/api/auth/users/${member.id}`, { active: false, password: 'short' }, owner, 422);

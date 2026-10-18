@@ -1,6 +1,6 @@
 # 本地与 Cloudflare 双运行环境
 
-日期：2026-10-13。两种入口已实现并在本机验收，Cloudflare 线上部署尚未执行。认证规则已加入共用 Rust 代码；正式目标为 [主机 + Cloudflare Tunnel](host-deployment.md)。
+日期：2026-10-19。两种入口已实现并通过本机双存储验收。因旧主机数据通道不可用，用户确认先上线空白的完整 Cloudflare 实例，旧数据待恢复后再迁移。网页、Rust API 与 SQLite-backed Durable Object 已发布，匿名保护与来源检查通过；用户已安全初始化管理员并确认登录，临时初始化 secret 已删除。当前操作见 [完整 Cloudflare 托管手册](cloudflare-hosted-deployment.md)，[主机 + Tunnel](host-deployment.md) 保留为原部署方案。
 
 ## 架构与配置
 
@@ -99,7 +99,7 @@ npm run cf:dev -- --port 8788 --persist-to .local/cf-test
 - 两边的 SQL 文件统一位于 `crates/core/migrations`，`schema_migrations` 记录已应用版本。原型旧库没有该表时可补建并记录现有两版结构，已有记录保留；更高版本的库会被拒绝。
 - 原生入口在事务之外为连接启用外键；Cloudflare 的 SQLite-backed 对象存储本身强制外键检查。
 
-当前 `SKARMA_SPACE` 是原型单空间配置。正式多成员授权和按档案访问仍待实现，不能把它当成权限系统。
+当前 `SKARMA_SPACE` 是单共享空间配置，不是权限系统。已实现独立成员账号、管理员审批与成员管理；正常成员共享该空间全部记录，按孩子档案或逐条记录授权仍待实现。
 
 ## 验证
 

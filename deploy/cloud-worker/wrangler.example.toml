@@ -1,0 +1,35 @@
+name = "skarma-web"
+main = "../../crates/worker/build/index.js"
+compatibility_date = "2026-10-18"
+workers_dev = true
+preview_urls = false
+# Copy to wrangler.toml and set account_id for the intended account.
+
+[build]
+command = "worker-build --release"
+# Wrangler's build.cwd is relative to the shell's working directory.
+# Run deployment commands from the repository root.
+cwd = "crates/worker"
+
+[assets]
+directory = "../../apps/client/dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api", "/api/*"]
+
+[vars]
+SKARMA_STORAGE = "durable_object"
+SKARMA_DEMO = "0"
+SKARMA_SPACE = "default"
+SKARMA_AUTH = "required"
+SKARMA_PRODUCTION = "1"
+SKARMA_PUBLIC_URL = "https://skarma-web.ACCOUNT_SUBDOMAIN.workers.dev"
+SKARMA_INITIAL_ADMIN_USER = "owner"
+SKARMA_INITIAL_ADMIN_NAME = "管理员"
+# Set SKARMA_INITIAL_ADMIN_PASSWORD through Wrangler secret put, never here.
+
+[durable_objects]
+bindings = [{ name = "SKARMA_DB", class_name = "SkarmaSpace" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SkarmaSpace"]

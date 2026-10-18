@@ -45,9 +45,11 @@ The prototype supports training plans, per-goal results, difficulty and experien
 follow-up, draft recovery, and versioned goal reviews. It shares Rust business rules and API
 routes across native SQLite and Cloudflare Durable Objects storage. Account login,
 administrator member management, reusable pathways with many-to-many goal mappings,
-experience bindings, and authenticated Excel export are implemented. Self-hosting supports
-private HTTPS through Tailscale Serve and public access through Cloudflare Tunnel.
-Remote host deployment is still pending.
+experience bindings, independent daily class records and authenticated Excel export
+are implemented. The current hosted deployment runs the website, Rust API and
+SQLite-backed Durable Object on Cloudflare. Self-hosting through Tailscale Serve
+or Cloudflare Tunnel remains available; the previous host currently needs a
+separate network recovery before its data can be migrated.
 
 - [Product plan and requirements (中文)](docs/product-plan.md)
 - [Development and validation (中文)](docs/development.md)
@@ -55,6 +57,7 @@ Remote host deployment is still pending.
 - [Cloudflare free deployment research and Rust verification (中文)](docs/cloudflare-deployment-research.md)
 - [Native / Cloudflare configuration and startup (中文)](docs/runtime-storage.md)
 - [Host deployment with Tailscale / Cloudflare, login and backups (中文)](docs/host-deployment.md)
+- [Full Cloudflare hosting: deployment, administrator setup and maintenance (中文)](docs/cloudflare-hosted-deployment.md)
 - [Stable workers.dev gateway: deployment, network diagnosis and rollback (中文)](docs/cloudflare-workers-vpc-deployment.md)
 - [Excel download and included data (中文)](docs/excel-export.md)
 - [Purpose, reusable pathways and experience bindings (中文)](docs/purpose-pathway-experience.md)
