@@ -4,24 +4,125 @@
   "timezone": "Asia/Shanghai",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "ac7c1f59872eb9be9d0c71c007fb6487dd8e9e7f",
+  "implementationCommit": "205c506cc5f5c1bfd41317dcca1dd6143d0dd39c",
   "tasks": [
-    {"id":"T01","title":"训练计划、逐目标观察、困难和经验闭环","status":"done","evidence":"docs/development.md"},
-    {"id":"T02","title":"Rust 原生 SQLite 与 Cloudflare Worker / Durable Object 双环境","status":"done","evidence":"docs/runtime-storage.md"},
-    {"id":"T03","title":"登录、成员管理、主机部署包与备份恢复","status":"done","evidence":"docs/host-deployment.md"},
-    {"id":"T04","title":"十张工作表的 Excel 全量导出","status":"done","evidence":"docs/excel-export.md"},
-    {"id":"T05","title":"目的和途径多对多、经验双类绑定","status":"done","evidence":"docs/purpose-pathway-experience.md"},
-    {"id":"T06","title":"规划总览、环形图、训练覆盖与草稿规划入口","status":"done","evidence":"docs/planning-overview.md"},
-    {"id":"T07","title":"开发代码、任务状态、方案和示例截图的 Git 交接","status":"done","evidence":"docs/handoff.md","verification":"14 项 test:sync 通过；用户电脑工作区需按交接说明拉取。"},
-    {"id":"T08","title":"连接常开主机并验收 Tailscale Serve 私有 HTTPS","status":"blocked","blocker":"云环境尚未配置平台 Tailscale VPN / TCP 接入，SSH 探测停在出口代理；服务器尚未部署。","evidence":"docs/host-deployment.md"},
-    {"id":"T09","title":"按需接入 Cloudflare Tunnel 与实际手机网络验收","status":"todo","evidence":"docs/host-deployment.md"},
-    {"id":"T10","title":"训练中选择实际使用的途径并保存版本快照","status":"todo","evidence":"docs/purpose-pathway-experience.md"},
-    {"id":"T11","title":"原生 iOS / Android、语音和训练游戏","status":"todo","evidence":"docs/product-plan.md"},
-    {"id":"T12","title":"同步云环境启动说明到新的配置草案","status":"blocked","blocker":"旧草案 stale_base；需从当前环境设置新建 setup 会话后与新草案合并，不能重发旧草案。","evidence":"docs/handoff.md"}
+    {
+      "id": "T01",
+      "title": "训练计划、逐目标观察、困难和经验闭环",
+      "status": "done",
+      "evidence": "docs/development.md"
+    },
+    {
+      "id": "T02",
+      "title": "Rust 原生 SQLite 与 Cloudflare Worker / Durable Object 双环境",
+      "status": "done",
+      "evidence": "docs/runtime-storage.md"
+    },
+    {
+      "id": "T03",
+      "title": "登录、成员管理、主机部署包与备份恢复",
+      "status": "done",
+      "evidence": "docs/host-deployment.md"
+    },
+    {
+      "id": "T04",
+      "title": "十张工作表的 Excel 全量导出",
+      "status": "done",
+      "evidence": "docs/excel-export.md"
+    },
+    {
+      "id": "T05",
+      "title": "目的和途径多对多、经验双类绑定",
+      "status": "done",
+      "evidence": "docs/purpose-pathway-experience.md"
+    },
+    {
+      "id": "T06",
+      "title": "规划总览、环形图、训练覆盖与草稿规划入口",
+      "status": "done",
+      "evidence": "docs/planning-overview.md"
+    },
+    {
+      "id": "T07",
+      "title": "开发代码、任务状态、方案和示例截图的 Git 交接",
+      "status": "done",
+      "evidence": "docs/handoff.md",
+      "verification": "14 项 test:sync 通过；用户电脑工作区需按交接说明拉取。"
+    },
+    {
+      "id": "T08",
+      "title": "连接常开主机并验收 Tailscale Serve 私有 HTTPS",
+      "status": "done",
+      "evidence": "docs/host-deployment.md",
+      "verification": "已在用户常开主机原生部署并通过 Tailscale Serve HTTPS 验收；升级前建立数据库一致性备份，迁移到版本 5 后管理员仍可用。"
+    },
+    {
+      "id": "T09",
+      "title": "按需接入 Cloudflare Tunnel 与实际手机网络验收",
+      "status": "in_progress",
+      "evidence": "docs/host-deployment.md",
+      "verification": "临时 Cloudflare Quick Tunnel 由 Mac 经 Tailscale 转发到常开主机；公开首页和健康检查为 200、未登录数据为 401、陌生来源写入为 403。",
+      "blocker": "正式稳定 Tunnel 仍需接入 Cloudflare 的域名；常开主机到 Cloudflare Edge 直连超时，临时入口依赖 Mac 保持在线。"
+    },
+    {
+      "id": "T10",
+      "title": "训练中选择实际使用的途径并保存版本快照",
+      "status": "todo",
+      "evidence": "docs/purpose-pathway-experience.md"
+    },
+    {
+      "id": "T11",
+      "title": "原生 iOS / Android、语音和训练游戏",
+      "status": "todo",
+      "evidence": "docs/product-plan.md"
+    },
+    {
+      "id": "T12",
+      "title": "同步云环境启动说明到新的配置草案",
+      "status": "blocked",
+      "blocker": "旧草案 stale_base；需从当前环境设置新建 setup 会话后与新草案合并，不能重发旧草案。",
+      "evidence": "docs/handoff.md"
+    },
+    {
+      "id": "T13",
+      "title": "自助注册申请与管理员站内审批",
+      "status": "done",
+      "evidence": "docs/host-deployment.md",
+      "verification": "Rust 账号/迁移测试、浏览器注册审批流程、主机上线后健康与管理员保留检查通过；邮件提醒尚未配置。"
+    },
+    {
+      "id": "T14",
+      "title": "腾讯文档 Excel/CSV 导入",
+      "status": "in_progress",
+      "evidence": "docs/product-plan.md",
+      "blocker": "等待用户提供当前多维表格的实际导出文件以核对字段与关联；未完成的代码保留在独立工作区，未进入线上分支。"
+    },
+    {
+      "id": "T15",
+      "title": "无需训练计划的每日上课记录",
+      "status": "todo",
+      "evidence": "docs/product-plan.md",
+      "verification": "课程名称和授课老师必填；记录上课内容、目标、存在问题、家里需配合事项。"
+    }
   ],
   "artifacts": [
-    {"path":"docs/artifacts/validation/login.png","title":"登录页面","sha256":"03b102e2073257c83ec763d614733221b6b5f2473752014e953e5dd0fe2f8aba","synthetic":true},
-    {"path":"docs/artifacts/validation/pathways.png","title":"途径目录","sha256":"56abc303fedd6b7d2769001b0283bbf721d1c870710f495c1e9a291cf27a4871","synthetic":true},
-    {"path":"docs/artifacts/validation/planning-charts.png","title":"规划总览环形图","sha256":"4bcf47a4065f2c1c46f57ec909a7eb0fcc7ceb5ef852cccf76792828357cf6fe","synthetic":true}
+    {
+      "path": "docs/artifacts/validation/login.png",
+      "title": "登录页面",
+      "sha256": "03b102e2073257c83ec763d614733221b6b5f2473752014e953e5dd0fe2f8aba",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/pathways.png",
+      "title": "途径目录",
+      "sha256": "56abc303fedd6b7d2769001b0283bbf721d1c870710f495c1e9a291cf27a4871",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/planning-charts.png",
+      "title": "规划总览环形图",
+      "sha256": "4bcf47a4065f2c1c46f57ec909a7eb0fcc7ceb5ef852cccf76792828357cf6fe",
+      "synthetic": true
+    }
   ]
 }
