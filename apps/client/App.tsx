@@ -355,6 +355,8 @@ function Workspace() {
             <View style={styles.sectionHeader}><Text style={styles.title}>{pageTitle}</Text>
               <Button title="刷新" secondary disabled={busy} onPress={() => void safely(async () => { await refresh(); })} /></View>
             {tab === 'today' && <>
+              <Text style={styles.subtitle}>长期关注</Text>
+              {data.goals.filter(g => g.level === 'long').map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}
               <View style={styles.hero}>
                 <Text style={styles.eyebrow}>{today.replaceAll('-', '.')} · 每一步都值得记录</Text>
                 <Text style={styles.heroTitle}>把今天的小进步，{width < 500 ? '\n' : ''}留下来。</Text>
@@ -381,8 +383,6 @@ function Workspace() {
                 <Button title="查看跟进" secondary onPress={() => setTab('followups')} /></Card>}
               {dueGoals.length > 0 && <><Text style={styles.subtitle}>待复盘目标 · {dueGoals.length}</Text>
                 {dueGoals.map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}</>}
-              <Text style={styles.subtitle}>长期关注</Text>
-              {data.goals.filter(g => g.level === 'long').map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}
             </>}
             {tab === 'goals' && <>
               <Hint>目标记录想实现的目的；途径记录具体怎样做。长期方向持续关注，中短期目标进入训练。</Hint>
