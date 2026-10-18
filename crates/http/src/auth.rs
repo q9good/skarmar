@@ -61,6 +61,24 @@ impl AuthConfig {
         if !production && let Some(origin) = lookup("SKARMA_WEB_ORIGIN") {
             origins.push(normalize_origin(&origin)?);
         }
+        if let Some(additional) = lookup("SKARMA_ADDITIONAL_PUBLIC_URLS") {
+            for value in additional.split(',') {
+                let value = value.trim();
+                if value.is_empty() {
+                    return Err("SKARMA_ADDITIONAL_PUBLIC_URLS 不能包含空网址".into());
+                }
+                let origin = normalize_origin(value)?;
+                if production && !origin.starts_with("https://") {
+                    return Err("生产环境的额外公开网址必须使用 HTTPS".into());
+                }
+                if !origins.contains(&origin) {
+                    origins.push(origin);
+                }
+            }
+        }
+        if origins.len() > 4 {
+            return Err("最多允许 4 个精确网址".into());
+        }
         Ok(Self {
             demo,
             secure_cookie,
@@ -92,7 +110,9 @@ fn normalize_origin(value: &str) -> std::result::Result<String, String> {
     let uri: Uri = value.parse().map_err(|_| "网址格式错误")?;
     if !matches!(uri.scheme_str(), Some("http" | "https"))
         || uri.authority().is_none()
-        || uri.authority().is_some_and(|a| a.as_str().contains('@'))
+        || uri
+            .authority()
+            .is_some_and(|a| a.as_str().contains('@') || a.as_str().contains('*'))
         || uri.path() != "/"
         || uri.query().is_some()
     {

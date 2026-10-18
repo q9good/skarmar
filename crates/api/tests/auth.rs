@@ -838,6 +838,33 @@ fn bootstrap_and_recovery_are_local_only_and_deployment_config_fails_closed() {
             .then(|| "https://example.test/path".into()))
         .is_err()
     );
+    let extra = AuthConfig::load(&config, |key| match key {
+        "SKARMA_PRODUCTION" => Some("1".into()),
+        "SKARMA_PUBLIC_URL" => Some("https://evo.example.test".into()),
+        "SKARMA_ADDITIONAL_PUBLIC_URLS" => Some("https://temporary.example.test".into()),
+        _ => None,
+    })
+    .unwrap();
+    assert_eq!(
+        extra.origins,
+        ["https://evo.example.test", "https://temporary.example.test"]
+    );
+    assert!(extra.secure_cookie);
+    for invalid in [
+        "http://temporary.example.test",
+        "https://*.example.test",
+        "https://example.test,",
+    ] {
+        assert!(
+            AuthConfig::load(&config, |key| match key {
+                "SKARMA_PRODUCTION" => Some("1".into()),
+                "SKARMA_PUBLIC_URL" => Some("https://evo.example.test".into()),
+                "SKARMA_ADDITIONAL_PUBLIC_URLS" => Some(invalid.into()),
+                _ => None,
+            })
+            .is_err()
+        );
+    }
 }
 
 async fn queued_request(path: &str) {
