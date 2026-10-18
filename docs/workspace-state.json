@@ -4,7 +4,7 @@
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "2749f64bbd4ab21057e1ffb27472a805c990e206",
+  "implementationCommit": "bd5ed259e7515242999bf11f3ed2b6d731b10b26",
   "tasks": [
     {
       "id": "T01",
@@ -129,10 +129,9 @@
     {
       "id": "T19",
       "title": "今天页将长期关注置顶",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "apps/client/App.tsx",
-      "verification": "长期关注与长期目标卡片已移到今天页标题下、引导区之前；TypeScript 和 Web 构建通过。",
-      "blocker": "用户要求先解决大陆访问入口，暂不发布；改动保留本地。"
+      "verification": "长期关注标题与长期目标卡片已移到今天页标题栏后、引导区之前，实现提交 bd5ed25；2026-10-19 重新执行 TypeScript 与 Web 构建均通过。用户明确要求推送远端用于云端继续开发；仍暂停生产部署，代码完成不等于线上已更新。"
     },
     {
       "id": "T20",
@@ -154,7 +153,7 @@
       "title": "libp2p 家庭主同步与网盘仅备份可行性评估",
       "status": "done",
       "evidence": "docs/libp2p-family-sync-proposal.md",
-      "verification": "已核对官方 RN/WebRTC 路线、Circuit Relay v2 在线流转发与预约限制、手机后台调度，及现有HTTP/草稿/单库事务与多副本同步的差距。完成拟议协议、备份和双真机验收方案；未安装依赖、实现同步、验证Expo57/RN0.86真机、选定公共relay或部署。网盘仅备份时异步送达需要设备传播路径，不能承诺始终自动实时同步。"
+      "verification": "已核对官方 RN/WebRTC 路线、Circuit Relay v2 在线流转发与预约限制、手机后台调度，及现有HTTP/草稿/单库事务与多副本同步的差距。完成拟议协议、备份和双真机验收方案；未安装依赖、实现同步、验证Expo57/RN0.86真机、选定公共relay或部署。网盘仅备份时异步送达需要设备传播路径，不能承诺始终自动实时同步。 用户随后允许复用长期在线家庭电脑作为持久同步中心，手机可错时连接交接变更；该主机当前连接未恢复，云端先模拟节点，真实接入另行验收。"
     }
   ],
   "artifacts": [
