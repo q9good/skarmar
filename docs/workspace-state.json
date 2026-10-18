@@ -61,8 +61,8 @@
       "title": "按需接入 Cloudflare Tunnel 与实际手机网络验收",
       "status": "in_progress",
       "evidence": "docs/host-deployment.md",
-      "verification": "临时 Cloudflare Quick Tunnel 由 Mac 经 Tailscale 转发到常开主机；新版公开首页为 200、未登录数据为 401，私有首页和健康检查为 200，两入口返回同一新版资源。此前陌生来源写入为 403。",
-      "blocker": "正式稳定 Tunnel 仍需接入 Cloudflare 的域名；常开主机到 Cloudflare Edge 直连超时，临时入口依赖 Mac 保持在线。"
+      "verification": "临时入口仍由 Mac 转发。已确认无需自有域名的 Workers VPC 方案：固定 workers.dev → VPC Service → 主机命名 Tunnel → 现有应用与 SQLite。主机经现有 IPv4 TUN 路由到两个 Cloudflare Edge 的 QUIC 握手及证书检查通过。网关的 5 项转发测试和 Wrangler dry-run 通过，主机常驻服务已准备。",
+      "blocker": "等待用户通过隐藏输入将命名 Tunnel 的专用 token 保存到主机，再启用连接器、绑定 VPC Service 并发布固定 Worker；随后仍需手机实际网络验收。"
     },
     {
       "id": "T10",

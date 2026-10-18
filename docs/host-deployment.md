@@ -90,6 +90,29 @@ tailscale serve status
 
 ## 再接入 Cloudflare Tunnel（可选）
 
+### 使用固定 workers.dev 网址与主机现有数据
+
+没有自有域名时，可使用 Workers VPC：浏览器访问固定的 `workers.dev` 网址，
+Worker 通过 VPC Service 转发到主机上的命名 Tunnel，再到 `http://localhost:3001`。
+应用和 SQLite 继续保留在主机上。此方式不要求把域名接入 Cloudflare；VPC 当前为 Beta。
+普通公开 hostname Tunnel 的自有域名要求不适用于这条路径。
+
+网关代码与配置示例见 [deploy/worker-gateway](../deploy/worker-gateway/README.md)。
+连接程序需要 `cloudflared` 2025.7.0 或更新版本，必须能出站使用 UDP 7844 的 QUIC；
+HTTP/2 不能承载 Workers VPC。主机可用用户级常驻服务保持连接，令牌保存在私有文件并
+通过 `--token-file` 读取。为服务设置自动重启，按主机情况启用用户管理器 linger。
+
+在 Cloudflare 创建命名 Tunnel 和目标为该主机 `localhost:3001` 的 HTTP VPC Service，
+使用此 Service 的 ID 配置网关。部署时指定网关目录的配置文件；将返回的精确 HTTPS
+来源加入主机应用的 `SKARMA_ADDITIONAL_PUBLIC_URLS` 并重启应用。应用继续校验登录、
+请求来源和版本，账号与现有业务数据不变。最终验证应包括连接器重启后网址保持、
+首页与健康检查、未登录数据拒绝、正常来源写入及陌生来源拒绝。
+
+参考 [官方私有网站代理示例](https://developers.cloudflare.com/workers-vpc/examples/private-api/)
+和 [VPC Tunnel 要求](https://developers.cloudflare.com/workers-vpc/configuration/tunnel/)。
+
+### 使用自有域名的普通 Tunnel
+
 需要不安装 Tailscale 的设备访问时，先备份，在 `.env` 将 `SKARMA_PUBLIC_URL` 改为实际 Cloudflare HTTPS 域名，再执行 `docker compose up -d app`。应用、持久卷与数据保持原位。网址改变后，用户改用新地址重新登录；旧地址的浏览器本机草稿不会自动迁移，应先保存。
 
 1. 在 [Cloudflare 控制台](https://dash.cloudflare.com/?to=/:account/tunnels) 的 **Networking → Tunnels** 创建隧道，获取 connector token。

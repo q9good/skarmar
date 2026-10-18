@@ -1,0 +1,10 @@
+name = "skarma-gateway"
+main = "gateway.mjs"
+compatibility_date = "2026-10-18"
+workers_dev = true
+preview_urls = false
+
+[[vpc_services]]
+binding = "VPC_SERVICE"
+service_id = "REPLACE_WITH_VPC_SERVICE_ID"
+remote = true

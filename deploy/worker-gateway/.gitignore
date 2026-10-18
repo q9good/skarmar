@@ -1,0 +1,2 @@
+# Account-specific deployment config is kept on the deploying machine.
+wrangler.toml

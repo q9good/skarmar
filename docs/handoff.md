@@ -50,7 +50,7 @@ npm run sync:push
 
 结构化任务清单见 [workspace-state.json](workspace-state.json)，用稳定任务 ID 记录完成、进行中、受阻和待办。已实现登录与成员管理、训练闭环、十表 Excel、目的／途径／经验关系及规划环形图。相应设计、统计口径与验证入口均已在仓库文档内。
 
-应用已经在用户常开主机原生部署，通过 Tailscale Serve 私有 HTTPS 访问；新版本在独立目录构建、先备份再切换，现有管理员和数据保留。临时 Cloudflare Quick Tunnel 由 Mac 经 Tailscale 转发到主机，公开入口仍要求应用登录，未登录业务数据返回 401。该随机网址及连接进程只用于测试；稳定 Tunnel 需要用户提供接入 Cloudflare 的域名，并解决主机到 Cloudflare Edge 的直连超时。主机地址、私有配置和临时网址保留在部署会话，不写入公开交接文件。日常上课记录现已独立于训练计划上线，课程与老师必填，内容、目标、问题和家庭配合可选，包含在十一表 Excel 导出中。
+应用已经在用户常开主机原生部署，通过 Tailscale Serve 私有 HTTPS 访问；新版本在独立目录构建、先备份再切换，现有管理员和数据保留。临时 Cloudflare Quick Tunnel 仍由 Mac 经 Tailscale 转发到主机，公开入口要求应用登录，未登录业务数据返回 401。固定入口采用 Workers VPC：`workers.dev` → Worker → VPC Service → 主机的命名 Tunnel → 原生应用和现有 SQLite，无需自有域名。主机已有 IPv4 TUN 路由，两个 Cloudflare Edge 的 QUIC 握手与证书校验已通过；此前普通 Quick Tunnel API 及 HTTP/2 超时不能说明该 QUIC 路径不可用。网关位于 `deploy/worker-gateway`，5 项转发测试和 dry-run 通过，主机常驻服务已准备；当前等待用户安全保存命名 Tunnel 的专用连接 token，尚未声称固定网址已发布。主机地址、私有配置和临时网址保留在部署会话，不写入公开交接文件。日常上课记录已独立于训练计划上线，包含在十一表 Excel 导出中。
 
 数据库迁移版本 `006` 预留给尚未合并的腾讯文档导入工作区，日常上课记录使用 `007` 且不依赖 `006`。后续合并导入时须将 `006` 放在 `007` 前，并验证已运行 `007` 的数据库仍能安全补跑 `006`；不要单独把仅支持版本 6 的旧分支部署到版本 7 数据库。
 
