@@ -141,6 +141,13 @@
       "evidence": "docs/mainland-access-plan.md",
       "verification": "已核对 Cloudflare 自有域名路线，并补充无需自有域名的 Sealos、Railway、Render、Zeabur 完整托管候选及默认 HTTPS / 持久存储条件。未新建或购买资源，未执行候选平台部署。Mac 代理下健康200，TUN存在，不能等同大陆无代理验收。",
       "blocker": "需要确定托管与入口路径、核对平台默认域名的正式使用条件，并在真实大陆运营商网络做无代理端到端验收；用户要求继续暂停新云端发布。"
+    },
+    {
+      "id": "T21",
+      "title": "长期免自有域名和服务器的客户端同步与托管路线调研",
+      "status": "done",
+      "evidence": "docs/no-owned-infrastructure-research.md",
+      "verification": "已核对网盘 WebDAV 免费配额、CloudKit 共享及会员成本、微信内置云调用免业务域名能力和发布后15天体验到期规则，并比较免费后端暂停与公共中继限制。仅调研与文档完成；未实施同步、未验证多人WebDAV共享权限或真实大陆手机网络，未开通资源和发布。"
     }
   ],
   "artifacts": [
