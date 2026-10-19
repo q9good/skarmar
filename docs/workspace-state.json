@@ -4,7 +4,7 @@
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "bcbed6512b214dd44545499f6f27c9caa3c191d2",
+  "implementationCommit": "7a346a3b4c7ad6d3a698da3baa1fc2452ec98874",
   "tasks": [
     {
       "id": "T01",
@@ -203,6 +203,13 @@
       "status": "done",
       "evidence": "docs/edit-delete-self-test.md",
       "verification": "2026-10-20 Asia/Singapore：npm run test:mutations在原生SQLite及真实Rust Worker/Miniflare SQLite DO两套独立合成空间正常退出0。全浏览器新建后验证目标名称标准复盘及版本历史、方法改名步骤和目标改绑、独立及训练来源经验编辑与解绑、草稿训练计划及总结修改与主目标更换/移除/恢复、归档和停用恢复、页面刷新和第二登录会话、两个后端重启完整AppState对账均通过；保存字段及最终数量另行核对。确认缺失而非通过：目标/方法/经验/已完成训练/草稿训练的5次DELETE均405，已完成训练修订PUT为409，完整状态未变。未实现删除或已完成训练修订，归档/解绑不等于删除；未改应用逻辑、访问生产或部署。"
+    },
+    {
+      "id": "T30",
+      "title": "管理员专用删除与全体家人成员的已完成训练修订",
+      "status": "done",
+      "evidence": "docs/record-permissions.md",
+      "verification": "2026-10-20 Asia/Singapore：实现7a346a3。删除目标/方法/困难/经验/训练/上课记录仅管理员可用，页面二次确认，事务内校验角色和确认时版本；引用目标有明确保护，解绑不级联删除其他业务记录，删除训练保留跟进并标注来源已删除，持久删除标记防旧请求重建。所有有效登录成员可修订已完成训练，保留前后版本及说明，不重放目标归档；按实际变更同步困难及待验证经验，已验证/停用经验独立维护不覆盖，取消标记不删除跟进。并发冲突保留填写、取消修改和已删除草稿均可本机备份后退出。迁移009只追加表。71项Rust测试、17项规划/工作流逻辑、原生/Wasm Clippy、TS/Web/Wasm构建通过；双后端真实HTTP合约覆盖成员403、修订、版本冲突、历史幂等、关联清理、不重建及中途SQL失败回滚。双后端手机浏览器管理员/成员实际操作、双写冲突、已验证经验保留、跨浏览者删除刷新、备份取消、已删除草稿保留和退出、重启后完整状态对账均通过；test:host既有手机流程和备份恢复回归通过。仅临时合成数据，未访问线上账号数据或部署。"
     }
   ],
   "artifacts": [
@@ -264,6 +271,24 @@
       "path": "docs/artifacts/validation/edited-experience-bindings.png",
       "title": "编辑自测：经验改绑与验证依据",
       "sha256": "7314a55535c5a72d6efd706abd3b8ae010a2321d1a3473975db5a6bbacfdc92a",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/member-training-revision.png",
+      "title": "普通成员修订已完成训练",
+      "sha256": "cff7052ac55d15088df2346a74cc78b0ff3763362636da8a161997c1cc462d82",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/admin-referenced-goal-delete.png",
+      "title": "管理员删除确认及引用保护",
+      "sha256": "195067a25e2ba07b053f8873d71b61c6ad1acc21eb38cf7a73513ce142225baa",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/deleted-training-retains-experience.png",
+      "title": "删除训练后经验与来源说明保留",
+      "sha256": "b84c4dfdf8f96bfdfbd746681332f0f84ae8f12f5630cad9628a00894f8bf31d",
       "synthetic": true
     }
   ]
