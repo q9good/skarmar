@@ -24,7 +24,7 @@ fn unversioned_database_is_upgraded_without_replacing_data() {
         db.query_row("SELECT count(*) FROM schema_migrations", [], |row| row
             .get::<_, i64>(0))
             .unwrap(),
-        6
+        7
     );
 }
 
@@ -40,7 +40,7 @@ fn incompatible_database_version_is_rejected_without_modification() {
         db.query_row("SELECT count(*) FROM schema_migrations", [], |row| row
             .get::<_, i64>(0))
             .unwrap(),
-        7
+        8
     );
 }
 
@@ -75,4 +75,64 @@ fn existing_accounts_survive_registration_migration() {
         .unwrap(),
         7
     );
+}
+
+#[test]
+fn import_migration_backfills_a_version_seven_database_without_replacing_data() {
+    let db = Connection::open_in_memory().unwrap();
+    // Reproduce the deployed migration set, where version six was reserved.
+    for sql in [
+        include_str!("../../core/migrations/001_initial.sql"),
+        include_str!("../../core/migrations/002_goal_revisions.sql"),
+        include_str!("../../core/migrations/003_auth.sql"),
+        include_str!("../../core/migrations/004_pathways.sql"),
+        include_str!("../../core/migrations/005_registration.sql"),
+        include_str!("../../core/migrations/007_lessons.sql"),
+    ] {
+        db.execute_batch(sql).unwrap();
+    }
+    db.execute_batch("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY); INSERT INTO schema_migrations VALUES (1),(2),(3),(4),(5),(7);").unwrap();
+    db.execute("INSERT INTO auth_users(id,username,display_name,password_hash,role,active,created_at) VALUES ('legacy-admin','owner','原管理员','unchanged-hash','admin',1,'2026-01-01')", []).unwrap();
+    let lesson = r#"{"id":"legacy-lesson","version":2,"business_date":"2026-10-19","course_name":"合成课程","teacher":"合成老师","content":"已有课程原文"}"#;
+    db.execute(
+        "INSERT INTO lessons(id,business_date,data) VALUES (?1,?2,?3)",
+        ["legacy-lesson", "2026-10-19", lesson],
+    )
+    .unwrap();
+    store::initialize(&db).unwrap();
+    store::initialize(&db).unwrap();
+    let versions: Vec<i64> = db
+        .prepare("SELECT version FROM schema_migrations ORDER BY version")
+        .unwrap()
+        .query_map([], |row| row.get(0))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    assert_eq!(versions, vec![1, 2, 3, 4, 5, 6, 7]);
+    assert_eq!(
+        db.query_row(
+            "SELECT password_hash FROM auth_users WHERE id='legacy-admin'",
+            [],
+            |row| row.get::<_, String>(0)
+        )
+        .unwrap(),
+        "unchanged-hash"
+    );
+    assert_eq!(
+        db.query_row(
+            "SELECT data FROM lessons WHERE id='legacy-lesson'",
+            [],
+            |row| row.get::<_, String>(0)
+        )
+        .unwrap(),
+        lesson
+    );
+    for table in ["import_previews", "import_batches", "import_source_rows"] {
+        assert_eq!(
+            db.query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+    }
 }

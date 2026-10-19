@@ -1,21 +1,42 @@
 use axum::{
     Extension, Json, Router,
-    extract::{DefaultBodyLimit, Path, State},
+    extract::{DefaultBodyLimit, Multipart, Path, State},
     http::{StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post, put},
 };
 use serde_json::Value;
-use skarma_core::{Command, model::*, store::Result};
+use skarma_core::{
+    Command,
+    import::ImportCommitInput,
+    model::*,
+    store::{ApiError, Result},
+};
 use std::future::Future;
 pub mod auth;
 pub mod export;
+pub mod import;
 
 /// Each execute call is one atomic unit of work on the selected backend.
 pub trait Repository: Clone + Send + Sync + 'static {
     fn execute(&self, command: Command) -> impl Future<Output = Result<Value>> + Send;
     /// Capture the authenticated snapshot atomically, then render without holding the DB lock.
     fn export(&self, command: Command) -> impl Future<Output = Result<Vec<u8>>> + Send;
+    /// Parse uploads where the backend has a suitable CPU budget. The Worker
+    /// adapter overrides this to parse inside its private Durable Object.
+    fn preview_import(
+        &self,
+        authorization: Command,
+        filename: String,
+        bytes: Vec<u8>,
+    ) -> impl Future<Output = Result<Value>> + Send {
+        async move {
+            self.execute(authorization.clone()).await?;
+            let input = import::parse(&filename, &bytes)?;
+            self.execute(import::preview_command(authorization, input)?)
+                .await
+        }
+    }
 }
 
 fn authenticated(proof: Option<Extension<auth::SessionProof>>, command: Command) -> Command {
@@ -50,6 +71,54 @@ async fn export_workbook<R: Repository>(
         bytes,
     )
         .into_response())
+}
+async fn preview_import<R: Repository>(
+    State(repo): State<R>,
+    proof: Option<Extension<auth::SessionProof>>,
+    mut multipart: Multipart,
+) -> Result<Json<Value>> {
+    execute(&repo, proof.clone(), Command::ImportAuthorize).await?;
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|_| ApiError::invalid("上传内容无法读取"))?
+        .ok_or_else(|| ApiError::invalid("请选择 Excel 或 CSV 文件"))?;
+    if field.name() != Some("file") {
+        return Err(ApiError::invalid("上传表单缺少 file 字段"));
+    }
+    let filename = field
+        .file_name()
+        .ok_or_else(|| ApiError::invalid("上传文件没有名称"))?
+        .to_owned();
+    let bytes = field
+        .bytes()
+        .await
+        .map_err(|_| ApiError::invalid("上传文件无法读取"))?;
+    if multipart
+        .next_field()
+        .await
+        .map_err(|_| ApiError::invalid("上传内容无法读取"))?
+        .is_some()
+    {
+        return Err(ApiError::invalid("一次只能上传一个文件"));
+    }
+    Ok(Json(
+        repo.preview_import(
+            authenticated(proof, Command::ImportAuthorize),
+            filename,
+            bytes.to_vec(),
+        )
+        .await?,
+    ))
+}
+async fn commit_import<R: Repository>(
+    State(repo): State<R>,
+    proof: Option<Extension<auth::SessionProof>>,
+    Json(input): Json<ImportCommitInput>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        execute(&repo, proof, Command::ImportCommit(input)).await?,
+    ))
 }
 async fn read_state<R: Repository>(
     State(repo): State<R>,
@@ -187,6 +256,11 @@ pub fn router_with_auth<R: Repository>(repo: R, config: auth::AuthConfig) -> Rou
     let protected = Router::new()
         .route("/state", get(read_state::<R>))
         .route("/export.xlsx", get(export_workbook::<R>))
+        .route(
+            "/import/preview",
+            post(preview_import::<R>).layer(DefaultBodyLimit::max(11 * 1024 * 1024)),
+        )
+        .route("/import/commit", post(commit_import::<R>))
         .route("/goals", post(create_goal::<R>))
         .route("/pathways", post(create_pathway::<R>))
         .route("/pathways/{id}", put(update_pathway::<R>))

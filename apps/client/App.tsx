@@ -302,7 +302,7 @@ function Workspace() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}
         {message ? <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{message}</Text></View> : null}
-        {showAccount ? <AccountPanel back={() => setShowAccount(false)} logout={async () => { await Promise.all([persistence.current, lessonPersistence.current]); await auth.logout(); }} /> : loading ? <ActivityIndicator color={colors.green} style={{ marginVertical: 40 }} /> :
+        {showAccount ? <AccountPanel back={() => setShowAccount(false)} logout={async () => { await Promise.all([persistence.current, lessonPersistence.current]); await auth.logout(); }} onImported={refresh} /> : loading ? <ActivityIndicator color={colors.green} style={{ marginVertical: 40 }} /> :
           editingLesson && lessonDraft ? <>
             <View style={styles.sectionHeader}><Text style={styles.title}>{lessonDraft.expectedVersion ? '修改上课记录' : '记录今天上课'}</Text>
               <Button title="返回" secondary onPress={() => setEditingLesson(false)} disabled={busy} /></View>

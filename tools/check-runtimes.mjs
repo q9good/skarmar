@@ -218,6 +218,8 @@ try {
   origin = await startNative(authDatabase, { SKARMA_AUTH: 'required', SKARMA_DEMO: '0', SKARMA_PUBLIC_URL: 'https://contract.local', SKARMA_PRODUCTION: '1' });
   await authContract('authenticated native SQLite', (path, init) => fetch(origin + path, init), async () => {
     execFileSync('python3', ['-c', 'import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as db: db.execute("UPDATE auth_sessions SET expires_at=0")', authDatabase]);
+  }, async sql => {
+    execFileSync('python3', ['-c', 'import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as db:\n db.execute("PRAGMA foreign_keys=ON")\n db.executescript(sys.argv[2])', authDatabase, sql], { stdio: ['ignore', 'pipe', 'pipe'] });
   });
   const authOptions = { ...options, durableObjectsPersist: resolve(scratch, 'auth-cf'), bindings: {
     SKARMA_STORAGE: 'durable_object', SKARMA_DEMO: '0', SKARMA_AUTH: 'required', SKARMA_PRODUCTION: '1',
@@ -229,6 +231,9 @@ try {
   const authStub = authNamespace.get(authNamespace.idFromName('contract'));
   await authContract('authenticated Rust Worker / DO', (path, init) => mf.dispatchFetch('https://contract.local' + path, init), async () => {
     const response = await authStub.fetch('https://contract.internal/test-sql', { method: 'POST', body: JSON.stringify({ sql: 'UPDATE auth_sessions SET expires_at=0' }) });
+    assert.equal(response.status, 200); await response.text();
+  }, async sql => {
+    const response = await authStub.fetch('https://contract.internal/test-sql', { method: 'POST', body: JSON.stringify({ sql }) });
     assert.equal(response.status, 200); await response.text();
   });
 } finally {

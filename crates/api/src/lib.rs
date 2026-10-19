@@ -29,6 +29,21 @@ impl Repository for Database {
         .map_err(|_| ApiError::storage())?
     }
 
+    async fn preview_import(
+        &self,
+        authorization: Command,
+        filename: String,
+        bytes: Vec<u8>,
+    ) -> Result<serde_json::Value> {
+        self.execute(authorization.clone()).await?;
+        let input =
+            tokio::task::spawn_blocking(move || skarma_http::import::parse(&filename, &bytes))
+                .await
+                .map_err(|_| ApiError::storage())??;
+        self.execute(skarma_http::import::preview_command(authorization, input)?)
+            .await
+    }
+
     async fn export(&self, command: Command) -> Result<Vec<u8>> {
         let snapshot = self.execute(command).await?;
         // The transaction has committed. Compression never blocks the DB mutex or Tokio workers.

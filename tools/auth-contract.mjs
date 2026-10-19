@@ -4,8 +4,9 @@ import { randomUUID } from 'node:crypto';
 import { excelContract } from './excel-contract.mjs';
 import { knowledgeContract } from './knowledge-contract.mjs';
 import { lessonContract } from './lesson-contract.mjs';
+import { importContract } from './import-contract.mjs';
 export const ownerPassword = 'synthetic-owner-contract-password';
-export async function authContract(label, send, expire) {
+export async function authContract(label, send, expire, exec) {
   async function call(method, path, body, cookie, expected = 200, origin = 'https://contract.local') {
     const response = await send(path, {
       method, headers: { 'x-skarma-request': '1', origin, ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(cookie ? { cookie } : {}) },
@@ -63,6 +64,7 @@ export async function authContract(label, send, expire) {
   await lessonContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
   await knowledgeContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
   await excelContract(label, send, teacher);
+  await importContract(label, send, owner, teacher, exec);
   await call('PUT', `/api/auth/users/${member.id}`, { active: false, password: 'short' }, owner, 422);
   await call('GET', '/api/state', undefined, teacher);
   await call('GET', '/api/auth/users', undefined, teacher, 403);

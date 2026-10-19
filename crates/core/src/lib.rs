@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod config;
+pub mod import;
 pub mod model;
 pub mod sql;
 pub mod store;
@@ -19,6 +20,9 @@ pub enum Command {
         command: Box<Command>,
     },
     Auth(auth::AuthCommand),
+    ImportAuthorize,
+    ImportPreview(import::ImportPreviewInput),
+    ImportCommit(import::ImportCommitInput),
     State,
     ExportSnapshot,
     GoalHistory {
@@ -55,13 +59,28 @@ pub enum Command {
 pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
     Ok(match command {
         Command::Authenticated { token, command } => {
-            auth::session(db, &token)?;
+            let actor = auth::session(db, &token)?;
             if matches!(*command, Command::Auth(_) | Command::Authenticated { .. }) {
                 return Err(store::ApiError::invalid("认证请求不能嵌套"));
             }
-            execute(db, *command)?
+            match *command {
+                Command::ImportAuthorize => {
+                    import::ensure_admin(&actor)?;
+                    serde_json::json!({"ok": true})
+                }
+                Command::ImportPreview(input) => {
+                    serde_json::to_value(import::preview(db, &actor, input)?)?
+                }
+                Command::ImportCommit(input) => {
+                    serde_json::to_value(import::commit(db, &actor, input)?)?
+                }
+                command => execute(db, command)?,
+            }
         }
         Command::Auth(command) => auth::execute(db, command)?,
+        Command::ImportAuthorize | Command::ImportPreview(_) | Command::ImportCommit(_) => {
+            return Err(auth::unauthorized());
+        }
         Command::State => serde_json::to_value(store::state(db)?)?,
         Command::ExportSnapshot => serde_json::to_value(store::export_snapshot(db)?)?,
         Command::GoalHistory { id } => serde_json::to_value(store::goal_history(db, &id)?)?,

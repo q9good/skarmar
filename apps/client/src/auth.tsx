@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { advanceAuthSession, ApiError, onUnauthorized, request } from './api';
 import { downloadWorkbook } from './download';
+import { ImportPanel } from './import-view';
 
 export type Account = { id: string; username: string; display_name: string; role: 'admin' | 'member'; active: boolean };
 export type Identity = { user: Account; space: string; demo: boolean };
@@ -132,7 +133,7 @@ function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Iden
   </ScrollView>;
 }
 
-export function AccountPanel({ back, logout }: { back: () => void; logout: () => Promise<void> }) {
+export function AccountPanel({ back, logout, onImported }: { back: () => void; logout: () => Promise<void>; onImported: () => Promise<unknown> }) {
   const auth = useAuth();
   const [users, setUsers] = useState<Account[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
@@ -173,6 +174,8 @@ export function AccountPanel({ back, logout }: { back: () => void; logout: () =>
         await downloadWorkbook(); setNotice('Excel 已交给浏览器下载，请在下载列表中查看。');
       })} />
     </View>}
+    {Platform.OS === 'web' && auth.identity.user.role === 'admin' &&
+      <ImportPanel disabled={busy} onBusyChange={setBusy} onImported={onImported} />}
     <View style={s.card}><Text style={s.cardTitle}>修改密码</Text>
       <Input label="当前密码" value={currentPassword} change={setCurrentPassword} secret disabled={busy} />
       <Input label="新密码" value={password} change={setPassword} secret disabled={busy} />

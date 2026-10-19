@@ -64,6 +64,60 @@ impl Repository for DurableRepository {
         })
     }
 
+    fn preview_import(
+        &self,
+        authorization: Command,
+        filename: String,
+        bytes: Vec<u8>,
+    ) -> impl std::future::Future<Output = AppResult<serde_json::Value>> + Send {
+        SendFuture::new(async move {
+            // Keep decompression/XML parsing out of the ordinary Worker. Raw
+            // bytes avoid a large JSON number array and the duplicate cell copy.
+            let namespace = self
+                .env
+                .durable_object("SKARMA_DB")
+                .map_err(|_| ApiError::storage())?;
+            let stub = namespace
+                .id_from_name(&self.space)
+                .and_then(|id| id.get_stub())
+                .map_err(|_| ApiError::storage())?;
+            let mut url = Url::parse("https://skarma.internal/import/preview")
+                .map_err(|_| ApiError::storage())?;
+            url.query_pairs_mut().append_pair("filename", &filename);
+            let headers = Headers::new();
+            headers
+                .set("content-type", "application/octet-stream")
+                .map_err(|_| ApiError::storage())?;
+            headers
+                .set(
+                    "x-skarma-import-command",
+                    &serde_json::to_string(&authorization)?,
+                )
+                .map_err(|_| ApiError::storage())?;
+            let mut init = RequestInit::new();
+            init.with_method(Method::Post)
+                .with_headers(headers)
+                .with_body(Some(js_sys::Uint8Array::from(bytes.as_slice()).into()));
+            let request =
+                Request::new_with_init(url.as_str(), &init).map_err(|_| ApiError::storage())?;
+            let mut response = stub
+                .fetch_with_request(request)
+                .await
+                .map_err(|_| ApiError::storage())?;
+            let status =
+                StatusCode::from_u16(response.status_code()).map_err(|_| ApiError::storage())?;
+            let value: serde_json::Value =
+                response.json().await.map_err(|_| ApiError::storage())?;
+            if !status.is_success() {
+                return Err(ApiError(
+                    status,
+                    value["error"].as_str().unwrap_or("导入预览失败").into(),
+                ));
+            }
+            Ok(value)
+        })
+    }
+
     fn export(
         &self,
         command: Command,
@@ -162,7 +216,8 @@ impl DurableObject for SkarmaSpace {
     }
     async fn fetch(&self, mut req: worker::Request) -> Result<worker::Response> {
         let export = req.path() == "/export.xlsx";
-        if req.method() != Method::Post || (!export && req.path() != "/command") {
+        let import = req.path() == "/import/preview";
+        if req.method() != Method::Post || (!export && !import && req.path() != "/command") {
             return Response::error("Unknown internal command", 404);
         }
         let cfg = match config(&self.env) {
@@ -172,7 +227,31 @@ impl DurableObject for SkarmaSpace {
                     .map(|response| response.with_status(error.0.as_u16()));
             }
         };
-        let command: Command = req.json().await?;
+        let (command, upload) = if import {
+            let Some(encoded) = req.headers().get("x-skarma-import-command")? else {
+                return Response::error("Missing import authorization", 400);
+            };
+            let command: Command = serde_json::from_str(&encoded)?;
+            // Restrict the private upload endpoint to an authorization proof;
+            // arbitrary commands cannot be smuggled through upload metadata.
+            if !matches!(&command, Command::Authenticated { command, .. } if matches!(**command, Command::ImportAuthorize))
+            {
+                return Response::error("Invalid import authorization", 400);
+            }
+            let filename = req
+                .url()?
+                .query_pairs()
+                .find(|(name, _)| name == "filename")
+                .map(|(_, value)| value.into_owned())
+                .unwrap_or_default();
+            let bytes = req.bytes().await?;
+            if bytes.len() > skarma_http::import::MAX_FILE_BYTES {
+                return Response::error("Upload is too large", 413);
+            }
+            (command, Some((filename, bytes)))
+        } else {
+            (req.json().await?, None)
+        };
         if export
             && !matches!(&command, Command::ExportSnapshot)
             && !matches!(&command, Command::Authenticated { command, .. } if matches!(**command, Command::ExportSnapshot))
@@ -218,7 +297,14 @@ impl DurableObject for SkarmaSpace {
                     if cfg.demo {
                         skarma_core::store::seed_demo(&sql)?;
                     }
-                    skarma_core::execute(&sql, command)
+                    if let Some((filename, bytes)) = upload {
+                        skarma_core::execute(&sql, command.clone())?;
+                        let input = skarma_http::import::parse(&filename, &bytes)?;
+                        let preview = skarma_http::import::preview_command(command, input)?;
+                        skarma_core::execute(&sql, preview)
+                    } else {
+                        skarma_core::execute(&sql, command)
+                    }
                 })();
                 let failed = result.is_err();
                 *result_slot.borrow_mut() = Some(result);

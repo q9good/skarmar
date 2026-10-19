@@ -99,6 +99,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         (3, include_str!("../migrations/003_auth.sql")),
         (4, include_str!("../migrations/004_pathways.sql")),
         (5, include_str!("../migrations/005_registration.sql")),
+        (6, include_str!("../migrations/006_import.sql")),
         (7, include_str!("../migrations/007_lessons.sql")),
     ];
     db.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);")?;
@@ -129,7 +130,12 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
     Ok(())
 }
 
-fn record_goal_revision(db: &dyn Sql, goal: &Goal, note: &str, source: Option<&str>) -> Result<()> {
+pub(crate) fn record_goal_revision(
+    db: &dyn Sql,
+    goal: &Goal,
+    note: &str,
+    source: Option<&str>,
+) -> Result<()> {
     let revision = GoalRevision {
         goal: goal.clone(),
         recorded_at: chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, false),
