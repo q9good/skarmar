@@ -13,7 +13,7 @@ type Preview = {
   preview_id: string; filename: string; expires_at: string; totals: Counts;
   sheets: Sheet[]; warnings: Warning[]; can_commit: boolean;
 };
-type CommitResult = { batch_id: string; totals: Counts; warnings?: Warning[] };
+type CommitResult = { batch_id: string; totals: Counts; sheets: Sheet[]; warnings?: Warning[] };
 
 const maxBytes = 10 * 1024 * 1024;
 const messageOf = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试';
@@ -21,6 +21,10 @@ const counts = (value: Counts) =>
   `共 ${value.rows} 行 · 新增 ${value.new} · 更新 ${value.updated} · 跳过 ${value.skipped} · 无效 ${value.invalid}`;
 const warningText = (warning: Warning) =>
   `${warning.sheet ? `${warning.sheet} · ` : ''}${warning.row == null ? '' : `第 ${warning.row} 行 · `}${warning.message}`;
+const businessSummary = (sheets: Sheet[]) => {
+  const added = (target: string) => sheets.filter(sheet => sheet.target === target).reduce((sum, sheet) => sum + sheet.new, 0);
+  return `新增目标 ${added('目标')} 个，训练记录 ${added('训练记录')} 条；原始资料存档 ${added('原始资料存档')} 行。`;
+};
 
 function Action({ title, onPress, disabled, secondary }: {
   title: string; onPress: () => void; disabled?: boolean; secondary?: boolean;
@@ -98,6 +102,7 @@ export function ImportPanel({ onImported, disabled, onBusyChange }: {
       <Text style={s.title}>导入预览</Text>
       <Text style={s.body}>{preview.filename}</Text>
       <Text style={s.hint}>{counts(preview.totals)}</Text>
+      <Text style={s.body}>{businessSummary(preview.sheets)}</Text>
       {preview.sheets.map((sheet, index) => {
         const key = `${index}:${sheet.name}`;
         const open = expanded.includes(key);
@@ -139,6 +144,7 @@ export function ImportPanel({ onImported, disabled, onBusyChange }: {
     {result && <View style={s.section}>
       <Text style={s.title}>导入完成</Text>
       <Text style={s.hint}>{counts(result.totals)}</Text>
+      <Text style={s.body}>{businessSummary(result.sheets)}</Text>
       <Text style={s.hint}>批次编号：{result.batch_id}</Text>
       {result.warnings?.map((warning, index) => <Text key={index} style={s.warning}>{warningText(warning)}</Text>)}
     </View>}

@@ -60,8 +60,12 @@ export async function importContract(label, send, owner, member, exec) {
   assert.deepEqual(await state(), baseline, 'XLSX preview cannot mutate business records');
 
   const sourceId = randomUUID();
-  const csv = observation => `记录ID,日期,时间段,阶段性训练重点,训练记录,存在问题,下一步计划\n${sourceId},2026-10-17,上午,合成训练计划,${observation},合成困难,合成后续\n`;
+  const csv = observation => `记录ID,日期,时间段,阶段性训练重点,训练记录,存在问题,下一步计划,记录人,训练形式\n${sourceId},2026-10-17,上午,合成训练计划,${observation},合成困难,合成后续,合成家人,合成形式\n`;
   const filename = '每日训练记录.csv';
+  const incomplete = await upload(filename, csv(''));
+  assert.equal(incomplete.totals.invalid, 1, 'recorder metadata cannot turn an empty observation into completed training');
+  assert.equal(incomplete.can_commit, false);
+  await commit(incomplete, 422);
   const preview = await upload(filename, csv('合成观察'));
   assert.equal(preview.can_commit, true);
   assert.equal(preview.totals.new, 1);
@@ -98,7 +102,7 @@ export async function importContract(label, send, owner, member, exec) {
   assert.deepEqual(imported.difficulties, baseline.difficulties, 'historical problem text must not create an unverified follow-up');
   const session = imported.sessions.find(row => !baseline.sessions.some(old => old.id === row.id));
   assert.equal(session.status, 'completed');
-  assert.equal(session.observation, '合成观察');
+  assert.equal(session.observation, '合成观察\n\n原表记录人：合成家人\n\n原表训练形式：合成形式');
   assert.equal(session.difficulty, '合成困难');
   assert.deepEqual(session.target_snapshots, []);
   assert.ok(session.plan.includes('合成后续'));

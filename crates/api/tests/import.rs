@@ -202,6 +202,84 @@ fn rejects_unwrapped_import_command() {
 }
 
 #[test]
+fn preserves_recorders_formats_and_source_links_without_inventing_roles_or_accounts() {
+    let mut db = Connection::open_in_memory().unwrap();
+    store::initialize(&db).unwrap();
+    let token = admin(&mut db);
+    let mut input = source("合成训练观察原文");
+    input.sheets[0]
+        .headers
+        .extend(["目标编号".into(), "关联".into(), "关联 2".into()]);
+    input.sheets[0].rows[0].cells.extend([
+        "synthetic-goal-1".into(),
+        "合成旧记录甲".into(),
+        "合成旧记录乙".into(),
+    ]);
+    input.sheets[1]
+        .headers
+        .extend(["记录人".into(), "训练形式".into()]);
+    input.sheets[1].rows[0]
+        .cells
+        .extend(["合成记录者".into(), "合成课程形式".into()]);
+    let preview: ImportPreview =
+        serde_json::from_value(signed(&mut db, &token, Command::ImportPreview(input))).unwrap();
+    assert!(preview.can_commit);
+    signed(
+        &mut db,
+        &token,
+        Command::ImportCommit(ImportCommitInput {
+            preview_id: preview.preview_id,
+        }),
+    );
+    let state = store::state(&db).unwrap();
+    assert_eq!(count(&db, "auth_users"), 1);
+    assert_eq!(state.sessions[0].input.targets.len(), 0);
+    assert!(
+        state.sessions[0]
+            .input
+            .observation
+            .starts_with("合成训练观察原文")
+    );
+    assert!(
+        state.sessions[0]
+            .input
+            .observation
+            .contains("原表记录人：合成记录者")
+    );
+    assert!(
+        state.sessions[0]
+            .input
+            .observation
+            .contains("原表训练形式：合成课程形式")
+    );
+    assert!(state.goals[0].review_notes.contains("合成旧记录甲"));
+    assert!(state.goals[0].review_notes.contains("合成旧记录乙"));
+    let key: String = db
+        .query_row(
+            "SELECT source_row_key FROM import_source_rows WHERE target_kind='goal'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(key, "id:synthetic-goal-1");
+}
+
+#[test]
+fn empty_observation_cannot_be_completed_by_recorder_metadata() {
+    let mut db = Connection::open_in_memory().unwrap();
+    store::initialize(&db).unwrap();
+    let owner = admin(&mut db);
+    let mut input = source("");
+    input.sheets[1].headers.push("记录人".into());
+    input.sheets[1].rows[0].cells.push("合成记录人".into());
+    let preview: ImportPreview =
+        serde_json::from_value(signed(&mut db, &owner, Command::ImportPreview(input))).unwrap();
+    assert_eq!(preview.totals.invalid, 1);
+    assert!(!preview.can_commit);
+    assert_eq!(count(&db, "sessions"), 0);
+}
+
+#[test]
 fn member_cannot_preview_or_commit_an_admins_upload() {
     use axum::http::StatusCode;
     let mut db = Connection::open_in_memory().unwrap();

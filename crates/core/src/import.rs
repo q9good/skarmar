@@ -160,6 +160,9 @@ struct Mapping {
     observation: Option<usize>,
     problem: Option<usize>,
     next_plan: Option<usize>,
+    recorder: Option<usize>,
+    training_format: Option<usize>,
+    source_links: Vec<(String, usize)>,
     columns: Vec<ImportColumn>,
 }
 
@@ -218,10 +221,24 @@ fn mapping(sheet: &ImportSheet) -> Result<Mapping> {
             found
         }};
     }
-    let record_id = col!(
-        &["记录ID", "记录 ID", "record_id", "Record ID", "ID"],
-        "来源记录 ID"
-    );
+    let record_id = if kind == TargetKind::Goal {
+        col!(
+            &[
+                "记录ID",
+                "记录 ID",
+                "record_id",
+                "Record ID",
+                "ID",
+                "目标编号"
+            ],
+            "来源记录 ID"
+        )
+    } else {
+        col!(
+            &["记录ID", "记录 ID", "record_id", "Record ID", "ID"],
+            "来源记录 ID"
+        )
+    };
     let mut output = Mapping {
         kind,
         record_id,
@@ -239,6 +256,9 @@ fn mapping(sheet: &ImportSheet) -> Result<Mapping> {
         observation: None,
         problem: None,
         next_plan: None,
+        recorder: None,
+        training_format: None,
+        source_links: vec![],
         columns: vec![],
     };
     match kind {
@@ -251,6 +271,12 @@ fn mapping(sheet: &ImportSheet) -> Result<Mapping> {
             output.archived = col!(&["归档状态", "是否归档"], "归档状态");
             output.start = col!(&["开始日期", "起始日期"], "开始日期");
             output.due = col!(&["结束日期", "截止日期", "预期完成日期"], "截止日期");
+            for (index, header) in headers.iter().enumerate() {
+                if matches!(header.trim(), "关联" | "关联 2" | "关联2") {
+                    mapped.insert(index, "来源关联原文（保留，不推断主辅角色）".into());
+                    output.source_links.push((header.clone(), index));
+                }
+            }
         }
         TargetKind::Session => {
             output.date = col!(&["日期", "训练日期", "记录日期"], "训练日期");
@@ -259,6 +285,8 @@ fn mapping(sheet: &ImportSheet) -> Result<Mapping> {
             output.observation = col!(&["训练记录", "训练观察", "训练内容"], "训练观察");
             output.problem = col!(&["存在问题", "困难", "问题"], "困难原文");
             output.next_plan = col!(&["下一步计划", "后续计划"], "训练计划（下一步原文）");
+            output.recorder = col!(&["记录人"], "观察备注（原表记录人）");
+            output.training_format = col!(&["训练形式"], "观察备注（原表训练形式）");
         }
         TargetKind::Archive => {}
     }
@@ -359,13 +387,26 @@ fn goal(row: &ImportRow, map: &Mapping) -> Result<Goal> {
         last_review_date: None,
         next_review_date: None,
         completion_date: None,
-        review_notes: String::new(),
+        review_notes: map
+            .source_links
+            .iter()
+            .filter_map(|(label, index)| {
+                let text = value(row, Some(*index));
+                (!text.is_empty()).then(|| format!("原表{label}（原文，未推断主辅角色）：{text}"))
+            })
+            .collect::<Vec<_>>()
+            .join("\n\n"),
     })
 }
 
 fn session(row: &ImportRow, map: &Mapping) -> Result<Session> {
     let business_date =
         date(value(row, map.date))?.ok_or_else(|| ApiError::invalid("训练日期为空"))?;
+    if value(row, map.observation).is_empty() {
+        return Err(ApiError::invalid(
+            "训练记录为空，不能作为已完成训练导入；请核对或从导入副本中排除",
+        ));
+    }
     let focus = value(row, map.focus);
     let next = value(row, map.next_plan);
     let plan = match (focus.is_empty(), next.is_empty()) {
@@ -374,7 +415,16 @@ fn session(row: &ImportRow, map: &Mapping) -> Result<Session> {
         (true, false) => format!("下一步计划：{next}"),
         (true, true) => String::new(),
     };
-    let observation = value(row, map.observation);
+    let mut observation = value(row, map.observation).to_owned();
+    for (label, index) in [("记录人", map.recorder), ("训练形式", map.training_format)] {
+        let text = value(row, index);
+        if !text.is_empty() {
+            if !observation.is_empty() {
+                observation.push_str("\n\n");
+            }
+            observation.push_str(&format!("原表{label}：{text}"));
+        }
+    }
     let difficulty = value(row, map.problem);
     if plan.len() > 30_000 || observation.len() > 30_000 || difficulty.len() > 20_000 {
         return Err(ApiError::invalid("训练记录正文过长，请拆分后导入"));
@@ -391,7 +441,7 @@ fn session(row: &ImportRow, map: &Mapping) -> Result<Session> {
             activities: vec![],
             organization: String::new(),
             plan,
-            observation: observation.into(),
+            observation,
             targets: vec![],
             has_difficulty: !difficulty.is_empty(),
             difficulty: difficulty.into(),
