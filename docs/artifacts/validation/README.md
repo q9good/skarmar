@@ -21,3 +21,12 @@
 | [relation-training.png](relation-training.png) | 训练显示目标快照与成功经验 |
 
 完整核对矩阵见 [关联自测](../../relationship-self-test.md)。
+
+编辑专项自测的合成截图（本地Worker/DO）：
+
+| 图片 | 内容 |
+| --- | --- |
+| [edited-goal-history.png](edited-goal-history.png) | 修改后的目标标准及保留的新旧版本 |
+| [edited-experience-bindings.png](edited-experience-bindings.png) | 修改后的经验、目标／方法绑定及验证依据 |
+
+通过项与尚未实现的删除、已完成训练修订见[编辑与删除自测](../../edit-delete-self-test.md)。

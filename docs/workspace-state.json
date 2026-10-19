@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-19",
+  "updatedAt": "2026-10-20",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -196,6 +196,13 @@
       "status": "done",
       "evidence": "docs/relationship-self-test.md",
       "verification": "在两个独立空白临时空间，分别使用原生SQLite和真实Rust Worker/Miniflare SQLite DO，所有业务写入均通过手机宽度浏览器表单：新建1个短期目标、1个关联方法、1条独立经验、1条干预计划并完成总结，再由总结生成1条关联目标及方法的经验。核对精确ID，目标显示方法／两类经验／训练，方法显示目标和两类经验，跟进显示目标方法及正确来源，来源可跳转训练，记录页显示家庭干预。页面刷新、第二个独立登录会话、两个后端停止重启后的完整AppState对账全部通过。npm run test:relations正常退出0；截图仅含合成数据。未修改应用逻辑、访问生产数据或部署；本次不包含T10的训练直接选择方法及真实使用次数。"
+    },
+    {
+      "id": "T29",
+      "title": "编辑、解除关联与删除能力专项核对",
+      "status": "done",
+      "evidence": "docs/edit-delete-self-test.md",
+      "verification": "2026-10-20 Asia/Singapore：npm run test:mutations在原生SQLite及真实Rust Worker/Miniflare SQLite DO两套独立合成空间正常退出0。全浏览器新建后验证目标名称标准复盘及版本历史、方法改名步骤和目标改绑、独立及训练来源经验编辑与解绑、草稿训练计划及总结修改与主目标更换/移除/恢复、归档和停用恢复、页面刷新和第二登录会话、两个后端重启完整AppState对账均通过；保存字段及最终数量另行核对。确认缺失而非通过：目标/方法/经验/已完成训练/草稿训练的5次DELETE均405，已完成训练修订PUT为409，完整状态未变。未实现删除或已完成训练修订，归档/解绑不等于删除；未改应用逻辑、访问生产或部署。"
     }
   ],
   "artifacts": [
@@ -245,6 +252,18 @@
       "path": "docs/artifacts/validation/relation-training.png",
       "title": "关联自测：训练目标快照及成功经验",
       "sha256": "4546a9090f0702258f8f816482b484f52af8768da958d714cec1def17bab4469",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/edited-goal-history.png",
+      "title": "编辑自测：目标修改与保留的版本历史",
+      "sha256": "f8408e7500ff8558cf9927f0bddd69aadd0eadd88ecdb7c18b8c7dc8b6c587c8",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/edited-experience-bindings.png",
+      "title": "编辑自测：经验改绑与验证依据",
+      "sha256": "7314a55535c5a72d6efd706abd3b8ae010a2321d1a3473975db5a6bbacfdc92a",
       "synthetic": true
     }
   ]

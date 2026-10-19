@@ -157,6 +157,11 @@ with sync_playwright() as p:
               'checks': ['UI creation', 'exact persisted IDs', 'goal shows method and both experiences and training', 'method shows goal and both experiences',
                          'experience shows goal/method and training source', 'family record list', 'page reload', 'second browser'],
               'snapshot': after}
+    if os.environ.get('SKARMA_TEST_MUTATIONS') == '1':
+        from smoke_mutations_web import check_mutations
+        result['mutations'] = check_mutations(page, context, browser, BASE, OUT, result, login, state)
+        result['snapshot'] = state()
+        assert not errors, errors
     (OUT / 'result.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
     browser.close()
 print('PASS UI relationships, source jump, reload and independent browser; all writes through forms')
