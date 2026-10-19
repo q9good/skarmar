@@ -1,6 +1,6 @@
 # skarma.vip 接入现有 Cloudflare 应用
 
-日期：2026-10-19。最近核对时间：20:22（Asia/Singapore）。本文记录本次实际操作与尚待验证的项目。
+日期：2026-10-19。最近核对时间：20:41（Asia/Singapore）。本文记录本次实际操作与尚待验证的项目。
 
 ## 目标与边界
 
@@ -17,18 +17,18 @@
 | 项目 | 当前已确认的事实 | 后续核对 |
 | --- | --- | --- |
 | 域名注册 | 用户已在 Spaceship 购买 `skarma.vip` | 保持注册和续费由 Spaceship 管理，无需转移注册商 |
-| Cloudflare zone | 已建立免费 zone，当前为 Pending | 等待权威 NS 委派生效并显示 Active |
+| Cloudflare zone | 免费 zone 已激活，概览显示域名已受 Cloudflare 保护 | 保持 Free 计划 |
 | 原权威 NS | `launch1.spaceship.net`、`launch2.spaceship.net` | 作为变更记录保留，不与新 NS 混用 |
-| 新权威 NS | Spaceship 已确认改为 `coleman.ns.cloudflare.com`、`harleigh.ns.cloudflare.com`；注册局 RDAP 也返回这两条 NS | Spaceship 显示 IN PROPAGATION，Google / Cloudflare 公共递归仍返回旧 NS，尚不能认定全网生效 |
-| DNSSEC | 旧 Spaceship DNSSEC 已关闭，注册局 RDAP 为 delegationSigned=false；Google 公共 DS 查询无旧 DS | Cloudflare 签名已开启，等待向注册商添加新 DS；待 zone Active 与旧 NS TTL 窗口结束后提交，尚未恢复验证链 |
+| 新权威 NS | Spaceship 已确认改为 `coleman.ns.cloudflare.com`、`harleigh.ns.cloudflare.com`；注册局 RDAP 也返回这两条 NS | Google 与 Cloudflare 公共递归均已返回新 NS；注册商的传播提示可能滞后 |
+| DNSSEC | 旧 DS 已撤；zone 激活、两家递归采用新 NS 后，已将 Cloudflare 新 DS 保存到 Spaceship。注册局 RDAP 已为 delegationSigned=true，DS 与当前 DNSKEY 计算结果一致 | 20:41 Google 与 Cloudflare 的 DS / A 均 Status=0、AD=true，新签名链验证通过 |
 | 停车记录 | 扫描导入两条根域 A：`54.149.79.189`、`34.216.117.25` | 用户确认后已删除；列表核对为 0 条，再由 Worker 创建接管记录 |
-| 应用允许来源 | 已在原 Worker 添加 `SKARMA_ADDITIONAL_PUBLIC_URLS=https://skarma.vip` 并发布配置 | 经旧入口带新域 Origin 的匿名 logout=200；非法来源仍403。新域实际登录待 DNS 生效 |
+| 应用允许来源 | 已在原 Worker 添加 `SKARMA_ADDITIONAL_PUBLIC_URLS=https://skarma.vip` 并发布配置 | 旧入口及新域均验证合法 Origin logout=200、非法来源=403；用户已确认现有账号正常登录 |
 | 现有存储 | 保留 `SKARMA_DB` 绑定和 `SKARMA_SPACE=default` | 不新建数据库、不重新初始化管理员 |
-| 根域 Custom Domain | 原 Worker Domains 页已显示 `skarma.vip` Production，zone 概览显示 Connected Workers → skarma-web | 平台绑定已保存；等激活与证书后核验实际访问 |
-| TLS | 尚未确认新域证书签发和实际 HTTPS 握手 | 不用忽略证书检查来代替验收 |
-| 大陆访问 | 尚未执行真实大陆无代理验收 | 家人 Wi-Fi 与蜂窝网络分别验证 |
+| 根域 Custom Domain | 原 Worker Domains 页已显示 `skarma.vip` Production，zone 概览显示 Connected Workers → skarma-web | 平台绑定已保存，实际 HTTPS、网页和 API 已通过 |
+| TLS | 新域正常验证 HTTPS，浏览器显示完整登录页，健康与 JS=200；证书列表显示对应证书 Active | 本轮没有忽略证书校验 |
+| 大陆访问 | 用户明确回复“已正常登录，手机也能直连” | 未分别登记 Wi-Fi / 蜂窝运营商和新记录保存刷新结果，保留 T20 进一步验收 |
 
-此表是实操进行中的快照，不能将 Pending、配置已保存或代理下的 HTTP 200 写成全面上线成功。
+域名入口已实际可用且得到用户确认；DNSSEC 公共验证也已通过。分运营商和保存刷新验收仍在 T20 跟进。
 
 ## 操作步骤
 
@@ -57,7 +57,7 @@ Inactive，也不会继续决定线上解析。Spaceship 的传播提示可能�
 本次在切换 NS 前已关闭原 Spaceship DNSSEC，确认旧 DS 为 0。
 旧 DS 不能随新 NS 一起原样保留，否则验证链可能不匹配而导致解析失败。
 
-本次已请求一次激活检查；注册局 RDAP 已显示新 NS，但公共递归仍缓存旧 NS，原 NS TTL 约 1800 秒。
+本次已请求激活检查，随后概览确认 Active，Google / Cloudflare 公共递归均采用新 NS。初期旧 NS TTL 约 1800 秒。
 不要把本机 `dig @指定服务器` 的结果单独当作权威证据：本机代理 / TUN 可能截获 DNS；本次
 加密公共 DNS 查询与注册局 RDAP 采用独立通道交叉核对。等待 Cloudflare zone 显示 Active，
 并按旧 NS TTL 窗口核对代表性递归已采用新 NS。
@@ -67,9 +67,11 @@ Inactive，也不会继续决定线上解析。Spaceship 的传播提示可能�
 2. 将 Cloudflare 提供的新 DS 参数添加到 Spaceship 的 DNSSEC 配置。
 3. 确认注册商保存成功，并验证 DS / DNSKEY 链与实际 DNS 回答一致。
 
-Cloudflare 已启用签名并提供新 DS，尚未向 Spaceship 提交。不要恢复旧 Spaceship DS。
-根据官方迁移顺序，先等待旧委派缓存退场，再提交新 DS；否则可能出现新 DS 与旧权威密钥不匹配。
-最终应记录新链是否已验证；目前尚未完成。
+Cloudflare 已启用签名，并在 zone Active、代表递归均采用新 NS 后将其新 DS 保存到 Spaceship。
+注册局 RDAP 随后返回 delegationSigned=true；新 DS 与 Cloudflare 当前 DNSKEY 计算出的 SHA-256 完全匹配。
+初期公共递归曾缓存“无 DS”回答（TTL 900 秒）；20:41 再次核对，Google 与 Cloudflare
+均返回正确新 DS，DS 与 A 的 Status=0、AD=true，签名链验证通过。平台状态若显示旧 Pending，
+可刷新核对，不需重填 DS 或反复关闭签名。
 
 ### 4. 添加根域 Custom Domain
 
@@ -124,17 +126,17 @@ SKARMA_ADDITIONAL_PUBLIC_URLS=https://skarma.vip
 
 | 检查 | 通过条件 | 实际结果 |
 | --- | --- | --- |
-| 权威 NS | 父区委派使用本次两条 Cloudflare NS，Cloudflare zone Active | RDAP 已为新 NS；zone 仍 Pending，代表递归仍为旧 NS |
+| 权威 NS | 父区委派使用本次两条 Cloudflare NS，Cloudflare zone Active | zone 已 Active；RDAP、Google 与 Cloudflare 递归均采用新 NS |
 | 根域绑定 | 原 Worker 显示 `skarma.vip` Custom Domain | Production 列表及 Connected Workers 均已确认 |
-| TLS | `https://skarma.vip/` 正常验证证书且无需忽略警告 | 待补 |
-| 首页与资源 | 首页与对应 JS / 静态资源正常加载 | 待补 |
-| API 健康 | 使用项目现有健康检查入口返回正常结果 | 待补 |
-| 匿名会话 | `GET /api/auth/me` 返回预期的未登录 401，而非 500 | 待补 |
-| 来源检查 | 新域合法来源请求进入认证流程；非法来源仍返回 403 | 经旧入口的无会话 logout：新域 Origin=200，非法 Origin=403；原入口 health=200 |
-| 实际登录 | 用户在新域亲自使用现有账号登录成功 | 待补 |
+| TLS | `https://skarma.vip/` 正常验证证书且无需忽略警告 | 已通过，浏览器和 curl 均未忽略证书检查 |
+| 首页与资源 | 首页与对应 JS / 静态资源正常加载 | 登录页完整显示，JS=200；新旧入口使用相同 index-cbfcff231bc6ee67627c8dda03397c3a.js，应用版本保持 |
+| API 健康 | GET /api/health 返回正常结果 | 新旧入口均200，内容 status=ok |
+| 匿名会话 | `GET /api/auth/me` 返回预期的未登录 401，而非 500 | 新域401，提示请登录后继续 |
+| 来源检查 | 新域合法来源请求进入认证流程；非法来源仍返回 403 | 新旧入口均已核对：新域 Origin logout=200，非法 Origin=403 |
+| 实际登录 | 用户在新域亲自使用现有账号登录成功 | 用户已明确确认正常登录 |
 | 数据保存 | 经用户授权的记录可保存、刷新后仍在，旧服务器记录保持 | 待补 |
-| DNSSEC | 新 DS / DNSKEY 链匹配，验证型解析无失败 | 旧 DS 已撤；新 Cloudflare DS 尚未发布，等待激活与缓存窗口 |
-| 大陆 Wi-Fi | 家人关闭代理 / VPN 后可打开、登录、读取和保存 | 待补 |
+| DNSSEC | 新 DS / DNSKEY 链匹配，验证型解析无失败 | 新 DS 已保存；注册局登记与 DNSKEY 摘要匹配，两家公共 DNS 的 DS / A 均 AD=true，已通过 |
+| 大陆 Wi-Fi | 家人关闭代理 / VPN 后可打开、登录、读取和保存 | 用户已确认手机直连与登录；网络类型、保存刷新尚未逐项登记 |
 | 大陆蜂窝 | 另一种运营商 / 蜂窝网络下同样完成端到端操作 | 待补 |
 
 无需取得用户密码即可先检查来源配置：向 `/api/auth/login` 发送不存在的测试账号，

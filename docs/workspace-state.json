@@ -95,7 +95,7 @@
       "title": "腾讯文档 Excel/CSV 导入",
       "status": "in_progress",
       "evidence": "docs/product-plan.md",
-      "blocker": "等待用户提供当前多维表格的实际导出文件以核对字段与关联；未完成的代码保留在独立工作区，未进入线上分支。"
+      "blocker": "用户已要求现在实际导入；腾讯文档当前只读未登录，用户选择亲自登录以取得完整导出。正在整合原独立工作区导入预览与后端，须核对最新字段和关系、通过006补跑007库及权限/去重/事务检查后上线并导入；当前尚未发布或写入真实记录。"
     },
     {
       "id": "T15",
@@ -138,8 +138,8 @@
       "title": "主要大陆用户的无代理访问方案与验收",
       "status": "in_progress",
       "evidence": "docs/mainland-access-plan.md",
-      "verification": "已核对 Cloudflare 自有域名路线，并补充无需自有域名的 Sealos、Railway、Render、Zeabur 完整托管候选及默认 HTTPS / 持久存储条件。T24新增亚洲VPS同源反代原Worker/DO候选，Nginx参考配置未执行。用户本轮倾向自有域名，T25核对新增五链接及官方现状，建议先Free zone + 原Worker Custom Domain，保留Rust/DO，不先购Pro/Argo或VPS。未新建、购买、绑定域名或执行候选部署。Mac 代理下健康200，TUN存在，不能等同大陆无代理验收。 后续用户已购买skarma.vip并授权T26接入原Worker；Free zone、新NS、Custom Domain和精确来源配置已保存，原数据绑定保留；尚未通过新域HTTPS和大陆端到端验收。",
-      "blocker": "T26等待Cloudflare zone激活、旧NS缓存到期、HTTPS证书与DNSSEC恢复验证；之后需家人真实大陆Wi-Fi及蜂窝无代理验收。新版应用发布继续暂停。"
+      "verification": "已核对 Cloudflare 自有域名路线，并补充无需自有域名的 Sealos、Railway、Render、Zeabur 完整托管候选及默认 HTTPS / 持久存储条件。T24新增亚洲VPS同源反代原Worker/DO候选，Nginx参考配置未执行。用户本轮倾向自有域名，T25核对新增五链接及官方现状，建议先Free zone + 原Worker Custom Domain，保留Rust/DO，不先购Pro/Argo或VPS。未新建、购买、绑定域名或执行候选部署。Mac 代理下健康200，TUN存在，不能等同大陆无代理验收。 后续用户已购买skarma.vip并授权T26接入原Worker；Free zone、新NS、Custom Domain和精确来源配置已保存，原数据绑定保留；尚未通过新域HTTPS和大陆端到端验收。 用户已明确确认skarma.vip现有账号登录与手机直连；未逐项登记网络类型与保存刷新。",
+      "blocker": "自有域名入口已生效并获用户手机直连确认；仍需记录家人Wi-Fi与蜂窝网络、保存刷新端到端结果。新版应用发布继续按用户具体任务处理。"
     },
     {
       "id": "T21",
@@ -179,10 +179,9 @@
     {
       "id": "T26",
       "title": "将 Spaceship 的 skarma.vip 接入现有 Cloudflare Worker",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/custom-domain-deployment.md",
-      "verification": "2026-10-19本地安全快进Cloud研究至640df50。已获用户逐项确认：原DNSSEC关闭、两条停放A记录删除、NS改为Cloudflare分配的coleman/harleigh；注册局RDAP已返回新NS且无签名委派。原Worker Production Custom Domain已显示skarma.vip，新增精确来源配置已发布，SKARMA_DB与default空间保留。经旧入口匿名logout新域Origin=200、非法Origin=403、health=200。仅配置部署，未上传新版应用代码。",
-      "blocker": "20:22 Asia/Singapore时zone Pending、公共递归仍缓存旧NS，新域HTTPS未通。Cloudflare已开启DNSSEC签名，新DS待zone Active和旧NS TTL窗口后发布至Spaceship，再验证TLS/API/现有账号登录及大陆真实网络。"
+      "verification": "2026-10-19本地安全快进Cloud研究至640df50。已获用户逐项确认：原DNSSEC关闭、两条停放A记录删除、NS改为Cloudflare分配的coleman/harleigh；注册局RDAP已返回新NS且无签名委派。原Worker Production Custom Domain已显示skarma.vip，新增精确来源配置已发布，SKARMA_DB与default空间保留。经旧入口匿名logout新域Origin=200、非法Origin=403、health=200。仅配置部署，未上传新版应用代码。 后续zone Active，Google与CF公共NS已更新；HTTPS登录页、JS、health200，匿名me401、合法Origin logout200、非法403；新旧入口同JS构建。用户明确确认已正常登录且手机直连。新DS已在Spaceship保存，注册局delegationSigned true、DS与当前DNSKEY计算摘要一致。 20:41 SGT两家公共DNS的DS与A均Status0、AD=true，新DS传播与完整验证链通过。用户已确认新域正常登录及手机直连；T20继续记录分网络与保存刷新验收。"
     }
   ],
   "artifacts": [

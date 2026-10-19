@@ -50,8 +50,8 @@
 
 ## 现有实现与未传入的本地工作
 
-- **T26 域名配置进行中**：skarma.vip 已在原 Worker 绑定，来源变量已发布；新 DNS 委派已保存，
-  等待 zone 激活、公共缓存、证书及 DNSSEC 恢复。不要重复创建 Worker / DO / 管理员；
+- **T26 域名配置完成**：skarma.vip 已在原 Worker 绑定，来源变量已发布；新 DNS 委派已保存，
+  zone 与 HTTPS 已生效，用户确认原账号登录和手机直连；新 DS 已登记，Google / Cloudflare 的 DS 和 A 均 AD=true，DNSSEC 已验证。不要重复创建 Worker / DO / 管理员；
   后续发布须保留新域来源和 Custom Domain，具体检查见实操文档。
 - 已上线完整 Cloudflare Worker + Rust Wasm API + SQLite DO，新实例不依赖旧主机或 Tailscale。
   用户已初始化并登录管理员，临时初始化 secret 已删除。旧主机数据尚未迁入。
