@@ -1,16 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput,
-  View, useWindowDimensions, StatusBar,
+  View, useWindowDimensions, StatusBar, Modal, AppState as NativeAppState, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthBoundary, AccountPanel, useAuth } from './src/auth';
 import { ExperienceBindings, ExperienceCreator, PathwayLibrary, RelatedKnowledge } from './src/knowledge';
 import { PlanningOverview } from './src/planning-view';
+import { DateField, Select } from './src/controls';
+import { LessonChoice, LessonStatistics, LessonOptionManager } from './src/lessons';
+import { buildPlanning } from './src/planning';
+import { mergeState, orderedGoals, replaceTarget, shiftDate } from './src/workflow';
 import {
   ApiError, request, isReviewable, isTrainable, type AppState, type FollowUp, type Goal, type Level,
   type GoalProgress, type GoalUpdate, type GoalRevision, type Pathway, type FollowUpUpdate,
-  type Role, type SaveRequest, type SaveResult, type Session, type SessionInput, type Lesson, type LessonInput,
+  type Role, type SaveRequest, type SaveResult, type Session, type SessionInput, type Lesson, type LessonInput, type LessonOption, type NewLessonOption,
 } from './src/api';
 import { clearDraft, emptyInput, localDate, readDraft, saveDraft, uuid, type Draft } from './src/draft';
 
@@ -21,7 +25,7 @@ const progressLabels: Record<GoalProgress, string> = { cultivating: '持续培�
   not_started: '未开始', in_progress: '进行中', achieved: '已达成', completed: '已完成', overdue: '已逾期（历史状态）' };
 const roles: Record<Role, string> = { primary: '主目标', secondary: '副目标', review: '复习' };
 const activities = ['桌面教学', '感统活动', '游戏', '家务劳动', '生活自理', '户外活动', '阅读'];
-const tabs = [ ['today', '☀', '今天'], ['planning', '◔', '规划'], ['goals', '◎', '目标'], ['pathways', '↗', '途径'], ['history', '▤', '记录'], ['followups', '◇', '跟进'] ] as const;
+const tabs = [ ['today', '☀', '今天'], ['goals', '◎', '目标'], ['pathways', '↗', '方法'], ['history', '▤', '记录'], ['followups', '◇', '跟进'] ] as const;
 type Tab = typeof tabs[number][0];
 const emptyState: AppState = { goals: [], sessions: [], difficulties: [], experiences: [], pathways: [], lessons: [] };
 type LessonDraft = { id: string; expectedVersion: number | null; input: LessonInput };
@@ -86,12 +90,15 @@ function Workspace() {
   const [showAccount, setShowAccount] = useState(false);
   const [data, setData] = useState<AppState>(emptyState);
   const [tab, setTab] = useState<Tab>('today');
+  const [recordKind, setRecordKind] = useState<'lessons' | 'interventions'>('lessons');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editing, setEditing] = useState(false);
+  const [stage, setStage] = useState<'plan' | 'summary'>('plan');
+  const [showPlanning, setShowPlanning] = useState(false);
   const [localSaved, setLocalSaved] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
   const [detail, setDetail] = useState<Session | null>(null);
@@ -104,6 +111,14 @@ function Workspace() {
   const [showExperienceForm, setShowExperienceForm] = useState(false);
   const [pathwayToOpen, setPathwayToOpen] = useState<Pathway | undefined>();
   const [conflict, setConflict] = useState<Session | null>(null);
+  const [today, setToday] = useState(localDate);
+  const [reviewDismissed, setReviewDismissed] = useState<string[]>([]);
+  const [reviewReady, setReviewReady] = useState(false);
+  const [syncError, setSyncError] = useState('');
+  const [lastSynced, setLastSynced] = useState('');
+  const scroll = useRef<ScrollView>(null);
+  const refreshSequence = useRef(0);
+  const mounted = useRef(true);
   const persistence = useRef<Promise<void>>(Promise.resolve());
   const lessonPersistence = useRef<Promise<void>>(Promise.resolve());
   const { width } = useWindowDimensions();
@@ -115,11 +130,43 @@ function Workspace() {
   }, [scope]);
 
   const refresh = useCallback(async () => {
+    const sequence = ++refreshSequence.current;
     const next = await request<AppState>('/state');
-    const normalized = { ...next, lessons: next.lessons ?? [] };
-    setData(normalized);
+    const normalized = { ...next, lessons: next.lessons ?? [], lesson_options: next.lesson_options ?? [] };
+    if (mounted.current && sequence === refreshSequence.current) {
+      setData(current => mergeState(current, normalized));
+      setSyncError(''); setLastSynced(new Date().toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai' }));
+    }
     return normalized;
   }, []);
+
+  const scrollTop = () => scroll.current?.scrollTo({ y: 0, animated: false });
+  useEffect(() => { scrollTop(); }, [tab, editing, editingLesson, selectedGoal?.id, detail?.id, showAccount]);
+  useEffect(() => { if (error || message) scrollTop(); }, [error, message]);
+  useEffect(() => {
+    mounted.current = true;
+    const sync = () => {
+      setToday(localDate());
+      if (Platform.OS !== 'web' || document.visibilityState === 'visible') {
+        void refresh().catch(() => { if (mounted.current) setSyncError('自动刷新暂时失败，填写内容仍保留。请检查网络或手动刷新。'); });
+      }
+    };
+    const interval = setInterval(sync, 20000);
+    const subscription = NativeAppState.addEventListener('change', state => { if (state === 'active') sync(); });
+    if (Platform.OS === 'web') { window.addEventListener('focus', sync); document.addEventListener('visibilitychange', sync); }
+    return () => {
+      mounted.current = false; ++refreshSequence.current; clearInterval(interval); subscription.remove();
+      if (Platform.OS === 'web') { window.removeEventListener('focus', sync); document.removeEventListener('visibilitychange', sync); }
+    };
+  }, [refresh]);
+  useEffect(() => {
+    let active = true; setReviewReady(false);
+    AsyncStorage.getItem(`skarma:${scope}:review-reminders:${today}`).then(raw => {
+      let values: unknown = []; try { values = raw ? JSON.parse(raw) : []; } catch {}
+      if (active) { setReviewDismissed(Array.isArray(values) ? values.filter(v => typeof v === 'string') : []); setReviewReady(true); }
+    }).catch(() => { if (active) { setReviewDismissed([]); setReviewReady(true); } });
+    return () => { active = false; };
+  }, [scope, today]);
 
   useEffect(() => {
     let active = true;
@@ -127,7 +174,7 @@ function Workspace() {
       if (!active) return;
       const [remote, local, localLesson] = results;
       if (remote.status === 'rejected') setError('暂时无法连接，请重试。已有本机草稿仍可继续编辑。');
-      if (local.status === 'fulfilled') { setDraft(local.value); setStorageReady(true); }
+      if (local.status === 'fulfilled') { setDraft(local.value); setStage(local.value?.stage ?? (local.value?.version || local.value?.pending?.action === 'complete' ? 'summary' : 'plan')); setStorageReady(true); }
       else setError('无法读取本机草稿，请保留浏览器数据后重试。');
       if (localLesson.status === 'fulfilled') { setLessonDraft(readLessonDraft(localLesson.value)); setLessonDraftReady(true); }
       else setError('无法读取本机上课草稿，请保留浏览器数据后重试。');
@@ -163,14 +210,16 @@ function Workspace() {
     finally { setBusy(false); }
   };
 
-  const dirty = () => draft && (draft.pending || !data.sessions.some(s =>
-    s.id === draft.id && s.version === draft.version && JSON.stringify(inputOf(s)) === JSON.stringify(draft.input)));
+  const dirty = () => draft && (draft.pending || (draft.version === null
+    ? JSON.stringify(draft.input) !== JSON.stringify(emptyInput())
+    : !data.sessions.some(s => s.id === draft.id && s.version === draft.version && JSON.stringify(inputOf(s)) === JSON.stringify(draft.input))));
 
   const startNew = () => {
     if (!storageReady) { setError('无法读取已有本机草稿，请先恢复存储访问后继续。'); return; }
     if (dirty()) { setEditing(true); setError('请先保存当前草稿，再创建另一条训练。'); return; }
     try {
-      setDraft({ id: uuid(), version: null, input: emptyInput() });
+      setDraft({ id: uuid(), version: null, input: emptyInput(), stage: 'plan' });
+      setStage('plan'); setShowPlanning(false);
       setEditing(true); setEditingLesson(false); setDetail(null); setConflict(null); setError(''); setMessage('');
     } catch (e) { setError((e as Error).message); }
   };
@@ -182,9 +231,10 @@ function Workspace() {
       const next = draft ?? { id: uuid(), version: null, input: emptyInput() };
       if (!next.input.targets.some(target => target.goal_id === goal.id)) {
         const role: Role = isReviewable(goal) ? 'review' : next.input.targets.some(target => target.role === 'primary') ? 'secondary' : 'primary';
-        setDraft({ ...next, input: { ...next.input, targets: [...next.input.targets, { goal_id: goal.id, role, plan: '', progress: '', outcome: null, next_step: '' }] } });
+        setDraft({ ...next, stage: 'plan', input: { ...next.input, targets: [...next.input.targets, { goal_id: goal.id, role, plan: '', progress: '', outcome: null, next_step: '' }] } });
       }
       setEditing(true); setEditingLesson(false); setDetail(null); setSelectedGoal(null); setConflict(null); setError('');
+      setStage('plan'); setShowPlanning(false);
       setMessage('目标已加入当前计划，请核对角色与活动安排。');
     } catch (error) { setError((error as Error).message); }
   };
@@ -193,14 +243,21 @@ function Workspace() {
     if (session.status === 'completed') { setDetail(session); setEditing(false); setSelectedGoal(null); return; }
     if (!storageReady) { setError('无法读取已有本机草稿，请先恢复存储访问后继续。'); return; }
     if (draft?.id !== session.id && dirty()) { setError('当前本机草稿尚未提交，请先保存后切换。'); return; }
-    if (draft?.id !== session.id) setDraft({ id: session.id, version: session.version, input: inputOf(session) });
+    setDraft(draft?.id === session.id ? { ...draft, stage: 'summary' } : { id: session.id, version: session.version, input: inputOf(session), stage: 'summary' });
     setEditing(true); setEditingLesson(false); setDetail(null); setConflict(null); setError(''); setSelectedGoal(null);
+    setStage('summary'); setShowPlanning(false);
   };
 
   const change = (value: Partial<SessionInput>) => {
     if (!draft || busy || draft.pending) return;
     setDraft({ ...draft, input: { ...draft.input, ...value } }); setMessage('');
   };
+
+  useEffect(() => {
+    if (!editing || !draft || draft.pending) return;
+    const latest = data.sessions.find(session => session.id === draft.id);
+    if (latest && latest.version !== draft.version) setConflict(latest);
+  }, [editing, draft?.id, draft?.version, draft?.pending, data.sessions]);
 
   const lessonDirty = () => lessonDraft && JSON.stringify(lessonDraft.input) !== JSON.stringify(
     data.lessons.find(item => item.id === lessonDraft.id) ? lessonInput(data.lessons.find(item => item.id === lessonDraft.id)!) : emptyLesson());
@@ -221,9 +278,12 @@ function Workspace() {
   };
   const saveLesson = () => safely(async () => {
     if (!lessonDraft) return;
-    const saved = await request<Lesson>(`/lessons/${lessonDraft.id}`, 'PUT', {
-      expected_version: lessonDraft.expectedVersion, lesson: lessonDraft.input,
-    });
+    let saved: Lesson;
+    try {
+      saved = await request<Lesson>(`/lessons/${lessonDraft.id}`, 'PUT', {
+        expected_version: lessonDraft.expectedVersion, lesson: lessonDraft.input,
+      });
+    } catch (e) { if (e instanceof ApiError && e.status === 409) await refresh().catch(() => undefined); throw e; }
     setData(current => ({ ...current, lessons: [saved, ...current.lessons.filter(item => item.id !== saved.id)] }));
     await lessonPersistence.current;
     await AsyncStorage.removeItem(lessonStorageKey);
@@ -251,9 +311,7 @@ function Workspace() {
       }
       throw e;
     }
-    const nextState = { ...data,
-      sessions: [result.session, ...data.sessions.filter(s => s.id !== result.session.id)] };
-    setData(nextState);
+    setData(current => ({ ...current, sessions: [result.session, ...current.sessions.filter(s => s.id !== result.session.id)] }));
     if (result.session.status === 'completed') {
       setDraft(null); setEditing(false); setDetail(result.session);
       // Await prior writes before clearing, so a delayed autosave cannot resurrect the draft.
@@ -261,9 +319,10 @@ function Workspace() {
       await clearDraft(scope);
       setMessage('这次训练已完成，困难与经验已按填写内容保存。');
     } else {
-      const saved = { id: result.session.id, version: result.session.version, input: inputOf(result.session) };
+      const saved: Draft = { id: result.session.id, version: result.session.version, input: inputOf(result.session), stage: 'summary' };
       await persist(saved); setDraft(saved);
-      setMessage('计划已保存。训练后继续回填这条记录。');
+      setEditing(false); setShowPlanning(false); setStage('summary'); setTab('today');
+      setMessage(pending.action === 'save_draft' ? '草稿已保存到服务器。干预后从今天的安排填写总结。' : '计划已保存。');
     }
     // A refresh failure must not turn a confirmed save into an uncertain mutation.
     try { await refresh(); } catch { setError('记录已保存，列表暂未刷新。请稍后刷新查看。'); }
@@ -285,12 +344,32 @@ function Workspace() {
     setConflict(null); setError('');
   });
 
-  const today = localDate();
   const todaySessions = data.sessions.filter(s => s.business_date === today);
   const todayLessons = data.lessons.filter(item => item.business_date === today);
   const due = data.difficulties.filter(d => d.status !== 'resolved' && d.next_review_date && d.next_review_date <= today);
   const dueGoals = data.goals.filter(g => g.next_review_date && g.next_review_date <= today);
-  const pageTitle = { today: '今天', planning: '规划总览', goals: '目标', pathways: '途径', history: '全部记录', followups: '困难与经验' }[tab];
+  const currentGoal = selectedGoal ? data.goals.find(goal => goal.id === selectedGoal.id) ?? selectedGoal : null;
+  const remoteLesson = lessonDraft?.expectedVersion !== null ? data.lessons.find(item => item.id === lessonDraft?.id) : undefined;
+  const lessonStale = Boolean(remoteLesson && remoteLesson.version !== lessonDraft?.expectedVersion);
+  const reminders = dueGoals.filter(goal => !reviewDismissed.includes(`${goal.id}:${goal.next_review_date}`));
+  const dismissReminders = () => {
+    const next = [...new Set([...reviewDismissed, ...reminders.map(goal => `${goal.id}:${goal.next_review_date}`)])];
+    setReviewDismissed(next);
+    void AsyncStorage.setItem(`skarma:${scope}:review-reminders:${today}`, JSON.stringify(next)).catch(() => undefined);
+  };
+  const pageTitle = { today: '今天', goals: '目标', pathways: '方法', history: '记录', followups: '困难与经验' }[tab];
+  const coverage = buildPlanning(data, { today, days: 30, level: 'short', includeArchived: false });
+  const acceptOption = (saved: LessonOption) => setData(current => ({ ...current,
+    lesson_options: [...(current.lesson_options ?? []).filter(item => item.kind !== saved.kind || item.value !== saved.value), saved] }));
+  const updateFollowUp = async (kind: 'difficulties' | 'experiences', id: string, body: FollowUpUpdate) => {
+    try {
+      const saved = await request<FollowUp>(`/${kind}/${id}`, 'PUT', body);
+      setData(current => ({ ...current, [kind]: current[kind].map(item => item.id === id ? saved : item) }));
+      setMessage(kind === 'experiences' ? '验证记录已保存。' : '跟进已保存。');
+      try { await refresh(); } catch { setSyncError('跟进已保存，自动刷新暂时失败。'); }
+      return saved;
+    } catch (e) { if (e instanceof ApiError && e.status === 409) await refresh().catch(() => undefined); throw e; }
+  };
 
   return <View style={styles.root}>
     <StatusBar barStyle="dark-content" />
@@ -299,7 +378,8 @@ function Workspace() {
         <View style={styles.brand}><Text style={styles.star}>✦</Text><Text style={styles.brandName}>skarma</Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel="我的账号" style={{ maxWidth: '55%', flexShrink: 1 }} disabled={busy || auth.identity.demo} onPress={() => setShowAccount(true)}><Text numberOfLines={1} style={styles.prototype}>{auth.identity.demo ? '体验版 · 示例空间' : `${auth.identity.user.display_name} · 账号`}</Text></Pressable>
       </View>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {syncError ? <Hint>{syncError}</Hint> : lastSynced ? <Hint>上次同步 {lastSynced} · 页面可见时每 20 秒自动刷新</Hint> : null}
         {error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}
         {message ? <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{message}</Text></View> : null}
         {showAccount ? <AccountPanel back={() => setShowAccount(false)} logout={async () => { await Promise.all([persistence.current, lessonPersistence.current]); await auth.logout(); }} onImported={refresh} /> : loading ? <ActivityIndicator color={colors.green} style={{ marginVertical: 40 }} /> :
@@ -308,14 +388,35 @@ function Workspace() {
               <Button title="返回" secondary onPress={() => setEditingLesson(false)} disabled={busy} /></View>
             <Hint>无需先建训练计划。课程名称和授课老师为必填项。</Hint>
             <Hint>{lessonLocalSaved ? '上课草稿已保存在本机' : '正在保存本机上课草稿…'}</Hint>
-            <LessonEditor value={lessonDraft.input} change={patch => setLessonDraft(current => current && !busy ? { ...current, input: { ...current.input, ...patch } } : current)} disabled={busy} />
-            <Button title={busy ? '正在保存…' : '保存上课记录'} onPress={() => void saveLesson()} disabled={busy || !lessonDraft.input.course.trim() || !lessonDraft.input.teacher.trim()} />
+            {lessonStale && remoteLesson && <Card>
+              <Text style={styles.errorText}>上课记录已有新版本，当前填写仍保留。请核对后重新填写修改。</Text>
+              <Hint>最新课程：{remoteLesson.course} · 老师：{remoteLesson.teacher}</Hint>
+              <Text style={styles.body}>最新内容：{remoteLesson.content || '未填写'}</Text>
+              <Button title="备份我的填写并载入最新上课记录" secondary disabled={busy} onPress={() => void safely(async () => {
+                await AsyncStorage.setItem(`skarma:${scope}:lesson-conflict-backup:${lessonDraft.id}`, JSON.stringify(lessonDraft));
+                setLessonDraft({ id: remoteLesson.id, expectedVersion: remoteLesson.version, input: lessonInput(remoteLesson) });
+              })} />
+            </Card>}
+            <LessonEditor data={data} addOption={async option => {
+              const saved = await request<LessonOption>('/lesson-options', 'POST', option);
+              acceptOption(saved);
+              if (!saved.active) throw new Error('同名选项已停用，请在记录页的选项维护中恢复使用。');
+            }} value={lessonDraft.input} change={patch => setLessonDraft(current => current && !busy ? { ...current, input: { ...current.input, ...patch } } : current)} disabled={busy} />
+            <Button title={busy ? '正在保存…' : '保存上课记录'} onPress={() => void saveLesson()} disabled={busy || lessonStale || !lessonDraft.input.course.trim() || !lessonDraft.input.teacher.trim()} />
           </> : editing && draft ? <>
-            <View style={styles.sectionHeader}><Text style={styles.title}>一次训练</Text>
+            <View style={styles.sectionHeader}><Text style={styles.title}>{stage === 'plan' ? '家庭干预计划' : '填写干预总结'}</Text>
               <Button title="返回" secondary onPress={() => setEditing(false)} disabled={busy} /></View>
             <Hint>{draft.pending ? '上次提交结果尚未确认，请重试同一次提交。' :
               localSaved ? '草稿已保存在本机 · 正式保存后可在其他设备继续' : '正在保存本机草稿…'}</Hint>
-            <Button title="查看规划总览" secondary onPress={() => { setEditing(false); setTab('planning'); }} disabled={busy} />
+            <Button title="刷新" secondary disabled={busy} onPress={() => void safely(async () => { await refresh(); })} />
+            {stage === 'plan' && <Hint>规划提示：近 30 天有 {coverage.uncovered.length} 个短期目标尚未覆盖。{coverage.uncovered.slice(0, 3).map(row => row.goal.title).join('、')}</Hint>}
+            <Button title={showPlanning ? '收起均衡规划提示' : '查看均衡规划提示'} secondary onPress={() => setShowPlanning(!showPlanning)} disabled={busy} />
+            {showPlanning && <PlanningOverview data={data} today={today} disabled={busy || !storageReady} hasDraft={true}
+              continueDraft={() => setShowPlanning(false)} plan={planGoal} openGoal={goal => { setSelectedGoal(goal); setEditing(false); }}
+              openPathway={pathway => { setPathwayToOpen(pathway); setEditing(false); setTab('pathways'); }} />}
+            <Button title={stage === 'plan' ? '转到干预总结' : '修改本次计划'} secondary onPress={() => {
+              const next = stage === 'plan' ? 'summary' : 'plan'; setStage(next); setDraft({ ...draft, stage: next });
+            }} disabled={busy || Boolean(draft.pending)} />
             {conflict ? <Card>
               <Text style={styles.cardTitle}>发现另一个版本</Text>
               <Text style={styles.body}>最新安排：{conflict.plan || '未填写'}</Text>
@@ -324,15 +425,16 @@ function Workspace() {
               <Button title="采用最新记录" secondary onPress={() => void resolveConflict(true)} disabled={busy} />
               {conflict.status !== 'completed' && <Button title="保留我的内容，核对后继续" secondary onPress={() => void resolveConflict(false)} disabled={busy} />}
             </Card> : null}
-            <TrainingEditor draft={draft} goals={data.goals} sessions={data.sessions} difficulties={data.difficulties}
+            <TrainingEditor stage={stage} pathways={data.pathways} draft={draft} goals={data.goals} sessions={data.sessions} difficulties={data.difficulties}
               disabled={busy || Boolean(draft.pending)} change={change} />
             {draft.pending ? <Button title="重试同一次提交" onPress={() => void submit(draft.pending!.action)} disabled={busy} /> :
-              <View style={styles.row}><Button title="保存计划／草稿" secondary onPress={() => void submit('save_draft')} disabled={busy} />
-                <Button title={busy ? '正在保存…' : '完成训练'} onPress={() => void submit('complete')} disabled={busy} /></View>}
+              <View style={styles.row}><Button title={stage === 'plan' ? '保存计划并退出' : '保存总结草稿并退出'} secondary onPress={() => void submit('save_draft')} disabled={busy} />
+                {stage === 'summary' && <Button title={busy ? '正在保存…' : '提交干预总结'} onPress={() => void submit('complete')} disabled={busy} />}</View>}
           </> : detail ? <SessionDetail session={detail} data={data} back={() => setDetail(null)} goFollowups={() => { setDetail(null); setTab('followups'); }} />
           : selectedGoal ? <>
-            <View style={styles.sectionHeader}><Text style={styles.title}>{selectedGoal.title}</Text><Button title="返回" secondary onPress={() => setSelectedGoal(null)} /></View>
-            <GoalReview key={selectedGoal.id} scope={scope} goal={selectedGoal} goals={data.goals}
+            <View style={styles.sectionHeader}><Text style={styles.title}>{currentGoal?.title}</Text><Button title="返回" secondary onPress={() => setSelectedGoal(null)} /></View>
+            <RelatedKnowledge data={data} goalId={selectedGoal.id} openPathway={pathway => { setSelectedGoal(null); setPathwayToOpen(pathway); setTab('pathways'); }} />
+            <GoalReview key={selectedGoal.id} feedback={scrollTop} scope={scope} goal={currentGoal!} goals={data.goals}
               source={id => { const s = data.sessions.find(s => s.id === id); if (s) openSession(s); }}
               save={async body => {
                 try {
@@ -347,7 +449,6 @@ function Workspace() {
                   throw e;
                 }
               }} />
-            <RelatedKnowledge data={data} goalId={selectedGoal.id} />
             <Text style={styles.subtitle}>相关训练</Text>
             {data.sessions.filter(s => s.targets.some(t => t.goal_id === selectedGoal.id)).map(s => <SessionCard key={s.id} session={s} onPress={() => openSession(s)} />)}
             {!data.sessions.some(s => s.targets.some(t => t.goal_id === selectedGoal.id)) && <Hint>开始记录后，这里会呈现相关训练与逐目标结果。</Hint>}
@@ -356,22 +457,25 @@ function Workspace() {
               <Button title="刷新" secondary disabled={busy} onPress={() => void safely(async () => { await refresh(); })} /></View>
             {tab === 'today' && <>
               <Text style={styles.subtitle}>长期关注</Text>
-              {data.goals.filter(g => g.level === 'long').map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}
+              {data.goals.filter(g => g.level === 'long').map(g => <GoalCard key={g.id} goal={g} data={data} onPress={() => setSelectedGoal(g)} />)}
               <View style={styles.hero}>
                 <Text style={styles.eyebrow}>{today.replaceAll('-', '.')} · 每一步都值得记录</Text>
                 <Text style={styles.heroTitle}>把今天的小进步，{width < 500 ? '\n' : ''}留下来。</Text>
-                <Text style={styles.heroText}>日常上课直接记录，专项训练也可先做计划。{width < 500 ? '\n' : ' '}让每一次观察都能成为下一步的依据。</Text>
-                <Button title="＋ 新建训练计划" onPress={startNew} disabled={busy} />
+                <Text style={styles.heroText}>机构课程直接记录，家人干预先安排计划。{width < 500 ? '\n' : ' '}让每一次观察都能成为下一步的依据。</Text>
+                {todaySessions.some(item => item.status === 'draft') ? <>
+                  <Button title="填写干预总结" onPress={() => openSession(todaySessions.find(item => item.status === 'draft')!)} disabled={busy} />
+                  <Button title="＋ 另建干预计划" secondary onPress={startNew} disabled={busy} />
+                </> : <Button title="＋ 新建干预计划" onPress={startNew} disabled={busy} />}
                 <Button title="＋ 记录今天上课" secondary onPress={startLesson} disabled={busy} />
-                <Button title="先看规划总览" secondary onPress={() => setTab('planning')} />
+
               </View>
-              {draft ? <Card><Text style={styles.cardTitle}>继续你的草稿</Text><Hint>{draft.input.business_date} · {draft.version ? '已有计划，可继续回填' : '本机尚未提交'}</Hint>
+              {draft && draft.input.business_date === today && (dirty() || !draft.version) ? <Card><Text style={styles.cardTitle}>继续你的草稿</Text><Hint>{draft.input.business_date} · {draft.version ? '已有计划，可继续回填' : '本机尚未提交'}</Hint>
                 <Button title="继续填写" secondary onPress={() => setEditing(true)} /></Card> : null}
-              {lessonDraft && lessonDirty() ? <Card><Text style={styles.cardTitle}>继续填写上课记录</Text>
+              {lessonDraft && lessonDraft.input.business_date === today && lessonDirty() ? <Card><Text style={styles.cardTitle}>继续填写上课记录</Text>
                 <Hint>草稿仅保存在这台设备，正式保存后其他设备才可查看。</Hint>
                 <Button title="继续填写" secondary onPress={() => { setEditingLesson(true); setEditing(false); }} /></Card> : null}
               <View style={styles.stats}>
-                <Stat number={todaySessions.length} label="今天的训练" />
+                <Stat number={todaySessions.length} label="今天的干预" />
                 <Stat number={todaySessions.filter(s => s.status === 'completed').length} label="已完成记录" />
                 <Stat number={due.length} label="到期困难" />
               </View>
@@ -382,46 +486,57 @@ function Workspace() {
               {due.length > 0 && <Card><Text style={styles.cardTitle}>有 {due.length} 条困难到了回看时间</Text>
                 <Button title="查看跟进" secondary onPress={() => setTab('followups')} /></Card>}
               {dueGoals.length > 0 && <><Text style={styles.subtitle}>待复盘目标 · {dueGoals.length}</Text>
-                {dueGoals.map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}</>}
+                {dueGoals.map(g => <GoalCard key={g.id} goal={g} data={data} onPress={() => setSelectedGoal(g)} />)}</>}
             </>}
             {tab === 'goals' && <>
-              <Hint>目标记录想实现的目的；途径记录具体怎样做。长期方向持续关注，中短期目标进入训练。</Hint>
-              <Button title="查看规划总览" secondary onPress={() => setTab('planning')} />
+              <Hint>目标记录想达到什么，方法记录具体怎样做。长期方向持续关注，中短期目标进入家庭干预。</Hint>
+
               <Button title={showGoalForm ? '收起新目标' : '＋ 新建目标'} secondary onPress={() => setShowGoalForm(v => !v)} />
-              {showGoalForm && <GoalForm goals={data.goals} busy={busy} create={input => void safely(async () => {
-                await request<Goal>('/goals', 'POST', { id: uuid(), ...input });
-                setShowGoalForm(false); await refresh(); setMessage('新目标已保存。');
-              })} />}
+              {showGoalForm && <GoalForm goals={data.goals} create={async input => {
+                const saved = await request<Goal>('/goals', 'POST', input);
+                setData(current => ({ ...current, goals: [saved, ...current.goals.filter(goal => goal.id !== saved.id)] }));
+                setShowGoalForm(false); setMessage('新目标已保存。');
+                try { await refresh(); } catch { setSyncError('目标已保存，自动刷新暂时失败。'); }
+              }} />}
               {(['long', 'medium', 'short'] as Level[]).map(level => <View key={level}>
                 <Text style={styles.subtitle}>{levels[level]}目标</Text>
-                {data.goals.filter(g => g.level === level).map(g => <GoalCard key={g.id} goal={g} onPress={() => setSelectedGoal(g)} />)}
+                {data.goals.filter(g => g.level === level).map(g => <GoalCard key={g.id} goal={g} data={data} onPress={() => setSelectedGoal(g)} />)}
               </View>)}
             </>}
-            {tab === 'planning' && <PlanningOverview data={data} today={today} disabled={busy || !storageReady}
-              hasDraft={Boolean(draft)} continueDraft={() => setEditing(true)} plan={planGoal} openGoal={setSelectedGoal}
-              openPathway={pathway => { setPathwayToOpen(pathway); setTab('pathways'); }} />}
-            {tab === 'pathways' && <PathwayLibrary data={data} initialPathway={pathwayToOpen} saved={(pathway: Pathway) => {
+            {tab === 'pathways' && <PathwayLibrary data={data} initialPathway={pathwayToOpen} openGoal={setSelectedGoal} saved={(pathway: Pathway) => {
               setData(current => ({ ...current, pathways: [pathway, ...current.pathways.filter(item => item.id !== pathway.id)] }));
-              setMessage('途径已保存。');
+              setMessage('方法已保存。');
             }} />}
             {tab === 'history' && <>
-              <Hint>日常上课可直接记录，不需要训练计划。训练记录仍保留当时的目标与观察。</Hint>
-              <Button title="＋ 新建上课记录" secondary onPress={startLesson} disabled={busy} />
-              <Text style={styles.subtitle}>上课记录 · {data.lessons.length}</Text>
-              {data.lessons.length ? [...data.lessons].sort((a, b) => b.business_date.localeCompare(a.business_date))
-                .map(item => <LessonCard key={item.id} lesson={item} onPress={() => openLesson(item)} />) : <Hint>还没有上课记录。</Hint>}
-              <Text style={styles.subtitle}>训练记录 · {data.sessions.length}</Text>
-              {data.sessions.length ? [...data.sessions].sort((a, b) => b.business_date.localeCompare(a.business_date))
-                .map(s => <SessionCard key={s.id} session={s} onPress={() => openSession(s)} />) :
-                <Card><Text style={styles.cardTitle}>还没有训练记录</Text><Hint>从“今天”新建一条计划，完成后可以在这里回看。</Hint></Card>}
+              <View style={styles.row}>
+                <Chip title="机构课程" selected={recordKind === 'lessons'} onPress={() => setRecordKind('lessons')} />
+                <Chip title="家庭干预" selected={recordKind === 'interventions'} onPress={() => setRecordKind('interventions')} />
+              </View>
+              {recordKind === 'lessons' ? <>
+                <Hint>机构老师的课程记录，与家人干预分开查看。</Hint>
+                <Button title="＋ 新建上课记录" secondary onPress={startLesson} disabled={busy} />
+                {lessonDraft && lessonDirty() && <Button title="继续未提交的上课记录" secondary onPress={() => setEditingLesson(true)} />}
+                <LessonStatistics lessons={data.lessons} today={today} />
+                <LessonOptionManager options={data.lesson_options ?? []} saved={acceptOption} />
+                <Text style={styles.subtitle}>上课记录 · {data.lessons.length}</Text>
+                {data.lessons.length ? [...data.lessons].sort((a, b) => b.business_date.localeCompare(a.business_date))
+                  .map(item => <LessonCard key={item.id} lesson={item} onPress={() => openLesson(item)} />) : <Hint>还没有上课记录。</Hint>}
+              </> : <>
+                <Hint>家人给予的干预：历史计划和已完成的总结。今天页只展示当天安排。</Hint>
+                <Button title="＋ 新建干预计划" secondary onPress={startNew} disabled={busy} />
+                {draft && dirty() && <Button title="继续未提交的干预草稿" secondary onPress={() => setEditing(true)} />}
+                <Text style={styles.subtitle}>家庭干预记录 · {data.sessions.length}</Text>
+                {data.sessions.length ? [...data.sessions].sort((a, b) => b.business_date.localeCompare(a.business_date))
+                  .map(session => <SessionCard key={session.id} session={session} onPress={() => openSession(session)} />) : <Hint>还没有家庭干预记录。</Hint>}
+              </>}
             </>}
             {tab === 'followups' && <>
               <Hint>训练中的困难进入后续跟进；成功片段先保存为待验证经验。</Hint>
               <Text style={styles.subtitle}>困难跟进 · {data.difficulties.length}</Text>
               {data.difficulties.length ? data.difficulties.map(item => <FollowUpCard key={item.id} item={item} kind="difficulties" busy={busy} goals={data.goals} pathways={data.pathways}
                 source={() => { const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
-                update={body => safely(async () => { await request(`/difficulties/${item.id}`, 'PUT', body); await refresh(); setMessage('跟进已保存。'); })} />) : <Hint>完成训练时填写困难，这里会保留来源与跟进过程。</Hint>}
-              <Button title={showExperienceForm ? '收起新经验' : '＋ 新建经验／原则'} secondary onPress={() => setShowExperienceForm(value => !value)} />
+                update={body => updateFollowUp('difficulties', item.id, body)} />) : <Hint>完成训练时填写困难，这里会保留来源与跟进过程。</Hint>}
+              <Button title={showExperienceForm ? '收起新经验' : '＋ 新建经验'} secondary onPress={() => setShowExperienceForm(value => !value)} />
               {showExperienceForm && <ExperienceCreator data={data} cancel={() => setShowExperienceForm(false)} saved={item => {
                 setData(current => ({ ...current, experiences: [item, ...current.experiences.filter(existing => existing.id !== item.id)] }));
                 setShowExperienceForm(false); setMessage('独立经验已保存，待验证。');
@@ -429,11 +544,22 @@ function Workspace() {
               <Text style={styles.subtitle}>成功经验 · {data.experiences.length}</Text>
               {data.experiences.length ? data.experiences.map(item => <FollowUpCard key={item.id} item={item} kind="experiences" busy={busy} goals={data.goals} pathways={data.pathways}
                 source={() => { const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
-                update={body => safely(async () => { await request(`/experiences/${item.id}`, 'PUT', body); await refresh(); setMessage('验证记录已保存。'); })} />) : <Hint>已保存不等于已验证。复用前，请补充适用情况和验证依据。</Hint>}
+                update={body => updateFollowUp('experiences', item.id, body)} />) : <Hint>已保存不等于已验证。复用前，请补充适用情况和验证依据。</Hint>}
             </>}
           </>}
         <Text style={styles.footer}>Every star shines at its own pace.</Text>
       </ScrollView>
+      <Modal visible={tab === 'today' && !loading && reviewReady && reminders.length > 0 && !editing && !editingLesson && !selectedGoal && !detail && !showAccount && !showGoalForm && !showExperienceForm}
+        transparent animationType="fade" onRequestClose={dismissReminders}>
+        <View style={{ flex: 1, backgroundColor: '#0006', justifyContent: 'center', padding: 24 }}>
+          <View accessibilityViewIsModal style={[styles.card, { maxHeight: '80%' }]}>
+            <Text accessibilityRole="header" style={styles.cardTitle}>目标复盘提醒</Text>
+            <Hint>今天或此前有 {reminders.length} 个目标到了复盘时间。</Hint>
+            <ScrollView>{reminders.map(goal => <View key={goal.id} style={{ marginBottom: 10 }}><Button title={`复盘：${goal.title}`} secondary onPress={() => { dismissReminders(); setSelectedGoal(goal); }} /></View>)}</ScrollView>
+            <Button title="今天不再弹出，稍后从列表查看" secondary onPress={dismissReminders} />
+          </View>
+        </View>
+      </Modal>
       <View style={styles.navigation}>
         {tabs.map(([key, icon, label]) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={label}
           accessibilityState={{ selected: tab === key && !editing }} style={styles.navItem} disabled={busy}
@@ -450,11 +576,15 @@ function Stat({ number, label }: { number: number; label: string }) {
   return <View style={styles.stat}><Text style={styles.statNumber}>{number}</Text><Text style={styles.hint}>{label}</Text></View>;
 }
 
-function LessonEditor({ value, change, disabled }: { value: LessonInput; change: (patch: Partial<LessonInput>) => void; disabled: boolean }) {
+function LessonEditor({ value, change, disabled, data, addOption }: { value: LessonInput; change: (patch: Partial<LessonInput>) => void; disabled: boolean; data: AppState; addOption: (option: NewLessonOption) => Promise<void> }) {
+  const choices = (kind: LessonOption['kind']) => {
+    const stopped = new Set((data.lesson_options ?? []).filter(option => option.kind === kind && !option.active).map(option => option.value));
+    return [...(data.lesson_options ?? []).filter(option => option.kind === kind && option.active).map(option => option.value), ...data.lessons.map(lesson => kind === 'course' ? lesson.course : lesson.teacher)].filter(name => !stopped.has(name));
+  };
   return <Card>
-    <Field label="上课日期" value={value.business_date} onChange={business_date => change({ business_date })} placeholder="YYYY-MM-DD" disabled={disabled} />
-    <Field label="课程名称（必填）" value={value.course} onChange={course => change({ course })} disabled={disabled} />
-    <Field label="授课老师（必填）" value={value.teacher} onChange={teacher => change({ teacher })} disabled={disabled} />
+    <DateField label="上课日期" value={value.business_date} onChange={business_date => change({ business_date })} disabled={disabled} />
+    <LessonChoice label="课程名称（必填）" kind="course" value={value.course} values={choices('course')} change={course => change({ course })} add={addOption} disabled={disabled} />
+    <LessonChoice label="授课老师（必填）" kind="teacher" value={value.teacher} values={choices('teacher')} change={teacher => change({ teacher })} add={addOption} disabled={disabled} />
     <Field label="上课内容" value={value.content} onChange={content => change({ content })} multiline disabled={disabled} />
     <Field label="目标" value={value.goals} onChange={goals => change({ goals })} multiline disabled={disabled} />
     <Field label="存在问题" value={value.problems} onChange={problems => change({ problems })} multiline disabled={disabled} />
@@ -470,10 +600,11 @@ function LessonCard({ lesson, onPress }: { lesson: Lesson; onPress: () => void }
   </Pressable>;
 }
 
-function GoalCard({ goal, onPress }: { goal: Goal; onPress: () => void }) {
+function GoalCard({ goal, onPress, data }: { goal: Goal; onPress: () => void; data?: AppState }) {
   return <Pressable accessibilityRole="button" onPress={onPress} style={styles.card}>
     <View style={styles.sectionHeader}><Text style={styles.cardTitle}>{goal.title}</Text><Text style={styles.badge}>{goal.status === 'archived' ? '归档' : levels[goal.level]}</Text></View>
     <Hint>{goal.criteria || '尚未填写达成标准'}</Hint>
+    {data && <Hint>关联方法 {data.pathways.filter(item => item.goal_ids.includes(goal.id)).length} · 关联经验 {data.experiences.filter(item => item.goal_ids.includes(goal.id) || item.pathway_ids.some(id => data.pathways.some(pathway => pathway.id === id && pathway.goal_ids.includes(goal.id)))).length}</Hint>}
     <Hint>{goal.progress_status ? progressLabels[goal.progress_status] : '状态待核对'}{goal.next_review_date ? ` · 复盘 ${goal.next_review_date}` : ''}</Hint>
     {goal.due_date && goal.due_date < localDate() && isTrainable(goal) && <Text style={styles.badge}>已超过截止日期 · 请复盘</Text>}
   </Pressable>;
@@ -489,9 +620,9 @@ function SessionCard({ session, onPress }: { session: Session; onPress: () => vo
   </Pressable>;
 }
 
-function TrainingEditor({ draft, goals, sessions, difficulties, disabled, change }: {
+function TrainingEditor({ draft, goals, sessions, difficulties, disabled, change, stage, pathways }: {
   draft: Draft; goals: Goal[]; sessions: Session[]; difficulties: FollowUp[];
-  disabled: boolean; change: (input: Partial<SessionInput>) => void;
+  disabled: boolean; change: (input: Partial<SessionInput>) => void; stage: 'plan' | 'summary'; pathways: Pathway[];
 }) {
   const input = draft.input;
   const [adding, setAdding] = useState<Role | null>(null);
@@ -501,16 +632,32 @@ function TrainingEditor({ draft, goals, sessions, difficulties, disabled, change
     !input.targets.some(t => t.goal_id === g.id));
   const saved = sessions.find(s => s.id === draft.id);
   const changedGoal = saved?.target_snapshots.some(t => goals.find(g => g.id === t.goal_id)?.version !== t.goal_snapshot.version);
+  const primary = input.targets.find(target => target.role === 'primary')?.goal_id;
+  const bindings = (kind: 'difficulty' | 'experience') => {
+    const goalKey = `${kind}_goal_ids` as const;
+    const pathwayKey = `${kind}_pathway_ids` as const;
+    const ids = input[goalKey] ?? (primary ? [primary] : []);
+    const methods = input[pathwayKey] ?? [];
+    return <>
+      <Select label={`${kind === 'difficulty' ? '困难' : '经验'}关联目标`} value={ids[0] ?? ''} disabled={disabled}
+        options={[{ value: '', label: '仅关联方法（未选方法时默认主目标）' }, ...orderedGoals(goals, input).map(goal => ({ value: goal.id, label: `${input.targets.some(target => target.goal_id === goal.id) ? '本次计划 · ' : ''}${goal.title}` }))]}
+        onChange={id => change({ [goalKey]: id ? [id] : [] })} />
+      <Select label={`${kind === 'difficulty' ? '困难' : '经验'}关联方法`} value={methods[0] ?? ''} disabled={disabled}
+        options={[{ value: '', label: '不关联方法' }, ...[...pathways].sort((a, b) => Number(b.goal_ids.some(id => input.targets.some(t => t.goal_id === id))) - Number(a.goal_ids.some(id => input.targets.some(t => t.goal_id === id)))).map(pathway => ({ value: pathway.id, label: pathway.title }))]}
+        onChange={id => change({ [pathwayKey]: id ? [id] : [] })} />
+    </>;
+  };
   return <>
+    {stage === 'plan' && <>
     <Card><Text style={styles.cardTitle}>1 · 课前安排</Text>
-      <Field label="训练日期" value={input.business_date} onChange={v => change({ business_date: v })} placeholder="YYYY-MM-DD" disabled={disabled} />
+      <DateField label="训练日期" value={input.business_date} onChange={v => change({ business_date: v })} disabled={disabled} />
       <Text style={styles.label}>时段</Text><View style={styles.row}>{['上午', '下午', '晚上'].map(v => <Chip key={v} title={v} selected={v === input.time_slot} onPress={() => change({ time_slot: v })} disabled={disabled} />)}</View>
       <Text style={styles.label}>训练活动 · 可多选</Text><View style={styles.row}>{activities.map(v => <Chip key={v} title={v} selected={input.activities.includes(v)} disabled={disabled}
         onPress={() => change({ activities: input.activities.includes(v) ? input.activities.filter(a => a !== v) : [...input.activities, v] })} />)}</View>
       <Text style={styles.label}>组织方式</Text><View style={styles.row}>{['居家', '一对一', '小组课'].map(v => <Chip key={v} title={v} selected={v === input.organization} onPress={() => change({ organization: v })} disabled={disabled} />)}</View>
       <Field label="整次训练安排" value={input.plan} onChange={v => change({ plan: v })} multiline placeholder="准备做什么？在哪里、和谁一起？" disabled={disabled} />
     </Card>
-    <Card><Text style={styles.cardTitle}>2 · 本次目标</Text><Hint>正式完成时需要一个主目标、至少一个副目标。复习目标单独添加。</Hint>
+    <Card><Text style={styles.cardTitle}>2 · 本次目标</Text><Hint>正式完成时需要一个主目标，副目标可选。复习目标单独添加。</Hint>
       {changedGoal && <Text style={styles.errorText}>计划关联的目标已更新。请核对最新标准与目标角色，再保存计划确认；直接完成会提示冲突。</Text>}
       {input.targets.map((target, index) => {
         const goal = goals.find(g => g.id === target.goal_id);
@@ -522,6 +669,9 @@ function TrainingEditor({ draft, goals, sessions, difficulties, disabled, change
           <View style={styles.sectionHeader}><Text style={styles.cardTitle}>{roles[target.role]} · {goal?.title ?? '目标已变更'}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`移除${goal?.title}`} disabled={disabled} onPress={() => change({ targets: input.targets.filter((_, i) => i !== index) })}><Text style={styles.link}>移除</Text></Pressable></View>
           <Hint>{goal?.criteria}</Hint>
+          <Select label={`更换${roles[target.role]}`} value={target.goal_id} disabled={disabled}
+            options={goals.filter(item => item.id === target.goal_id || (target.role === 'review' ? isReviewable(item) : isTrainable(item))).map(item => ({ value: item.id, label: item.title }))}
+            onChange={id => change({ targets: replaceTarget(input.targets, index, id) })} />
           {last && <Text style={styles.context}>上次（{last.date}）：{last.progress || '未填写逐目标观察'}</Text>}
           {unresolved.length > 0 && <Hint>相关训练中有 {unresolved.length} 条未解决困难，可在跟进页查看。</Hint>}
           <Field label={`${roles[target.role]}计划`} value={target.plan} onChange={v => updateTarget(index, { plan: v })} multiline placeholder="这次准备如何围绕该目标开展？" disabled={disabled} />
@@ -539,7 +689,8 @@ function TrainingEditor({ draft, goals, sessions, difficulties, disabled, change
         <Button title="收起选择" secondary onPress={() => setAdding(null)} />
       </View>}
     </Card>
-    <Card><Text style={styles.cardTitle}>3 · 课后回填</Text><Hint>训练前可以先保存计划，训练后回来填写以下内容。</Hint>
+    </>}
+    {stage === 'summary' && <Card><Text style={styles.cardTitle}>干预完成总结</Text><Hint>逐个目标填写观察，困难和经验会按所选目标与方法进入跟进。</Hint>
       {input.targets.map((target, index) => <View key={target.goal_id} style={styles.target}>
         <Text style={styles.label}>{roles[target.role]} · {goals.find(g => g.id === target.goal_id)?.title}</Text>
         <Field label={`${roles[target.role]}实际进度`} value={target.progress} onChange={v => updateTarget(index, { progress: v })} multiline placeholder="实际发生了什么？接受了哪些帮助？未观察可以留空。" disabled={disabled} />
@@ -548,35 +699,51 @@ function TrainingEditor({ draft, goals, sessions, difficulties, disabled, change
         <Field label={`${roles[target.role]}下一步`} value={target.next_step} onChange={v => updateTarget(index, { next_step: v })} placeholder={target.outcome === 'adjust' ? '调整时请填写具体说明' : '可选：下次准备怎样继续'} disabled={disabled} />
       </View>)}
       <Field label="整次训练观察" value={input.observation} onChange={v => change({ observation: v })} multiline placeholder="补充整次活动的情况、环境或值得留意的片段" disabled={disabled} />
-      <Text style={styles.label}>本次是否遇到困难？</Text><View style={styles.row}>{[false, true].map(v => <Chip key={String(v)} title={v ? '是' : '否'} selected={input.has_difficulty === v} onPress={() => change({ has_difficulty: v })} disabled={disabled} />)}</View>
-      {input.has_difficulty && <Field label="困难详情" value={input.difficulty} onChange={v => change({ difficulty: v })} multiline placeholder="描述观察到的困难，完成后进入待确认跟进" disabled={disabled} />}
-      <Text style={styles.label}>本次是否有成功经验？</Text><View style={styles.row}>{[false, true].map(v => <Chip key={String(v)} title={v ? '是' : '否'} selected={input.has_experience === v} onPress={() => change({ has_experience: v })} disabled={disabled} />)}</View>
+      <Text style={styles.label}>本次是否遇到困难？</Text><View style={styles.row}>{[false, true].map(v => <Chip key={String(v)} title={v ? '是' : '否'} selected={input.has_difficulty === v} onPress={() => change({ has_difficulty: v, ...(v && input.difficulty_goal_ids === undefined ? { difficulty_goal_ids: primary ? [primary] : [] } : {}) })} disabled={disabled} />)}</View>
+      {input.has_difficulty && <><Field label="困难详情" value={input.difficulty} onChange={v => change({ difficulty: v })} multiline placeholder="描述观察到的困难，完成后进入待确认跟进" disabled={disabled} />{bindings('difficulty')}</>}
+      <Text style={styles.label}>本次是否有成功经验？</Text><View style={styles.row}>{[false, true].map(v => <Chip key={String(v)} title={v ? '是' : '否'} selected={input.has_experience === v} onPress={() => change({ has_experience: v, ...(v && input.experience_goal_ids === undefined ? { experience_goal_ids: primary ? [primary] : [] } : {}) })} disabled={disabled} />)}</View>
       {input.has_experience && <>
         <Field label="成功经验详情" value={input.experience} onChange={v => change({ experience: v })} multiline placeholder="做了什么、在什么条件下有帮助？完成后保存为待验证经验" disabled={disabled} />
+        {bindings('experience')}
         <View style={styles.row}>{([['task', '中短期任务'], ['general', '长期普适']] as const).map(([v, title]) => <Chip key={v} title={title} selected={input.experience_kind === v} onPress={() => change({ experience_kind: v })} disabled={disabled} />)}</View>
       </>}
-    </Card>
+    </Card>}
   </>;
 }
 
-function GoalForm({ goals, busy, create }: {
-  goals: Goal[]; busy: boolean;
-  create: (input: { title: string; level: Level; parent_id: string | null; area: string; criteria: string }) => void;
+function GoalForm({ goals, create }: {
+  goals: Goal[];
+  create: (input: { id: string; title: string; level: Level; parent_id: string | null; area: string; criteria: string }) => Promise<void>;
 }) {
+  const [id] = useState(uuid);
   const [title, setTitle] = useState('');
   const [level, setLevel] = useState<Level>('short');
   const [parent, setParent] = useState<string | null>(null);
   const [area, setArea] = useState('');
   const [criteria, setCriteria] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const submit = async () => {
+    if (busy) return;
+    if (!title.trim()) { setError('请填写目标名称。'); return; }
+    setBusy(true); setError('');
+    try { await create({ id, title, level, parent_id: parent, area, criteria }); }
+    catch (e) { setError(e instanceof Error ? e.message : '保存失败，填写内容已保留，请重试。'); }
+    finally { setBusy(false); }
+  };
+  const areas = [...new Set([...goals.map(goal => goal.area).filter(Boolean), '沟通', '社交', '认知', '运动', '生活自理', '情绪与行为'])];
   return <Card><Text style={styles.cardTitle}>新目标</Text>
     <Field label="目标名称" value={title} onChange={setTitle} disabled={busy} />
     <View style={styles.row}>{(['long', 'medium', 'short'] as Level[]).map(v => <Chip key={v} title={levels[v]} selected={v === level} onPress={() => { setLevel(v); setParent(null); }} disabled={busy} />)}</View>
-    {level !== 'long' && <><Text style={styles.label}>上级目标</Text><View style={styles.row}>
-      {goals.filter(g => g.status === 'active' && g.level === (level === 'medium' ? 'long' : 'medium')).map(g => <Chip key={g.id} title={g.title} selected={parent === g.id} onPress={() => setParent(g.id)} disabled={busy} />)}
-    </View></>}
-    <Field label="训练领域" value={area} onChange={setArea} disabled={busy} />
+    {level !== 'long' && <Select label="上级目标（可选）" value={parent ?? ''} disabled={busy} onChange={id => setParent(id || null)}
+      options={[{ value: '', label: '暂不关联上级' }, ...goals.filter(goal => goal.status === 'active' && goal.level === (level === 'medium' ? 'long' : 'medium')).map(goal => ({ value: goal.id, label: goal.title }))]} />}
+    <Hint>可先独立创建目标，之后再补充上级；中期可关联长期，短期可关联中期。</Hint>
+    <Select label="选择已有领域分类" value={areas.includes(area) ? area : ''} onChange={setArea} disabled={busy} options={[{ value: '', label: '暂不分类／自行填写' }, ...areas.map(value => ({ value, label: value }))]} />
+    <Field label="领域分类（可选）" value={area} onChange={setArea} disabled={busy} />
+    <Hint>训练领域是分类标签，例如沟通、社交、认知或运动，便于筛选；它不是上级目标。</Hint>
     <Field label="达成标准" value={criteria} onChange={setCriteria} multiline placeholder="什么观察可以作为达成依据？" disabled={busy} />
-    <Button title="保存目标" onPress={() => create({ title, level, parent_id: parent, area, criteria })} disabled={busy} />
+    {error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
+    <Button title={busy ? '正在保存…' : '保存目标'} onPress={() => void submit()} disabled={busy} />
   </Card>;
 }
 
@@ -585,7 +752,8 @@ function goalUpdate(goal: Goal): GoalUpdate {
   return { ...fields, expected_version: version, change_note: '' };
 }
 
-function GoalReview({ scope, goal, goals, save, source }: {
+function GoalReview({ scope, goal, goals, save, source, feedback }: {
+  feedback: () => void;
   scope: string;
   goal: Goal; goals: Goal[]; save: (body: GoalUpdate) => Promise<Goal>; source: (id: string) => void;
 }) {
@@ -608,8 +776,8 @@ function GoalReview({ scope, goal, goals, save, source }: {
   const submit = async () => {
     setSaving(true); setError(''); setNotice('');
     try {
-      const updated = await save(form);
-      setForm(goalUpdate(updated)); setEditing(false); setNotice('目标复盘已保存，修改历史已保留。');
+      const updated = await save({ ...form, change_note: form.change_note.trim() || '目标复盘' });
+      setForm(goalUpdate(updated)); setEditing(false); setNotice('目标复盘已保存，修改历史已保留。'); feedback();
     } catch (e) { setError(e instanceof Error ? e.message : '保存失败，请保留填写内容后重试。'); }
     finally { setSaving(false); }
   };
@@ -622,8 +790,8 @@ function GoalReview({ scope, goal, goals, save, source }: {
     finally { setSaving(false); }
   };
   const dateField = (key: 'start_date' | 'due_date' | 'last_review_date' | 'next_review_date' | 'completion_date', label: string) =>
-    <Field key={key} label={label} value={form[key] ?? ''} onChange={v => patch({ [key]: v.trim() || null })}
-      placeholder="YYYY-MM-DD，可留空" disabled={saving} />;
+    <DateField key={key} label={label} value={form[key] ?? ''} onChange={v => patch({ [key]: v.trim() || null })}
+      disabled={saving} />;
   return <>
     <Card>
       <Text style={styles.badge}>{levels[goal.level]} · {goal.progress_status ? progressLabels[goal.progress_status] : '状态待核对'} · {goal.status === 'archived' ? '已归档' : '活动'}</Text>
@@ -632,9 +800,9 @@ function GoalReview({ scope, goal, goals, save, source }: {
       {goal.next_review_date && <Hint>下次复盘：{goal.next_review_date}</Hint>}
       {goal.review_notes && <Text style={styles.body}>复盘：{goal.review_notes}</Text>}
       <Button title={editing ? '复盘内容尚未提交' : '修改／复盘目标'} secondary disabled={editing || saving}
-        onPress={() => { setEditing(true); setForm(goalUpdate(goal)); setNotice(''); }} />
+        onPress={() => { setEditing(true); setForm({ ...goalUpdate(goal), last_review_date: localDate(), next_review_date: shiftDate(localDate(), 14) }); setNotice(''); }} />
     </Card>
-    {error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
+    {!editing && error ? <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text> : null}
     {notice ? <Text accessibilityRole="alert" style={styles.noticeText}>{notice}</Text> : null}
     {editing && <Card>
       <Text style={styles.cardTitle}>目标复盘</Text>
@@ -646,10 +814,11 @@ function GoalReview({ scope, goal, goals, save, source }: {
       </View>}
       <Field label="目标名称" value={form.title} onChange={v => patch({ title: v })} disabled={saving} />
       {goal.level !== 'long' && <><Text style={styles.label}>上级目标</Text><View style={styles.row}>
+        <Chip title="暂不关联上级" selected={form.parent_id === null} onPress={() => patch({ parent_id: null })} disabled={saving} />
         {goals.filter(g => g.level === (goal.level === 'medium' ? 'long' : 'medium') && (g.status === 'active' || g.id === form.parent_id))
           .map(g => <Chip key={g.id} title={g.title} selected={form.parent_id === g.id} onPress={() => patch({ parent_id: g.id })} disabled={saving} />)}
       </View></>}
-      <Field label="训练领域" value={form.area} onChange={v => patch({ area: v })} disabled={saving} />
+      <Field label="领域分类（可选）" value={form.area} onChange={v => patch({ area: v })} disabled={saving} />
       <Field label="达成标准" value={form.criteria} onChange={v => patch({ criteria: v })} multiline disabled={saving} />
       <Text style={styles.label}>培养／训练状态</Text><View style={styles.row}>
         <Chip title="待核对" selected={form.progress_status === null} onPress={() => patch({ progress_status: null })} disabled={saving} />
@@ -665,7 +834,8 @@ function GoalReview({ scope, goal, goals, save, source }: {
       {dateField('next_review_date', '下次复盘日期（可选）')}
       {dateField('completion_date', goal.level === 'long' ? '内化确认日期（可选）' : '达成确认日期（可选）')}
       <Field label="进度与复盘记录" value={form.review_notes} onChange={v => patch({ review_notes: v })} multiline disabled={saving} />
-      <Field label="本次修改说明" value={form.change_note} onChange={v => patch({ change_note: v })} multiline placeholder="为什么修改？保留本次观察与依据" disabled={saving} />
+      <Field label="本次修改说明（可选）" value={form.change_note} onChange={v => patch({ change_note: v })} multiline placeholder="为什么修改？保留本次观察与依据" disabled={saving} />
+      {error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
       <Button title={saving ? '正在保存…' : '保存目标复盘'} onPress={() => void submit()} disabled={saving || stale} />
     </Card>}
     <Text style={styles.subtitle}>目标修改历史 · {history.length}</Text>
@@ -705,7 +875,7 @@ function SessionDetail({ session, data, back, goFollowups }: { session: Session;
 
 function FollowUpCard({ item, kind, busy, source, update, goals, pathways }: {
   item: FollowUp; kind: 'difficulties' | 'experiences'; busy: boolean; source: () => void; goals: Goal[]; pathways: Pathway[];
-  update: (input: FollowUpUpdate) => Promise<boolean>;
+  update: (input: FollowUpUpdate) => Promise<FollowUp>;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState(item.status);
@@ -715,31 +885,42 @@ function FollowUpCard({ item, kind, busy, source, update, goals, pathways }: {
   const [goalIds, setGoalIds] = useState(item.goal_ids);
   const [pathwayIds, setPathwayIds] = useState(item.pathway_ids);
   const [version, setVersion] = useState(item.version);
-  const reset = () => { setStatus(item.status); setConclusion(item.conclusion); setDate(item.next_review_date ?? ''); setContent(item.content); setGoalIds(item.goal_ids); setPathwayIds(item.pathway_ids); setVersion(item.version); };
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  busy = busy || saving;
+  const reset = () => { setError(''); setStatus(item.status); setConclusion(item.conclusion); setDate(item.next_review_date ?? ''); setContent(item.content); setGoalIds(item.goal_ids); setPathwayIds(item.pathway_ids); setVersion(item.version); };
   useEffect(() => { if (!expanded) reset(); }, [item.version, expanded]);
   const options = kind === 'difficulties' ? [['pending', '待确认'], ['active', '跟进中'], ['resolved', '已解决']] :
     [['pending', '待验证'], ['verified', '已验证'], ['stopped', '停用']];
   return <Card testID={`followup-${item.id}`}>
     <Text style={styles.badge}>{options.find(o => o[0] === item.status)?.[1]}{item.kind ? ` · ${item.kind === 'general' ? '长期普适' : '中短期任务'}` : ''}</Text>
     <Text style={styles.body}>{item.content}</Text>
-    {kind === 'experiences' && <>
-      <Hint>{item.goal_ids.length ? `目的原则：${item.goal_ids.map(id => goals.find(goal => goal.id === id)?.title ?? '待核对').join('、')}` : '尚未绑定目的'}</Hint>
-      <Hint>{item.pathway_ids.length ? `途径细节：${item.pathway_ids.map(id => pathways.find(pathway => pathway.id === id)?.title ?? '待核对').join('、')}` : '尚未绑定途径'}</Hint>
+    {<>
+      <Hint>{item.goal_ids.length ? `关联目标：${item.goal_ids.map(id => goals.find(goal => goal.id === id)?.title ?? '待核对').join('、')}` : '尚未绑定目标'}</Hint>
+      <Hint>{item.pathway_ids.length ? `关联方法：${item.pathway_ids.map(id => pathways.find(pathway => pathway.id === id)?.title ?? '待核对').join('、')}` : '尚未绑定方法'}</Hint>
     </>}
     {item.next_review_date && <Hint>下次回看：{item.next_review_date}</Hint>}
-    {item.conclusion ? <Hint>结论：{item.conclusion}</Hint> : null}
+    {item.conclusion ? <Hint>{kind === 'experiences' ? '验证依据' : '跟进结论'}：{item.conclusion}</Hint> : null}
     <View style={styles.row}>{item.source_session_id ? <Button title="查看来源训练" secondary onPress={source} /> : <Hint>独立记录 · 无来源训练</Hint>}<Button title={expanded ? '收起' : '更新跟进'} secondary disabled={busy} onPress={() => setExpanded(v => !v)} /></View>
     {expanded && <>
       {version !== item.version && <><Hint>记录已被更新，当前填写仍保留。请核对最新记录后再保存。</Hint><Button title="载入最新跟进内容" secondary onPress={reset} disabled={busy} /></>}
-      {kind === 'experiences' && <>
-        <Field label="经验内容" value={content} onChange={setContent} multiline disabled={busy} />
+      {<>
+        <Field label={kind === 'experiences' ? '经验内容' : '困难内容'} value={content} onChange={setContent} multiline disabled={busy} />
         <ExperienceBindings goals={goals} pathways={pathways} goalIds={goalIds} pathwayIds={pathwayIds} changeGoals={setGoalIds} changePathways={setPathwayIds} disabled={busy} />
       </>}
       <View style={styles.row}>{options.map(([v, title]) => <Chip key={v} title={title} selected={status === v} onPress={() => setStatus(v)} disabled={busy} />)}</View>
       <Field label={kind === 'difficulties' ? '跟进结论' : '验证依据'} value={conclusion} onChange={setConclusion} multiline disabled={busy} />
-      <Field label="下次回看日期（可选）" value={date} onChange={setDate} placeholder="YYYY-MM-DD" disabled={busy} />
-      <Button title="保存跟进" disabled={busy} onPress={() => void update({ expected_version: version, status, conclusion, next_review_date: date || null,
-        ...(kind === 'experiences' ? { content, goal_ids: goalIds, pathway_ids: pathwayIds } : {}) }).then(ok => { if (ok) setVersion(version + 1); })} />
+      <DateField label="下次回看日期（可选）" value={date} onChange={setDate} disabled={busy} />
+      {error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
+      <Button title={saving ? '正在保存…' : '保存跟进'} disabled={busy || version !== item.version} onPress={() => void (async () => {
+        if (saving) return;
+        setSaving(true); setError('');
+        try {
+          const saved = await update({ expected_version: version, status, conclusion, next_review_date: date || null, content, goal_ids: goalIds, pathway_ids: pathwayIds });
+          setVersion(saved.version);
+        } catch (e) { setError(e instanceof Error ? e.message : '保存失败，填写内容已保留。'); }
+        finally { setSaving(false); }
+      })()} />
     </>}
   </Card>;
 }

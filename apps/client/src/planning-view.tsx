@@ -70,7 +70,7 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
       </View><Text style={s.hint}>{summary.start ?? '最早记录'} — {today} · 按训练发生日期，含今天</Text>
       <View style={s.row}>{(['short', 'medium'] as const).map(value => <Action key={value} title={value === 'short' ? '短期目标' : '中期目标'} selected={level === value} press={() => { setLevel(value); resetList(); }} />)}
         <Action title={includeArchived ? '已包含归档' : '包含归档目标'} selected={includeArchived} press={() => { setIncludeArchived(!includeArchived); resetList(); }} /></View>
-      <View style={s.row}><Action title="目标进展与训练" selected={view === 'goals'} press={() => setView('goals')} /><Action title="途径覆盖" selected={view === 'pathways'} press={() => setView('pathways')} /></View>
+      <View style={s.row}><Action title="目标进展与训练" selected={view === 'goals'} press={() => setView('goals')} /><Action title="方法覆盖" selected={view === 'pathways'} press={() => setView('pathways')} /></View>
     </View>
     {view === 'goals' ? <>
       <View style={s.card} testID="planning-summary"><Text style={s.title}>这段时间照顾到了哪些目标？</Text>
@@ -79,13 +79,13 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
         <Text style={s.hint}>零次表示所选时间内未记录，不表示没有能力或从未练习。已达成、已完成及归档目标不列入待推进提醒。</Text>
         {summary.uncovered.length > 0 && <Action title="查看近期未覆盖目标" press={() => { setOnlyUncovered(true); setSelectedId(null); }} />}
       </View>
-      <View style={s.charts}>
+      {!onlyUncovered && !selectedId && <View style={s.charts}>
         <Chart grid title="训练分布" unit="次目标覆盖" segments={distribution}
           explanation="每场训练对同一目标只计一次；涉及多个目标会分别计数。图中比例表示训练覆盖分配，不代表时长或能力达成率。"
           select={id => { setOnlyUncovered(false); setSelectedId(id); }} />
         <Chart grid title="当前目标进展" unit="个目标" segments={summary.progress}
           explanation="根据目标当前确认的状态统计，不受训练时间筛选影响。归档本身不等于已达成；尚未设置量化达成百分比。" />
-      </View>
+      </View>}
       {level === 'medium' && <Text style={s.hint}>中期次数包含直接训练及当时所属短期目标的训练；同一场不重复计数。下属短期达成数按当前目标关系计算。</Text>}
       <View style={s.card}><Text style={s.title}>安排前逐个看看</Text><Text style={s.hint}>默认按所选时间内次数从少到多排列；相同次数时，较久未记录的在前。</Text>
         {(onlyUncovered || selectedId) && <><Text style={s.label}>{onlyUncovered ? '正在查看：近期未覆盖且仍待推进' : `正在查看：${selectedId === 'remaining' ? `其余 ${remaining.length} 个目标` : summary.rows.find(row => row.goal.id === selectedId)?.goal.title ?? '所选目标'}`}</Text>
@@ -112,7 +112,7 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
           </>}
           {row.goal.criteria ? <Text style={s.hint}>达成标准：{row.goal.criteria}</Text> : null}
           {row.observation ? <Text style={s.observation}>最近观察 · {row.observationDate}：{row.observation}</Text> : <Text style={s.hint}>尚无逐目标观察，可先核对目标与活动是否合适。</Text>}
-          <Text style={s.hint}>明确关联的使用中途径 {row.pathwayCount} 条</Text>
+          <Text style={s.hint}>明确关联的使用中方法 {row.pathwayCount} 条</Text>
           <View style={s.row}>
             <Action title={hasDraft ? '加入当前计划' : '围绕此目标规划'} disabled={disabled} press={() => plan(row.goal)} />
             <Action title="查看目标与经验" press={() => openGoal(row.goal)} />
@@ -121,18 +121,18 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
         </View>;
       })}
     </> : <>
-      <Chart title="途径对目标的覆盖" unit="个目标" segments={[
-        { id: 'with', title: '已有使用中途径', value: summary.goalsWithPathways, color: '#538A76' },
-        { id: 'without', title: '尚无使用中途径', value: summary.rows.length - summary.goalsWithPathways, color: '#C49661' },
-      ]} explanation="按当前明确关联统计，与训练时间筛选无关。归档途径不计入覆盖；适用关系不表示训练时实际用过。" />
-      <View style={s.card}><Text style={s.title}>有哪些方式可以尝试？</Text><Text style={s.body}>目前尚未记录每次实际使用的途径，因此不展示途径训练次数。</Text>
-        <Text style={s.hint}>下面按明确绑定展示适用目标与经验数量。长期目的的绑定不会自动推算到中短期目标；经验数量不表示方法有效程度。</Text></View>
-      {!summary.pathways.length && <View style={s.card}><Text style={s.body}>尚无此范围的途径，可到“途径”页创建并关联目标。</Text></View>}
+      <Chart title="方法对目标的覆盖" unit="个目标" segments={[
+        { id: 'with', title: '已有使用中方法', value: summary.goalsWithPathways, color: '#538A76' },
+        { id: 'without', title: '尚无使用中方法', value: summary.rows.length - summary.goalsWithPathways, color: '#C49661' },
+      ]} explanation="按当前明确关联统计，与训练时间筛选无关。归档方法不计入覆盖；适用关系不表示训练时实际用过。" />
+      <View style={s.card}><Text style={s.title}>有哪些方式可以尝试？</Text><Text style={s.body}>目前尚未记录每次实际使用的方法，因此不展示方法训练次数。</Text>
+        <Text style={s.hint}>下面按明确绑定展示适用目标与经验数量。长期目标的绑定不会自动推算到中短期目标；经验数量不表示方法有效程度。</Text></View>
+      {!summary.pathways.length && <View style={s.card}><Text style={s.body}>尚无此范围的方法，可到“方法”页创建并关联目标。</Text></View>}
       {summary.pathways.map(({ pathway, goals, experienceCount }) => <View key={pathway.id} style={s.card} testID={`planning-pathway-${pathway.id}`}>
         <Text style={s.title}>{pathway.title}</Text><Text style={s.hint}>{pathway.status === 'archived' ? '已归档' : '使用中'} · 当前范围适用 {goals.length} 个目标 · {experienceCount} 条经验</Text>
         <Text style={s.body}>{goals.map(goal => goal.title).join('、') || '当前范围暂无明确关联目标'}</Text>
         {pathway.description ? <Text style={s.hint}>{pathway.description}</Text> : null}
-        <Action title="查看途径与细节" press={() => openPathway(pathway)} />
+        <Action title="查看方法与细节" press={() => openPathway(pathway)} />
       </View>)}
     </>}
   </>;

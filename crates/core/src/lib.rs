@@ -47,6 +47,8 @@ pub enum Command {
         id: String,
         request: SaveLesson,
     },
+    AddLessonOption(NewLessonOption),
+    UpdateLessonOption(UpdateLessonOption),
     UpdateFollowUp {
         table: String,
         id: String,
@@ -100,6 +102,12 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         }
         Command::SaveLesson { id, request } => {
             serde_json::to_value(store::save_lesson(db, &id, request)?)?
+        }
+        Command::AddLessonOption(input) => {
+            serde_json::to_value(store::add_lesson_option(db, input)?)?
+        }
+        Command::UpdateLessonOption(input) => {
+            serde_json::to_value(store::update_lesson_option(db, input)?)?
         }
         Command::UpdateFollowUp { table, id, request } => {
             serde_json::to_value(store::update_follow_up(db, &table, &id, request)?)?

@@ -10,6 +10,48 @@ fn database() -> Connection {
     db
 }
 
+#[test]
+fn standalone_goals_can_be_created_retried_and_linked_later() {
+    let mut db = database();
+    let input = NewGoal {
+        id: Uuid::new_v4().to_string(),
+        title: "独立中期目标".into(),
+        level: Level::Medium,
+        parent_id: None,
+        area: "沟通".into(),
+        criteria: String::new(),
+    };
+    let goal = store::create_goal(&mut db, input.clone()).unwrap();
+    let retry = store::create_goal(&mut db, input.clone()).unwrap();
+    assert_eq!(retry.id, goal.id);
+    assert_eq!(store::goal_history(&db, &goal.id).unwrap().len(), 1);
+    let wrong = NewGoal {
+        title: "改变了内容".into(),
+        ..input
+    };
+    assert_eq!(
+        store::create_goal(&mut db, wrong).unwrap_err().0,
+        StatusCode::CONFLICT
+    );
+    let long = store::state(&db)
+        .unwrap()
+        .goals
+        .into_iter()
+        .find(|g| g.level == Level::Long)
+        .unwrap();
+    let mut change = edit(&goal);
+    change.parent_id = Some(long.id);
+    let linked = store::update_goal(&mut db, &goal.id, change).unwrap();
+    let mut detach = edit(&linked);
+    detach.parent_id = None;
+    assert!(
+        store::update_goal(&mut db, &goal.id, detach)
+            .unwrap()
+            .parent_id
+            .is_none()
+    );
+}
+
 fn edit(goal: &Goal) -> UpdateGoal {
     UpdateGoal {
         expected_version: goal.version,
@@ -67,6 +109,10 @@ fn command(db: &Connection, action: &str, version: Option<u64>) -> SaveSession {
             has_experience: false,
             experience: String::new(),
             experience_kind: "task".into(),
+            difficulty_goal_ids: vec![],
+            difficulty_pathway_ids: vec![],
+            experience_goal_ids: vec![],
+            experience_pathway_ids: vec![],
         },
     }
 }

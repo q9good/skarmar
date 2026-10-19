@@ -3,11 +3,15 @@
 import json
 import os
 from pathlib import Path
-from urllib.request import Request, urlopen
+from urllib.request import Request, urlopen, build_opener, ProxyHandler
+from urllib.parse import urlparse
 
 from playwright.sync_api import expect, sync_playwright
 
 BASE = os.environ.get("SKARMA_TEST_URL", "http://127.0.0.1:3001")
+if urlparse(BASE).hostname in ('127.0.0.1', 'localhost', '::1'):
+    # The local test server is in this executor, outside the Internet proxy.
+    urlopen = build_opener(ProxyHandler({})).open
 OUTPUT = Path(".local/screenshots")
 OUTPUT.mkdir(parents=True, exist_ok=True)
 with urlopen(f"{BASE}/api/auth/me") as response:
@@ -39,14 +43,18 @@ with sync_playwright() as playwright:
     # Daily classes can be recorded without creating a training plan.
     page.get_by_role("button", name="＋ 记录今天上课", exact=True).click()
     expect(page.get_by_role("button", name="保存上课记录", exact=True)).to_be_disabled()
-    page.get_by_role("textbox", name="课程名称（必填）", exact=True).fill("【浏览器验收】音乐课")
-    page.get_by_role("textbox", name="授课老师（必填）", exact=True).fill("王老师")
+    page.get_by_role("combobox", name="课程名称（必填）", exact=True).select_option("__new__")
+    page.get_by_role("textbox", name="新增课程名称", exact=True).fill("【浏览器验收】音乐课")
+    page.get_by_role("button", name="保存并使用新选项", exact=True).click()
+    page.get_by_role("combobox", name="授课老师（必填）", exact=True).select_option("__new__")
+    page.get_by_role("textbox", name="新增老师名称", exact=True).fill("王老师")
+    page.get_by_role("button", name="保存并使用新选项", exact=True).click()
     page.get_by_role("textbox", name="上课内容", exact=True).fill("一起唱歌")
     page.get_by_role("textbox", name="需要家里配合的", exact=True).fill("在家练习")
     expect(page.get_by_text("上课草稿已保存在本机", exact=True)).to_be_visible()
     page.reload()
     page.get_by_role("button", name="继续填写", exact=True).click()
-    expect(page.get_by_role("textbox", name="课程名称（必填）", exact=True)).to_have_value("【浏览器验收】音乐课")
+    expect(page.get_by_role("combobox", name="课程名称（必填）", exact=True)).to_have_value("【浏览器验收】音乐课")
     expect(page.get_by_role("textbox", name="需要家里配合的", exact=True)).to_have_value("在家练习")
     page.get_by_role("button", name="保存上课记录", exact=True).click()
     expect(page.get_by_text("上课记录已保存。", exact=True)).to_be_visible()
@@ -62,7 +70,7 @@ with sync_playwright() as playwright:
     assert state()["lessons"][0]["problems"] == "暂时跟不上节奏"
     page.get_by_role("button", name="今天", exact=True).click()
 
-    page.get_by_role("button", name="＋ 新建训练计划", exact=True).click()
+    page.get_by_role("button", name="＋ 新建干预计划", exact=True).click()
     page.get_by_role("button", name="游戏", exact=True).click()
     page.get_by_role("textbox", name="整次训练安排", exact=True).fill("【浏览器验收】一起完成轮流游戏")
     page.get_by_role("button", name="＋ 主目标", exact=True).click()
@@ -71,15 +79,17 @@ with sync_playwright() as playwright:
     page.get_by_role("button", name="轮流参与活动", exact=True).click()
     page.get_by_role("textbox", name="主目标计划", exact=True).fill("需要时表达帮助请求")
     page.get_by_role("textbox", name="副目标计划", exact=True).fill("观察轮流和帮助情况")
-    page.get_by_role("button", name="保存计划／草稿", exact=True).click()
-    expect(page.get_by_text("计划已保存。训练后继续回填这条记录。", exact=True)).to_be_visible()
+    page.get_by_role("button", name="保存计划并退出", exact=True).click()
+    expect(page.get_by_text("草稿已保存到服务器。干预后从今天的安排填写总结。", exact=True)).to_be_visible()
     planned = state()["sessions"][0]
     assert planned["status"] == "draft" and planned["version"] == 1
     assert len(state()["sessions"]) == 1
 
     page.reload()
-    page.get_by_role("button", name="继续填写", exact=True).click()
+    page.get_by_role("button", name="填写干预总结", exact=True).click()
+    page.get_by_role("button", name="修改本次计划", exact=True).click()
     expect(page.get_by_role("textbox", name="整次训练安排", exact=True)).to_have_value(planned["plan"])
+    page.get_by_role("button", name="转到干预总结", exact=True).click()
     context.set_offline(True)
     page.get_by_role("textbox", name="主目标实际进度", exact=True).fill("【浏览器验收】现场观察草稿")
     expect(page.get_by_text("草稿已保存在本机", exact=False)).to_be_visible()
@@ -103,7 +113,7 @@ with sync_playwright() as playwright:
         route.fulfill(status=503, content_type="application/json", body=json.dumps({"error": "验收：网关未确认提交结果"}))
 
     page.route("**/api/sessions/*", lose_response)
-    page.get_by_role("button", name="完成训练", exact=True).click()
+    page.get_by_role("button", name="提交干预总结", exact=True).click()
     expect(page.get_by_role("button", name="重试同一次提交", exact=True)).to_be_visible()
     page.unroute_all(behavior="wait")
     page.reload()
@@ -148,7 +158,7 @@ with sync_playwright() as playwright:
     page.get_by_role("textbox", name="达成标准", exact=True).fill("【浏览器验收】修改后的观察标准")
     page.get_by_role("button", name="已完成", exact=True).click()
     page.get_by_role("textbox", name="下次复盘日期（可选）", exact=True).fill(planned["business_date"])
-    page.get_by_role("textbox", name="本次修改说明", exact=True).fill("【浏览器验收】本次复盘")
+    page.get_by_role("textbox", name="本次修改说明（可选）", exact=True).fill("【浏览器验收】本次复盘")
     page.get_by_role("button", name="保存目标复盘", exact=True).click()
     expect(page.get_by_text("目标复盘已保存，修改历史已保留。", exact=True)).to_be_visible()
     revised = next(g for g in state()["goals"] if g["id"] == secondary_id)
@@ -159,7 +169,7 @@ with sync_playwright() as playwright:
     # A concurrent editor must not replace unsaved form contents on conflict.
     page.get_by_role("button", name="修改／复盘目标", exact=True).click()
     page.get_by_role("textbox", name="进度与复盘记录", exact=True).fill("【浏览器验收】我的未提交复盘")
-    page.get_by_role("textbox", name="本次修改说明", exact=True).fill("【浏览器验收】我的修改")
+    page.get_by_role("textbox", name="本次修改说明（可选）", exact=True).fill("【浏览器验收】我的修改")
     external = {key: value for key, value in revised.items() if key not in ("id", "level", "version")}
     external.update(expected_version=revised["version"], criteria="【浏览器验收】另一位记录者的标准", change_note="并发修改")
     with urlopen(Request(f"{BASE}/api/goals/{secondary_id}", data=json.dumps(external).encode(),
@@ -174,9 +184,11 @@ with sync_playwright() as playwright:
     assert page.evaluate("key => localStorage.getItem(key)", f"skarma:{SCOPE}:goal-conflict-backup:{secondary_id}")
 
     page.get_by_role("button", name="今天", exact=True).click()
+    expect(page.get_by_text("目标复盘提醒", exact=True)).to_be_visible()
+    page.get_by_role("button", name="今天不再弹出，稍后从列表查看", exact=True).click()
     expect(page.get_by_text("待复盘目标 · 1", exact=True)).to_be_visible()
     page.screenshot(path=str(OUTPUT / "goal-review.png"), full_page=True)
-    page.get_by_role("button", name="＋ 新建训练计划", exact=True).click()
+    page.get_by_role("button", name="＋ 新建干预计划", exact=True).click()
     page.get_by_role("button", name="＋ 主目标", exact=True).click()
     expect(page.get_by_role("button", name=secondary["title"], exact=True)).to_have_count(0)
     page.get_by_role("button", name="收起选择", exact=True).click()

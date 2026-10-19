@@ -5,6 +5,7 @@ export const draftKey = (scope: string) => `skarma:${scope}:training-draft:v2`;
 export type Draft = {
   id: string; version: number | null; input: SessionInput;
   pending?: SaveRequest;
+  stage?: 'plan' | 'summary';
 };
 
 // Secure-origin browser UUIDs; the native adapter will be supplied in phase two.

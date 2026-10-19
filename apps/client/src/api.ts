@@ -22,6 +22,8 @@ export type SessionInput = {
   business_date: string; time_slot: string; activities: string[]; organization: string;
   plan: string; observation: string; targets: Target[]; has_difficulty: boolean;
   difficulty: string; has_experience: boolean; experience: string; experience_kind: string;
+  difficulty_goal_ids?: string[]; difficulty_pathway_ids?: string[];
+  experience_goal_ids?: string[]; experience_pathway_ids?: string[];
 };
 export type Session = SessionInput & {
   id: string; version: number; status: 'draft' | 'completed';
@@ -46,7 +48,9 @@ export type Pathway = {
   id: string; version: number; title: string; description: string; steps: string;
   status: 'active' | 'archived'; goal_ids: string[];
 };
-export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[]; pathways: Pathway[]; lessons: Lesson[] };
+export type LessonOption = { kind: 'course' | 'teacher'; value: string; active: boolean; version: number };
+export type NewLessonOption = Pick<LessonOption, 'kind' | 'value'>;
+export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[]; pathways: Pathway[]; lessons: Lesson[]; lesson_options?: LessonOption[] };
 export type SaveRequest = {
   operation_id: string; expected_version: number | null;
   action: 'save_draft' | 'complete'; session: SessionInput;

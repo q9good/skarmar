@@ -116,6 +116,8 @@ async function contract(label, send, exec) {
   assert.equal(after.difficulties.length, 1);
   assert.equal(after.experiences.length, 1);
   assert.equal(after.difficulties[0].source_session_id, id);
+  assert.deepEqual(after.difficulties[0].goal_ids, [primary.id]);
+  assert.deepEqual(after.experiences[0].goal_ids, [primary.id]);
   assert.equal(after.goals.find(goal => goal.id === primary.id).status, 'archived');
   const revised = await api('GET', `/api/goals/${primary.id}/history`);
   assert.equal(revised.length, 2);
@@ -151,6 +153,21 @@ async function contract(label, send, exec) {
   assert.equal(final.sessions.find(record => record.id === other).version, 2);
   await lessonContract(label, api);
   await knowledgeContract(label, api, exec);
+  const method = await api('POST', '/api/pathways', { id: randomUUID(), title: 'contract follow-up method', description: '', steps: '', goal_ids: [secondary.id] });
+  const single = structuredClone(session);
+  single.targets = [{ ...single.targets[1], role: 'primary' }];
+  single.difficulty_goal_ids = [secondary.id];
+  single.difficulty_pathway_ids = [method.id];
+  single.experience_pathway_ids = [method.id];
+  const linked = await api('PUT', `/api/sessions/${randomUUID()}`, command('complete', null, single));
+  const linkedState = await api('GET', '/api/state');
+  const difficulty = linkedState.difficulties.find(item => item.id === linked.difficulty_id);
+  const experience = linkedState.experiences.find(item => item.id === linked.experience_id);
+  assert.deepEqual(difficulty.goal_ids, [secondary.id]);
+  assert.deepEqual(difficulty.pathway_ids, [method.id]);
+  assert.deepEqual(experience.goal_ids, [], 'explicit method-only binding does not infer a goal');
+  assert.deepEqual(experience.pathway_ids, [method.id]);
+  await api('PUT', `/api/difficulties/${difficulty.id}`, { expected_version: 1, status: 'active', conclusion: '', next_review_date: null, goal_ids: [], pathway_ids: [] });
   console.log(`PASS ${label}: CRUD/history, late SQL rollback, atomic completion, concurrent replay, version conflict and follow-up evidence`);
 }
 

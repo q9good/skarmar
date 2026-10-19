@@ -38,15 +38,15 @@ with sync_playwright() as p:
     second_title = '【验收】共同阅读'
     paths = []
     for name in [title, second_title]:
-        page.get_by_role('button', name='途径', exact=True).click()
-        page.get_by_role('button', name='＋ 新建途径', exact=True).click()
-        page.get_by_role('textbox', name='途径名称', exact=True).fill(name)
+        page.get_by_role('button', name='方法', exact=True).click()
+        page.get_by_role('button', name='＋ 新建方法', exact=True).click()
+        page.get_by_role('textbox', name='方法名称', exact=True).fill(name)
         page.get_by_role('textbox', name='作用说明', exact=True).fill('帮助理解并表达需要')
         page.get_by_role('textbox', name='具体步骤', exact=True).fill('展示选项\n留出等待时间')
         page.get_by_role('checkbox', name=re.compile(re.escape(purpose['title']) + ' · 长期')).click()
         page.get_by_role('checkbox', name=re.compile(re.escape(other['title']) + ' · 短期')).click()
-        page.get_by_role('button', name='保存途径', exact=True).click()
-        expect(page.get_by_text('途径已保存。', exact=True)).to_be_visible()
+        page.get_by_role('button', name='保存方法', exact=True).click()
+        expect(page.get_by_text('方法已保存。', exact=True)).to_be_visible()
         paths.append(next(path for path in state()['pathways'] if path['title'] == name))
     assert all(set(path['goal_ids']) == {purpose['id'], other['id']} for path in paths)
 
@@ -55,8 +55,8 @@ with sync_playwright() as p:
     both = '【验收】同时关联原则与操作细节'
     for content, with_purpose, with_pathway in [(principle, True, False), (detail, False, True), (both, True, True)]:
         page.get_by_role('button', name='跟进', exact=True).click()
-        page.get_by_role('button', name='＋ 新建经验／原则', exact=True).click()
-        page.get_by_role('textbox', name='经验／原则内容', exact=True).fill(content)
+        page.get_by_role('button', name='＋ 新建经验', exact=True).click()
+        page.get_by_role('textbox', name='经验内容', exact=True).fill(content)
         if with_purpose:
             page.get_by_role('checkbox', name=re.compile(re.escape(purpose['title']) + ' · 长期')).click()
         if with_pathway:
@@ -70,28 +70,28 @@ with sync_playwright() as p:
 
     page.get_by_role('button', name='目标', exact=True).click()
     page.get_by_text(purpose['title'], exact=True).click()
-    expect(page.get_by_text('实现这个目的的途径', exact=True)).to_be_visible()
+    expect(page.get_by_text('实现这个目标的方法', exact=True)).to_be_visible()
     for content in [principle, detail, both]:
         expect(page.get_by_text(content, exact=True)).to_be_visible()
 
     # A stale pathway form keeps the user's text until they explicitly resolve it.
-    page.get_by_role('button', name='途径', exact=True).click()
-    page.get_by_role('button', name='查看途径：' + title, exact=True).click()
+    page.get_by_role('button', name='方法', exact=True).click()
+    page.get_by_role('button', name='查看方法：' + title, exact=True).click()
     page.get_by_role('textbox', name='作用说明', exact=True).fill('【验收】我的未提交说明')
     current = paths[0]
     put('/pathways/' + current['id'], {**current, 'expected_version': current['version'], 'description': '【验收】另一位记录者的说明'})
-    page.get_by_role('button', name='保存途径', exact=True).click()
-    expect(page.get_by_text('途径已被更新，请保留填写内容并核对最新版本', exact=True)).to_be_visible()
+    page.get_by_role('button', name='保存方法', exact=True).click()
+    expect(page.get_by_text('方法已被更新，请保留填写内容并核对最新版本', exact=True)).to_be_visible()
     expect(page.get_by_role('textbox', name='作用说明', exact=True)).to_have_value('【验收】我的未提交说明')
     page.get_by_role('button', name='保留填写，按最新版本继续', exact=True).click()
-    page.get_by_role('button', name='保存途径', exact=True).click()
-    expect(page.get_by_text('途径已保存。', exact=True)).to_be_visible()
+    page.get_by_role('button', name='保存方法', exact=True).click()
+    expect(page.get_by_text('方法已保存。', exact=True)).to_be_visible()
     assert next(path for path in state()['pathways'] if path['id'] == current['id'])['version'] == 3
 
-    page.get_by_role('button', name='查看途径：' + second_title, exact=True).click()
+    page.get_by_role('button', name='查看方法：' + second_title, exact=True).click()
     page.get_by_role('radio', name='已归档', exact=True).click()
-    page.get_by_role('button', name='保存途径', exact=True).click()
-    expect(page.get_by_text('途径已保存。', exact=True)).to_be_visible()
+    page.get_by_role('button', name='保存方法', exact=True).click()
+    expect(page.get_by_text('方法已保存。', exact=True)).to_be_visible()
     assert set(next(path for path in state()['pathways'] if path['id'] == paths[1]['id'])['goal_ids']) == {purpose['id'], other['id']}
 
     page.get_by_role('button', name='跟进', exact=True).click()
@@ -129,7 +129,7 @@ with sync_playwright() as p:
     assert len(workbook['途径']) == 2
     assert len(workbook['目的途径关系']) == 4
     assert len(workbook['经验关联']) == 4
-    page.get_by_role('button', name='途径', exact=True).click()
+    page.get_by_role('button', name='方法', exact=True).click()
     page.get_by_role('button', name='刷新', exact=True).scroll_into_view_if_needed()
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
     page.screenshot(path=str(OUTPUT / 'pathways.png'), full_page=True)

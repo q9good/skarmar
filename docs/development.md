@@ -111,3 +111,5 @@ worktree 使用不同端口时，同时设置服务器的 `SKARMA_PORT=3002` 与
 正式数据导入、更多版本升级、逐档案权限和真实主机公网访问仍待实现或验收。
 
 腾讯线上核验和附件关系审计的命令、证据边界见 [腾讯核验说明](tencent-audit.md)。
+
+2026-10-19 六页交互改进见 [页面流程](page-workflows.md)：`test:host` 增加 `smoke_page_workflows.py` 的双浏览器刷新／冲突、日期提醒、家庭干预总结、机构课时及停用选项验收。迁移 008 追加共享课程和老师选项，保留历史记录；前端纯逻辑另执行 `node --test tools/test-workflow.mjs`。

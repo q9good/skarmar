@@ -448,6 +448,10 @@ fn session(row: &ImportRow, map: &Mapping) -> Result<Session> {
             has_experience: false,
             experience: String::new(),
             experience_kind: String::new(),
+            difficulty_goal_ids: vec![],
+            difficulty_pathway_ids: vec![],
+            experience_goal_ids: vec![],
+            experience_pathway_ids: vec![],
         },
         target_snapshots: vec![],
     })

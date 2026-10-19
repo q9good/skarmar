@@ -47,6 +47,10 @@ fn input(db: &Connection) -> SessionInput {
         has_experience: true,
         experience: "测试经验".into(),
         experience_kind: "task".into(),
+        difficulty_goal_ids: vec![],
+        difficulty_pathway_ids: vec![],
+        experience_goal_ids: vec![],
+        experience_pathway_ids: vec![],
     }
 }
 
@@ -208,8 +212,8 @@ fn invalid_roles_and_missing_details_are_rejected() {
     let original = input(&db);
     let mut duplicate = original.clone();
     duplicate.targets[1].role = Role::Primary;
-    let mut missing_secondary = original.clone();
-    missing_secondary.targets.pop();
+    let mut missing_primary = original.clone();
+    missing_primary.targets.remove(0);
     let mut duplicate_goal = original.clone();
     duplicate_goal.targets[1].goal_id = duplicate_goal.targets[0].goal_id.clone();
     let mut invalid_review = original.clone();
@@ -218,7 +222,7 @@ fn invalid_roles_and_missing_details_are_rejected() {
     missing_detail.difficulty.clear();
     for data in [
         duplicate,
-        missing_secondary,
+        missing_primary,
         duplicate_goal,
         invalid_review,
         missing_detail,
@@ -426,4 +430,115 @@ async fn concurrent_http_updates_only_accept_one_writer() {
         serde_json::from_slice(&to_bytes(response.into_body(), 1_000_000).await.unwrap()).unwrap();
     assert_eq!(state.sessions[0].version, 2);
     assert!(state.difficulties.is_empty());
+}
+
+#[test]
+fn one_primary_is_enough_and_legacy_clients_default_followups_to_it() {
+    let mut db = database();
+    let mut data = input(&db);
+    data.targets.truncate(1);
+    let primary = data.targets[0].goal_id.clone();
+    let command = request(data, None, "complete");
+    // Omitted new fields stay omitted, preserving old operation fingerprints.
+    let value = serde_json::to_value(&command).unwrap();
+    assert!(value["session"].get("experience_goal_ids").is_none());
+    let id = Uuid::new_v4().to_string();
+    let saved = store::save_session(&mut db, &id, command.clone()).unwrap();
+    let retry = store::save_session(&mut db, &id, command).unwrap();
+    assert_eq!(saved.experience_id, retry.experience_id);
+    let state = store::state(&db).unwrap();
+    assert_eq!(state.difficulties[0].goal_ids, vec![primary.clone()]);
+    assert_eq!(state.experiences[0].goal_ids, vec![primary]);
+    assert_eq!(
+        db.query_row("SELECT COUNT(*) FROM experience_goals", [], |row| row
+            .get::<_, i64>(0))
+            .unwrap(),
+        1
+    );
+}
+
+#[test]
+fn completed_followups_keep_explicit_goal_and_method_bindings_and_can_be_reassigned() {
+    let mut db = database();
+    let mut data = input(&db);
+    let secondary = data.targets[1].goal_id.clone();
+    let method = NewPathway {
+        id: Uuid::new_v4().to_string(),
+        title: "合成方法".into(),
+        description: String::new(),
+        steps: String::new(),
+        goal_ids: vec![secondary.clone()],
+    };
+    let method_id = method.id.clone();
+    store::execute(&mut db, skarma_core::Command::CreatePathway(method)).unwrap();
+    data.difficulty_goal_ids = vec![secondary.clone()];
+    data.difficulty_pathway_ids = vec![method_id.clone()];
+    // A method-only experience must not be silently bound to the primary goal.
+    data.experience_pathway_ids = vec![method_id.clone()];
+    let id = Uuid::new_v4().to_string();
+    let saved = store::save_session(&mut db, &id, request(data, None, "complete")).unwrap();
+    let state = store::state(&db).unwrap();
+    assert_eq!(state.difficulties[0].goal_ids, vec![secondary.clone()]);
+    assert_eq!(state.difficulties[0].pathway_ids, vec![method_id.clone()]);
+    assert!(state.experiences[0].goal_ids.is_empty());
+    assert_eq!(state.experiences[0].pathway_ids, vec![method_id]);
+    let updated = store::update_follow_up(
+        &mut db,
+        "difficulties",
+        saved.difficulty_id.as_ref().unwrap(),
+        UpdateFollowUp {
+            expected_version: 1,
+            status: "active".into(),
+            next_review_date: None,
+            conclusion: "继续观察".into(),
+            content: None,
+            goal_ids: Some(vec![]),
+            pathway_ids: Some(vec![]),
+        },
+    )
+    .unwrap();
+    assert!(updated.goal_ids.is_empty() && updated.pathway_ids.is_empty());
+    assert_eq!(updated.source_session_id.as_deref(), Some(id.as_str()));
+    assert_eq!(
+        store::update_follow_up(
+            &mut db,
+            "difficulties",
+            &updated.id,
+            UpdateFollowUp {
+                expected_version: 1,
+                status: "resolved".into(),
+                conclusion: "stale".into(),
+                next_review_date: None,
+                content: None,
+                goal_ids: None,
+                pathway_ids: None,
+            }
+        )
+        .unwrap_err()
+        .0,
+        StatusCode::CONFLICT
+    );
+}
+
+#[test]
+fn invalid_bindings_and_late_relation_failure_roll_back_completion() {
+    let mut db = database();
+    let mut data = input(&db);
+    data.experience_goal_ids = vec![Uuid::new_v4().to_string()];
+    let id = Uuid::new_v4().to_string();
+    assert!(store::save_session(&mut db, &id, request(data, None, "complete")).is_err());
+    assert!(store::state(&db).unwrap().sessions.is_empty());
+    let data = input(&db);
+    db.execute_batch("CREATE TRIGGER fail_new_link BEFORE INSERT ON experience_goals BEGIN SELECT RAISE(ABORT,'test relation failure'); END;").unwrap();
+    let command = request(data, None, "complete");
+    assert!(store::save_session(&mut db, &id, command.clone()).is_err());
+    let state = store::state(&db).unwrap();
+    assert!(
+        state.sessions.is_empty() && state.difficulties.is_empty() && state.experiences.is_empty()
+    );
+    db.execute_batch("DROP TRIGGER fail_new_link;").unwrap();
+    assert!(
+        store::save_session(&mut db, &id, command).is_ok(),
+        "the same operation can retry after rollback"
+    );
 }

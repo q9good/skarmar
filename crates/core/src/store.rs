@@ -101,6 +101,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         (5, include_str!("../migrations/005_registration.sql")),
         (6, include_str!("../migrations/006_import.sql")),
         (7, include_str!("../migrations/007_lessons.sql")),
+        (8, include_str!("../migrations/008_lesson_options.sql")),
     ];
     db.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);")?;
     let applied = db
@@ -238,7 +239,7 @@ pub fn update_goal(db: &dyn Sql, id: &str, request: UpdateGoal) -> Result<Goal> 
                 return Err(ApiError::invalid("请选择活动中的正确上级目标"));
             }
         }
-        (Level::Medium | Level::Short, None) if previous.parent_id.is_none() => {}
+        (Level::Medium | Level::Short, None) => {}
         _ => {
             return Err(ApiError::invalid(
                 "长期目标不设父级；中期关联长期，短期关联中期",
@@ -278,6 +279,53 @@ pub fn state(db: &dyn Sql) -> Result<AppState> {
         experiences: list(db, "experiences")?,
         pathways: list(db, "pathways")?,
         lessons: list(db, "lessons")?,
+        lesson_options: db.query("SELECT kind,value,CAST(active AS TEXT),CAST(version AS TEXT) FROM lesson_options ORDER BY kind,value", &[])?
+            .into_iter().map(|row| Ok(LessonOption { kind: row[0].clone(), value: row[1].clone(), active: row[2] == "1", version: row[3].parse().map_err(|_| ApiError::storage())? })).collect::<Result<_>>()?,
+    })
+}
+
+pub fn add_lesson_option(db: &dyn Sql, input: NewLessonOption) -> Result<LessonOption> {
+    let value = input.value.trim();
+    let limit = match input.kind.as_str() {
+        "course" => 200,
+        "teacher" => 100,
+        _ => return Err(ApiError::invalid("选项类型无效")),
+    };
+    if value.is_empty() || value.chars().count() > limit {
+        return Err(ApiError::invalid("请填写有效的课程或老师名称"));
+    }
+    db.execute(
+        "INSERT OR IGNORE INTO lesson_options(kind,value) VALUES (?1,?2)",
+        params![input.kind, value],
+    )?;
+    let row = db.query("SELECT CAST(active AS TEXT),CAST(version AS TEXT) FROM lesson_options WHERE kind=?1 AND value=?2", params![input.kind, value])?.into_iter().next().ok_or_else(ApiError::missing)?;
+    Ok(LessonOption {
+        kind: input.kind,
+        value: value.into(),
+        active: row[0] == "1",
+        version: row[1].parse().map_err(|_| ApiError::storage())?,
+    })
+}
+
+pub fn update_lesson_option(db: &dyn Sql, input: UpdateLessonOption) -> Result<LessonOption> {
+    let row = db.query("SELECT CAST(active AS TEXT),CAST(version AS TEXT) FROM lesson_options WHERE kind=?1 AND value=?2", params![input.kind, input.value])?.into_iter().next().ok_or_else(ApiError::missing)?;
+    let version: u64 = row[1].parse().map_err(|_| ApiError::storage())?;
+    if version != input.expected_version {
+        return Err(ApiError::conflict("选项已被更新，请刷新后核对"));
+    }
+    db.execute(
+        "UPDATE lesson_options SET active=?1,version=version+1 WHERE kind=?2 AND value=?3",
+        params![
+            if input.active { 1_i64 } else { 0_i64 },
+            input.kind,
+            input.value
+        ],
+    )?;
+    Ok(LessonOption {
+        kind: input.kind,
+        value: input.value,
+        active: input.active,
+        version: version + 1,
     })
 }
 
@@ -306,6 +354,15 @@ pub fn save_lesson(db: &dyn Sql, id: &str, request: SaveLesson) -> Result<Lesson
         teacher: input.teacher.trim().into(),
         ..input
     };
+    for (kind, value) in [("course", &input.course), ("teacher", &input.teacher)] {
+        add_lesson_option(
+            db,
+            NewLessonOption {
+                kind: kind.into(),
+                value: value.clone(),
+            },
+        )?;
+    }
     let current: Option<Lesson> = get(db, "lessons", id)?;
     match (current, request.expected_version) {
         (None, None) => {
@@ -357,7 +414,7 @@ pub fn export_snapshot(db: &dyn Sql) -> Result<ExportSnapshot> {
 
 fn validate_links(db: &dyn Sql, table: &str, ids: &[String]) -> Result<()> {
     if ids.len() > 100 {
-        return Err(ApiError::invalid("单条记录最多关联 100 个目的或途径"));
+        return Err(ApiError::invalid("单条记录最多关联 100 个目标或方法"));
     }
     let mut unique = HashSet::new();
     for id in ids {
@@ -366,7 +423,7 @@ fn validate_links(db: &dyn Sql, table: &str, ids: &[String]) -> Result<()> {
             return Err(ApiError::invalid("关联项不能重复"));
         }
         if get::<serde_json::Value>(db, table, id)?.is_none() {
-            return Err(ApiError::invalid("关联的目的或途径不存在，请刷新后核对"));
+            return Err(ApiError::invalid("关联的目标或方法不存在，请刷新后核对"));
         }
     }
     Ok(())
@@ -379,7 +436,7 @@ fn validate_pathway(title: &str, description: &str, steps: &str) -> Result<()> {
         || steps.len() > 10_000
     {
         return Err(ApiError::invalid(
-            "请填写途径名称，并控制名称、说明与步骤的长度",
+            "请填写方法名称，并控制名称、说明与步骤的长度",
         ));
     }
     Ok(())
@@ -412,7 +469,7 @@ pub fn create_pathway(db: &dyn Sql, input: NewPathway) -> Result<Pathway> {
         {
             return Ok(existing);
         }
-        return Err(ApiError::conflict("途径已存在，请刷新后核对"));
+        return Err(ApiError::conflict("方法已存在，请刷新后核对"));
     }
     let pathway = Pathway {
         id: input.id,
@@ -435,7 +492,7 @@ pub fn update_pathway(db: &dyn Sql, id: &str, request: UpdatePathway) -> Result<
     let previous: Pathway = get(db, "pathways", id)?.ok_or_else(ApiError::missing)?;
     if previous.version != request.expected_version {
         return Err(ApiError::conflict(
-            "途径已被更新，请保留填写内容并核对最新版本",
+            "方法已被更新，请保留填写内容并核对最新版本",
         ));
     }
     validate_pathway(&request.title, &request.description, &request.steps)?;
@@ -494,7 +551,7 @@ pub fn create_experience(db: &dyn Sql, input: NewExperience) -> Result<FollowUp>
     valid_id(&input.id)?;
     valid_experience_content(&input.content)?;
     if input.goal_ids.is_empty() && input.pathway_ids.is_empty() {
-        return Err(ApiError::invalid("请为独立经验选择至少一个目的或途径"));
+        return Err(ApiError::invalid("请为独立经验选择至少一个目标或方法"));
     }
     validate_links(db, "goals", &input.goal_ids)?;
     validate_links(db, "pathways", &input.pathway_ids)?;
@@ -534,11 +591,21 @@ pub fn create_goal(db: &dyn Sql, input: NewGoal) -> Result<Goal> {
     if input.title.trim().is_empty() || input.title.len() > 300 || input.criteria.len() > 5000 {
         return Err(ApiError::invalid("请填写目标名称，并控制名称和标准长度"));
     }
-    if get::<Goal>(db, "goals", &input.id)?.is_some() {
+    if let Some(existing) = get::<Goal>(db, "goals", &input.id)? {
+        if existing.version == 1
+            && existing.title == input.title.trim()
+            && existing.level == input.level
+            && existing.parent_id == input.parent_id
+            && existing.area == input.area
+            && existing.criteria == input.criteria
+        {
+            return Ok(existing);
+        }
         return Err(ApiError::conflict("目标已存在，请刷新查看"));
     }
     match (&input.level, &input.parent_id) {
         (Level::Long, None) => {}
+        (Level::Medium | Level::Short, None) => {}
         (Level::Medium | Level::Short, Some(parent_id)) => {
             let parent: Goal = get(db, "goals", parent_id)?.ok_or_else(ApiError::missing)?;
             let expected = if input.level == Level::Medium {
@@ -623,6 +690,12 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
     };
     let input = request.session;
     valid_date(&input.business_date)?;
+    for ids in [&input.difficulty_goal_ids, &input.experience_goal_ids] {
+        validate_links(db, "goals", ids)?;
+    }
+    for ids in [&input.difficulty_pathway_ids, &input.experience_pathway_ids] {
+        validate_links(db, "pathways", ids)?;
+    }
     let mut unique = HashSet::new();
     let mut snapshots = Vec::new();
     for target in &input.targets {
@@ -687,9 +760,8 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
             .filter(|t| t.role == Role::Primary)
             .count()
             != 1
-            || !input.targets.iter().any(|t| t.role == Role::Secondary)
         {
-            return Err(ApiError::invalid("完成训练需要一个主目标和至少一个副目标"));
+            return Err(ApiError::invalid("完成干预需要一个主目标，副目标可选"));
         }
         if input.activities.is_empty() || input.organization.trim().is_empty() {
             return Err(ApiError::invalid("请选择训练活动和组织方式"));
@@ -750,6 +822,14 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
         difficulty_id: None,
         experience_id: None,
     };
+    let primary = result
+        .session
+        .input
+        .targets
+        .iter()
+        .find(|target| target.role == Role::Primary)
+        .map(|target| vec![target.goal_id.clone()])
+        .unwrap_or_default();
     if complete && result.session.input.has_difficulty {
         let item = FollowUp {
             id: Uuid::new_v4().to_string(),
@@ -760,8 +840,14 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
             status: "pending".into(),
             next_review_date: None,
             conclusion: String::new(),
-            goal_ids: vec![],
-            pathway_ids: vec![],
+            goal_ids: if result.session.input.difficulty_goal_ids.is_empty()
+                && result.session.input.difficulty_pathway_ids.is_empty()
+            {
+                primary.clone()
+            } else {
+                result.session.input.difficulty_goal_ids.clone()
+            },
+            pathway_ids: result.session.input.difficulty_pathway_ids.clone(),
         };
         db.execute(
             "INSERT INTO difficulties(id,source_session_id,data) VALUES (?1,?2,?3)",
@@ -779,13 +865,20 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
             status: "pending".into(),
             next_review_date: None,
             conclusion: String::new(),
-            goal_ids: vec![],
-            pathway_ids: vec![],
+            goal_ids: if result.session.input.experience_goal_ids.is_empty()
+                && result.session.input.experience_pathway_ids.is_empty()
+            {
+                primary
+            } else {
+                result.session.input.experience_goal_ids.clone()
+            },
+            pathway_ids: result.session.input.experience_pathway_ids.clone(),
         };
         db.execute(
             "INSERT INTO experiences(id,source_session_id,data) VALUES (?1,?2,?3)",
             params![item.id, id, json(&item)?],
         )?;
+        save_experience_links(db, &item)?;
         result.experience_id = Some(item.id);
     }
     db.execute(
@@ -824,14 +917,7 @@ pub fn update_follow_up(
     if item.version != request.expected_version {
         return Err(ApiError::conflict("跟进记录已更新，请重新核对"));
     }
-    if table == "difficulties"
-        && (request.goal_ids.is_some()
-            || request.pathway_ids.is_some()
-            || request.content.is_some())
     {
-        return Err(ApiError::invalid("目的与途径绑定仅用于经验"));
-    }
-    if table == "experiences" {
         if let Some(content) = request.content {
             valid_experience_content(&content)?;
             item.content = content.trim().into();
@@ -844,7 +930,9 @@ pub fn update_follow_up(
         }
         validate_links(db, "goals", &item.goal_ids)?;
         validate_links(db, "pathways", &item.pathway_ids)?;
-        save_experience_links(db, &item)?;
+        if table == "experiences" {
+            save_experience_links(db, &item)?;
+        }
     }
     item.version += 1;
     item.status = request.status;

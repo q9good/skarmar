@@ -171,6 +171,10 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
             "有经验",
             "经验详情",
             "经验类型",
+            "困难关联目标ID",
+            "困难关联方法ID",
+            "经验关联目标ID",
+            "经验关联方法ID",
         ],
         state.sessions.iter().map(|session| {
             let input = &session.input;
@@ -190,6 +194,10 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                 if input.has_experience { "是" } else { "否" }.into(),
                 input.experience.clone(),
                 experience_kind(&input.experience_kind).into(),
+                input.difficulty_goal_ids.join("\n"),
+                input.difficulty_pathway_ids.join("\n"),
+                input.experience_goal_ids.join("\n"),
+                input.experience_pathway_ids.join("\n"),
             ]
         }),
     )?;
@@ -305,6 +313,8 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                 "跟进状态",
                 "下次跟进日期",
                 "跟进结论／验证依据",
+                "关联目标ID",
+                "关联方法ID",
             ],
             items.iter().map(|item| {
                 vec![
@@ -331,6 +341,8 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                     .into(),
                     optional(&item.next_review_date),
                     item.conclusion.clone(),
+                    item.goal_ids.join("\n"),
+                    item.pathway_ids.join("\n"),
                 ]
             }),
         )?;
@@ -463,6 +475,7 @@ mod tests {
                 experiences: vec![],
                 pathways: vec![],
                 lessons: vec![],
+                lesson_options: vec![],
             },
             goal_history: vec![],
         }

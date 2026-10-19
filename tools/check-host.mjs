@@ -43,6 +43,7 @@ try {
   execFileSync('python3', ['tools/smoke_auth_web.py'], { cwd: root, env: { ...process.env, SKARMA_TEST_URL: origin }, stdio: 'inherit' });
   execFileSync('python3', ['tools/smoke_knowledge_web.py'], { cwd: root, env: { ...process.env, SKARMA_TEST_URL: origin }, stdio: 'inherit' });
   execFileSync('python3', ['tools/smoke_planning_web.py'], { cwd: root, env: { ...process.env, SKARMA_TEST_URL: origin }, stdio: 'inherit' });
+  execFileSync('python3', ['tools/smoke_page_workflows.py'], { cwd: root, env: { ...process.env, SKARMA_TEST_URL: origin }, stdio: 'inherit' });
   let cookie = await login(); await addGoal(cookie, 'Before snapshot');
   const snapshot = await state(cookie);
   const backup = resolve(scratch, 'snapshot.db');

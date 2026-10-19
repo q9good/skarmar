@@ -27,5 +27,15 @@ export async function lessonContract(label, api) {
   assert.equal(edited.content, changed.content);
   assert.equal(edited.home_cooperation, changed.home_cooperation);
   assert.deepEqual(state.sessions, before.sessions, 'daily class does not need or create a training plan');
+  const teacher = state.lesson_options.find(option => option.kind === 'teacher' && option.value === lesson.teacher);
+  assert.ok(teacher.active);
+  const replay = await api('POST', '/api/lesson-options', { kind: 'teacher', value: ` ${lesson.teacher} ` });
+  assert.deepEqual(replay, teacher);
+  const stopped = await api('PUT', '/api/lesson-options', { kind: teacher.kind, value: teacher.value, expected_version: teacher.version, active: false });
+  assert.equal(stopped.active, false);
+  await api('PUT', '/api/lesson-options', { kind: teacher.kind, value: teacher.value, expected_version: teacher.version, active: true }, 409);
+  await api('POST', '/api/lesson-options', { kind: 'teacher', value: ' ' }, 422);
+  const afterOptions = await api('GET', '/api/state');
+  assert.deepEqual(afterOptions.lessons, state.lessons, 'stopping an option never rewrites saved records');
   console.log(`PASS ${label}: independent class records, course/teacher required, optional fields, edit and stale-version conflict`);
 }

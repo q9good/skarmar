@@ -90,7 +90,7 @@ with sync_playwright() as p:
     assert page.get_by_role('button', name='创建账号', exact=True).count() == 0
     assert context.request.get(BASE + '/api/auth/users').status == 403
     page.get_by_role('button', name='返回', exact=True).click()
-    page.get_by_role('button', name='＋ 新建训练计划', exact=True).click()
+    page.get_by_role('button', name='＋ 新建干预计划', exact=True).click()
     page.get_by_role('textbox', name='整次训练安排', exact=True).fill('这个本机草稿属于老师账号')
     expect(page.get_by_text('草稿已保存在本机', exact=False)).to_be_visible()
     page.get_by_role('button', name='我的账号', exact=True).click()

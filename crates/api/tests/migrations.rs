@@ -24,7 +24,7 @@ fn unversioned_database_is_upgraded_without_replacing_data() {
         db.query_row("SELECT count(*) FROM schema_migrations", [], |row| row
             .get::<_, i64>(0))
             .unwrap(),
-        7
+        8
     );
 }
 
@@ -40,7 +40,7 @@ fn incompatible_database_version_is_rejected_without_modification() {
         db.query_row("SELECT count(*) FROM schema_migrations", [], |row| row
             .get::<_, i64>(0))
             .unwrap(),
-        8
+        9
     );
 }
 
@@ -73,7 +73,7 @@ fn existing_accounts_survive_registration_migration() {
             0
         ))
         .unwrap(),
-        7
+        8
     );
 }
 
@@ -108,7 +108,7 @@ fn import_migration_backfills_a_version_seven_database_without_replacing_data() 
         .unwrap()
         .map(Result::unwrap)
         .collect();
-    assert_eq!(versions, vec![1, 2, 3, 4, 5, 6, 7]);
+    assert_eq!(versions, vec![1, 2, 3, 4, 5, 6, 7, 8]);
     assert_eq!(
         db.query_row(
             "SELECT password_hash FROM auth_users WHERE id='legacy-admin'",

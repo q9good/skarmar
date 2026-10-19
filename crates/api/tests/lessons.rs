@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 use rusqlite::Connection;
 use skarma_api::{model::*, store};
+use skarma_core::Command;
 use uuid::Uuid;
 
 fn lesson() -> LessonInput {
@@ -13,6 +14,108 @@ fn lesson() -> LessonInput {
         problems: String::new(),
         home_cooperation: String::new(),
     }
+}
+
+#[test]
+fn shared_lesson_options_are_idempotent_versioned_and_do_not_rewrite_history() {
+    let mut db = Connection::open_in_memory().unwrap();
+    store::initialize(&db).unwrap();
+    let id = Uuid::new_v4().to_string();
+    store::save_lesson(
+        &mut db,
+        &id,
+        SaveLesson {
+            expected_version: None,
+            lesson: lesson(),
+        },
+    )
+    .unwrap();
+    let original = store::state(&db).unwrap().lessons;
+    let option: LessonOption = serde_json::from_value(
+        store::execute(
+            &mut db,
+            Command::AddLessonOption(NewLessonOption {
+                kind: "teacher".into(),
+                value: " 王老师 ".into(),
+            }),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(option.version, 1);
+    assert_eq!(store::state(&db).unwrap().lesson_options.len(), 2);
+    let change = UpdateLessonOption {
+        kind: option.kind.clone(),
+        value: option.value.clone(),
+        active: false,
+        expected_version: option.version,
+    };
+    let stopped = store::execute(&mut db, Command::UpdateLessonOption(change.clone())).unwrap();
+    assert_eq!(stopped["active"], false);
+    assert_eq!(stopped["version"], 2);
+    assert_eq!(
+        store::execute(&mut db, Command::UpdateLessonOption(change))
+            .unwrap_err()
+            .0,
+        StatusCode::CONFLICT
+    );
+    let retry = store::execute(
+        &mut db,
+        Command::AddLessonOption(NewLessonOption {
+            kind: "teacher".into(),
+            value: option.value,
+        }),
+    )
+    .unwrap();
+    assert_eq!(
+        retry["active"], false,
+        "saving a historical name must not reactivate it"
+    );
+    assert_eq!(
+        serde_json::to_value(store::state(&db).unwrap().lessons).unwrap(),
+        serde_json::to_value(original).unwrap()
+    );
+    let invalid = store::execute(
+        &mut db,
+        Command::AddLessonOption(NewLessonOption {
+            kind: "teacher".into(),
+            value: " ".into(),
+        }),
+    )
+    .unwrap_err();
+    assert_eq!(invalid.0, StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[test]
+fn catalog_migration_preserves_existing_lessons_and_repeated_startup() {
+    let mut db = Connection::open_in_memory().unwrap();
+    store::initialize(&db).unwrap();
+    let id = Uuid::new_v4().to_string();
+    let saved = store::save_lesson(
+        &mut db,
+        &id,
+        SaveLesson {
+            expected_version: None,
+            lesson: lesson(),
+        },
+    )
+    .unwrap();
+    db.execute_batch("DROP TABLE lesson_options; DELETE FROM schema_migrations WHERE version=8;")
+        .unwrap();
+    store::initialize(&db).unwrap();
+    store::initialize(&db).unwrap();
+    let state = store::state(&db).unwrap();
+    assert_eq!(
+        serde_json::to_value(&state.lessons[0]).unwrap(),
+        serde_json::to_value(saved).unwrap()
+    );
+    assert_eq!(state.lesson_options.len(), 2);
+    assert!(
+        state
+            .lesson_options
+            .iter()
+            .all(|item| item.active && item.version == 1)
+    );
 }
 
 #[test]

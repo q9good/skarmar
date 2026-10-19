@@ -102,6 +102,10 @@ fn completed(db: &mut Connection) -> SaveResult {
                 has_experience: true,
                 experience: "训练中的观察".into(),
                 experience_kind: "general".into(),
+                difficulty_goal_ids: vec![],
+                difficulty_pathway_ids: vec![],
+                experience_goal_ids: vec![],
+                experience_pathway_ids: vec![],
             },
         },
     )

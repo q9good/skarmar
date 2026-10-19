@@ -154,6 +154,14 @@ pub struct SessionInput {
     pub has_experience: bool,
     pub experience: String,
     pub experience_kind: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulty_goal_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub difficulty_pathway_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub experience_goal_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub experience_pathway_ids: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -211,6 +219,28 @@ pub struct Lesson {
 pub struct SaveLesson {
     pub expected_version: Option<u64>,
     pub lesson: LessonInput,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LessonOption {
+    pub kind: String,
+    pub value: String,
+    pub active: bool,
+    pub version: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NewLessonOption {
+    pub kind: String,
+    pub value: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct UpdateLessonOption {
+    pub kind: String,
+    pub value: String,
+    pub active: bool,
+    pub expected_version: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -299,6 +329,8 @@ pub struct AppState {
     pub pathways: Vec<Pathway>,
     #[serde(default)]
     pub lessons: Vec<Lesson>,
+    #[serde(default)]
+    pub lesson_options: Vec<LessonOption>,
 }
 
 /// Business data captured in a single transaction. Never includes account/session tables.

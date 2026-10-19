@@ -17,7 +17,8 @@
     "sync:status": "node tools/workspace-sync.mjs status",
     "sync:pull": "node tools/workspace-sync.mjs pull",
     "sync:push": "node tools/workspace-sync.mjs push",
-    "test:container": "node tools/check-container.mjs"
+    "test:container": "node tools/check-container.mjs",
+    "test:workflow": "node tools/test-workflow.mjs"
   },
   "devDependencies": {
     "miniflare": "4.20260730.0",
