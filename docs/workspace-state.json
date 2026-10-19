@@ -4,7 +4,7 @@
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "bd5ed259e7515242999bf11f3ed2b6d731b10b26",
+  "implementationCommit": "05cf435451565c644820e327352f246472ae905f",
   "tasks": [
     {
       "id": "T01",
@@ -93,9 +93,9 @@
     {
       "id": "T14",
       "title": "腾讯文档 Excel/CSV 导入",
-      "status": "in_progress",
-      "evidence": "docs/product-plan.md",
-      "blocker": "用户已要求现在实际导入；腾讯文档当前只读未登录，用户选择亲自登录以取得完整导出。正在整合原独立工作区导入预览与后端，须核对最新字段和关系、通过006补跑007库及权限/去重/事务检查后上线并导入；当前尚未发布或写入真实记录。"
+      "status": "done",
+      "evidence": "docs/tencent-workbook-import.md",
+      "verification": "2026-10-19已整合原导入工作区并保留原WIP快照；基线9522381，字段核对05cf435。导入11项原生测试、Wasm Clippy、类型检查、Web构建、dry-run及原生/真实Rust Wasm/DO共用合约通过。用户提供完整Excel并确认排除未完成行、逐条确认目标层级；原文件不变，私有副本保留其他单元格及行号。本机真实文件预览、逐项对账及重传跳过88行通过。原空间备份后发布eb0b5584，管理员UI实际导入71条训练、9个目标及8行说明存档；正式重新导出对全部80条业务记录的字段、6中期/3短期及来源关联备注对账通过。既有两个账号保留；未推断主辅目标、独立困难或经验。真实文件/备份/截图/决策仅留本机忽略目录。"
     },
     {
       "id": "T15",
@@ -131,7 +131,7 @@
       "title": "今天页将长期关注置顶",
       "status": "done",
       "evidence": "apps/client/App.tsx",
-      "verification": "长期关注标题与长期目标卡片已移到今天页标题栏后、引导区之前，实现提交 bd5ed25；2026-10-19 重新执行 TypeScript 与 Web 构建均通过。用户明确要求推送远端用于云端继续开发；仍暂停生产部署，代码完成不等于线上已更新。"
+      "verification": "长期关注标题与卡片已移到今天页标题栏后、引导区之前，实现bd5ed25。2026-10-19本轮TypeScript和Web构建通过，随腾讯导入版本eb0b5584发布到原Worker；线上已登录页面确认长期关注位于顶部。"
     },
     {
       "id": "T20",
