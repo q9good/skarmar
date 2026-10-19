@@ -5,6 +5,7 @@ import { excelContract } from './excel-contract.mjs';
 import { knowledgeContract } from './knowledge-contract.mjs';
 import { lessonContract } from './lesson-contract.mjs';
 import { importContract } from './import-contract.mjs';
+import { mutationContract } from './mutation-contract.mjs';
 export const ownerPassword = 'synthetic-owner-contract-password';
 export async function authContract(label, send, expire, exec) {
   async function call(method, path, body, cookie, expected = 200, origin = 'https://contract.local') {
@@ -61,6 +62,10 @@ export async function authContract(label, send, expire, exec) {
   }, owner);
   let teacher = await login('teacher', 'synthetic-member-password');
   await call('GET', '/api/state', undefined, teacher);
+  await call('DELETE', `/api/goals/${randomUUID()}`, { expected_version: 1 }, undefined, 401);
+  await mutationContract(label,
+    async (method, path, body, expected = 200) => (await call(method, path, body, owner, expected)).data,
+    async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data, exec);
   await lessonContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
   await knowledgeContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
   await excelContract(label, send, teacher);

@@ -56,6 +56,7 @@ fn input(db: &Connection) -> SessionInput {
 
 fn request(input: SessionInput, version: Option<u64>, action: &str) -> SaveSession {
     SaveSession {
+        revision: None,
         operation_id: Uuid::new_v4().to_string(),
         expected_version: version,
         action: action.into(),

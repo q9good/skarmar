@@ -1,9 +1,7 @@
 """Extend the synthetic UI creation test with editing and capability probes.
 
-DELETE and completed-session PUT are negative probes for currently missing
-features. Their rejection is not evidence of working deletion or revision.
+Also runs the administrator deletion and member revision browser checks.
 """
-import uuid
 from playwright.sync_api import expect
 
 
@@ -244,23 +242,6 @@ def check_mutations(page, context, browser, base, out, created, login, state):
     assert entry('experiences', ids['principle'])['status'] == 'verified'
     checks.append('goal/method archived and restored; experience stopped and restored; related data retained')
 
-    # Explicit negative probes: neither missing capability is called a pass.
-    headers = {'X-Skarma-Request': '1', 'Origin': base}
-    before_probes = state()
-    unavailable = []
-    for kind, item_id in [('goals', ids['goal']), ('pathways', ids['method']), ('experiences', ids['experience']), ('sessions', ids['session']), ('sessions', draft['id'])]:
-        response = context.request.delete(base + '/api/' + kind + '/' + item_id, headers=headers)
-        assert response.status == 405, (kind, response.status, response.text())
-        assert state() == before_probes
-        unavailable.append({'operation': 'DELETE', 'kind': kind, 'status': response.status})
-    session_fields = {key: value for key, value in old_session.items() if key not in ['id', 'version', 'status', 'target_snapshots']}
-    response = context.request.put(base + '/api/sessions/' + ids['session'], headers=headers,
-                                   data={'operation_id': str(uuid.uuid4()), 'expected_version': old_session['version'], 'action': 'save_draft', 'session': session_fields})
-    assert response.status == 409 and '已完成记录暂只支持回看' in response.json()['error']
-    assert state() == before_probes
-    unavailable.append({'operation': 'PUT completed session', 'status': response.status, 'error': response.json()['error']})
-    print('CONFIRMED MISSING: deletion (5 probes HTTP 405), completed training revision (HTTP 409); state unchanged', flush=True)
-
     page.reload()
     expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
     goal(second_name)
@@ -280,4 +261,6 @@ def check_mutations(page, context, browser, base, out, created, login, state):
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
     checks.append('edited graph retained on reload and a new independent authenticated browser')
     print('PASS UI edits, target/link removal and reversible status changes; exact saved IDs verified', flush=True)
-    return {'checks': checks, 'unavailable': unavailable, 'second_goal_id': second['id'], 'draft_id': draft['id']}
+    from smoke_record_changes_web import check_record_changes
+    changes = check_record_changes(page, context, browser, base, out, ids, second, draft, state)
+    return {'checks': checks, 'record_changes': changes, 'second_goal_id': second['id'], 'draft_id': draft['id']}

@@ -187,6 +187,33 @@ pub struct SaveSession {
     pub expected_version: Option<u64>,
     pub action: String,
     pub session: SessionInput,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub revision: Option<SessionRevisionInput>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SessionRevisionInput {
+    pub note: String,
+    pub difficulty_version: Option<u64>,
+    pub experience_version: Option<u64>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SessionRevision {
+    pub session: Session,
+    pub recorded_at: String,
+    pub note: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DeleteRecord {
+    pub expected_version: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct DeletedRecord {
+    pub kind: String,
+    pub id: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -248,6 +275,8 @@ pub struct FollowUp {
     pub id: String,
     pub version: u64,
     pub source_session_id: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub source_deleted: bool,
     pub content: String,
     pub kind: Option<String>,
     pub status: String,
@@ -331,6 +360,8 @@ pub struct AppState {
     pub lessons: Vec<Lesson>,
     #[serde(default)]
     pub lesson_options: Vec<LessonOption>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub deleted: Vec<DeletedRecord>,
 }
 
 /// Business data captured in a single transaction. Never includes account/session tables.

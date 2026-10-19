@@ -39,6 +39,7 @@ export type FollowUp = {
   kind: 'general' | 'task' | null; status: string;
   next_review_date: string | null; conclusion: string;
   goal_ids: string[]; pathway_ids: string[];
+  source_deleted?: boolean;
 };
 export type FollowUpUpdate = {
   expected_version: number; status: string; conclusion: string; next_review_date: string | null;
@@ -50,10 +51,13 @@ export type Pathway = {
 };
 export type LessonOption = { kind: 'course' | 'teacher'; value: string; active: boolean; version: number };
 export type NewLessonOption = Pick<LessonOption, 'kind' | 'value'>;
-export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[]; pathways: Pathway[]; lessons: Lesson[]; lesson_options?: LessonOption[] };
+export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[]; pathways: Pathway[]; lessons: Lesson[]; lesson_options?: LessonOption[]; deleted?: { kind: string; id: string }[] };
+export type SessionRevisionInput = { note: string; difficulty_version: number | null; experience_version: number | null };
+export type SessionRevision = { session: Session; recorded_at: string; note: string };
 export type SaveRequest = {
   operation_id: string; expected_version: number | null;
-  action: 'save_draft' | 'complete'; session: SessionInput;
+  action: 'save_draft' | 'complete' | 'revise'; session: SessionInput;
+  revision?: SessionRevisionInput;
 };
 export type SaveResult = { session: Session; difficulty_id: string | null; experience_id: string | null };
 

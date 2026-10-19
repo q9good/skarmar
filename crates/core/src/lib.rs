@@ -2,6 +2,7 @@ pub mod auth;
 pub mod config;
 pub mod import;
 pub mod model;
+pub mod mutations;
 pub mod sql;
 pub mod store;
 
@@ -27,6 +28,14 @@ pub enum Command {
     ExportSnapshot,
     GoalHistory {
         id: String,
+    },
+    SessionHistory {
+        id: String,
+    },
+    DeleteRecord {
+        kind: String,
+        id: String,
+        request: DeleteRecord,
     },
     CreateGoal(NewGoal),
     CreatePathway(NewPathway),
@@ -66,6 +75,16 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
                 return Err(store::ApiError::invalid("认证请求不能嵌套"));
             }
             match *command {
+                Command::DeleteRecord { kind, id, request } => {
+                    if actor.role != auth::AccountRole::Admin {
+                        return Err(store::ApiError(
+                            axum::http::StatusCode::FORBIDDEN,
+                            "只有管理员可以删除记录".into(),
+                        ));
+                    }
+                    mutations::delete_record(db, &kind, &id, request, &actor.id)?;
+                    serde_json::json!({"ok": true})
+                }
                 Command::ImportAuthorize => {
                     import::ensure_admin(&actor)?;
                     serde_json::json!({"ok": true})
@@ -83,9 +102,13 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         Command::ImportAuthorize | Command::ImportPreview(_) | Command::ImportCommit(_) => {
             return Err(auth::unauthorized());
         }
+        Command::DeleteRecord { .. } => return Err(auth::unauthorized()),
         Command::State => serde_json::to_value(store::state(db)?)?,
         Command::ExportSnapshot => serde_json::to_value(store::export_snapshot(db)?)?,
         Command::GoalHistory { id } => serde_json::to_value(store::goal_history(db, &id)?)?,
+        Command::SessionHistory { id } => {
+            serde_json::to_value(mutations::session_history(db, &id)?)?
+        }
         Command::CreateGoal(input) => serde_json::to_value(store::create_goal(db, input)?)?,
         Command::CreatePathway(input) => serde_json::to_value(store::create_pathway(db, input)?)?,
         Command::UpdatePathway { id, request } => {

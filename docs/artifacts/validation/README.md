@@ -29,4 +29,14 @@
 | [edited-goal-history.png](edited-goal-history.png) | 修改后的目标标准及保留的新旧版本 |
 | [edited-experience-bindings.png](edited-experience-bindings.png) | 修改后的经验、目标／方法绑定及验证依据 |
 
-通过项与尚未实现的删除、已完成训练修订见[编辑与删除自测](../../edit-delete-self-test.md)。
+当时通过项与缺失项见[编辑与删除自测](../../edit-delete-self-test.md)，后续已由T30补齐删除和已完成训练修订。
+
+管理员删除与普通成员修订的合成截图（本地Worker/DO）：
+
+| 图片 | 内容 |
+| --- | --- |
+| [member-training-revision.png](member-training-revision.png) | 普通家人成员修改已完成训练，页面不提供删除入口 |
+| [admin-referenced-goal-delete.png](admin-referenced-goal-delete.png) | 管理员二次确认及被训练引用目标的拒绝提示 |
+| [deleted-training-retains-experience.png](deleted-training-retains-experience.png) | 原训练删除后保留经验、绑定、依据及来源删除说明 |
+
+规则及双后端验收见[管理员删除与训练修订](../../record-permissions.md)。

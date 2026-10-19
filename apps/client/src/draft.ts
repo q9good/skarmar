@@ -6,6 +6,7 @@ export type Draft = {
   id: string; version: number | null; input: SessionInput;
   pending?: SaveRequest;
   stage?: 'plan' | 'summary';
+  revision?: import('./api').SessionRevisionInput;
 };
 
 // Secure-origin browser UUIDs; the native adapter will be supplied in phase two.

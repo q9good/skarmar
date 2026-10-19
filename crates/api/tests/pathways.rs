@@ -86,6 +86,7 @@ fn completed(db: &mut Connection) -> SaveResult {
         db,
         &Uuid::new_v4().to_string(),
         SaveSession {
+            revision: None,
             operation_id: Uuid::new_v4().to_string(),
             expected_version: None,
             action: "complete".into(),

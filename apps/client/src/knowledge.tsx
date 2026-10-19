@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ApiError, request, type AppState, type FollowUp, type Goal, type Pathway } from './api';
 import { uuid } from './draft';
+import { DeleteRecordButton, type DeletedHandler } from './delete-record';
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试';
 const toggle = (ids: string[], id: string) => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id];
@@ -82,8 +83,9 @@ export function RelatedKnowledge({ data, goalId, pathwayId, openPathway }: { dat
   </View>;
 }
 
-export function PathwayLibrary({ data, saved, initialPathway, openGoal }: { data: AppState; saved: (pathway: Pathway) => void; initialPathway?: Pathway; openGoal: (goal: Goal) => void }) {
+export function PathwayLibrary({ data, saved, initialPathway, openGoal, removed }: { data: AppState; saved: (pathway: Pathway) => void; initialPathway?: Pathway; openGoal: (goal: Goal) => void; removed: DeletedHandler }) {
   const [editing, setEditing] = useState<Pathway | 'new' | null>(initialPathway ?? null);
+  useEffect(() => { if (editing && editing !== 'new' && data.deleted?.some(item => item.kind === 'pathways' && item.id === editing.id)) setEditing(null); }, [data.deleted, editing]);
   if (editing) return <>
     {editing !== 'new' && <View style={s.card}><Text style={s.label}>关联目标</Text>{(data.pathways.find(item => item.id === editing.id) ?? editing).goal_ids.map(id => {
       const goal = data.goals.find(item => item.id === id);
@@ -92,6 +94,7 @@ export function PathwayLibrary({ data, saved, initialPathway, openGoal }: { data
     <PathwayForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? undefined : data.pathways.find(item => item.id === editing.id) ?? editing} goals={data.goals}
       saved={pathway => { saved(pathway); setEditing(null); }} cancel={() => setEditing(null)} />
     {editing !== 'new' && <RelatedKnowledge data={data} pathwayId={editing.id} />}
+    {editing !== 'new' && <DeleteRecordButton kind="pathways" id={editing.id} version={(data.pathways.find(item => item.id === editing.id) ?? editing).version} label="方法" removed={removed} hint="经验会保留，并解除与此方法的关联。" />}
   </>;
   return <>
     <Text style={s.hint}>目标回答“要达到什么”，方法回答“怎样实现”。同一个方法可以服务多个目标，每个目标也可以尝试多种方法。</Text>

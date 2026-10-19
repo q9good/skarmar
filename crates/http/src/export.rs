@@ -469,6 +469,7 @@ mod tests {
         ExportSnapshot {
             exported_at: "2026-10-13T00:00:00Z".into(),
             state: AppState {
+                deleted: vec![],
                 goals: vec![],
                 sessions: vec![],
                 difficulties: vec![],
@@ -490,6 +491,7 @@ mod tests {
     fn an_overlong_cell_is_rejected_without_silently_truncating_unicode() {
         let mut snapshot = empty();
         snapshot.state.difficulties.push(FollowUp {
+            source_deleted: false,
             id: "test".into(),
             version: 1,
             source_session_id: None,

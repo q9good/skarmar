@@ -42,3 +42,11 @@ test('plan goals appear before unrelated goals in follow-up choices', () => {
   const ordered = orderedGoals(goals, { targets: [{ goal_id: 'main' }, { goal_id: 'second' }] });
   assert.deepEqual(ordered.map(goal => goal.id), ['main', 'second', 'outside']);
 });
+test('deletion from another browser wins against retained local entities and late reads', () => {
+  const empty = { goals: [], sessions: [], lessons: [], difficulties: [], experiences: [], pathways: [] };
+  const old = { ...empty, goals: [{ id: 'deleted', version: 4 }, { id: 'keep', version: 1 }] };
+  const result = mergeState(old, { ...empty, deleted: [{ kind: 'goals', id: 'deleted' }] });
+  assert.deepEqual(result.goals.map(item => item.id), ['keep']);
+  assert.deepEqual(mergeState(result, old).goals.map(item => item.id), ['keep']);
+  assert.equal(result.deleted.length, 1);
+});

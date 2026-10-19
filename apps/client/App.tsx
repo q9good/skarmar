@@ -8,12 +8,13 @@ import { AuthBoundary, AccountPanel, useAuth } from './src/auth';
 import { ExperienceBindings, ExperienceCreator, PathwayLibrary, RelatedKnowledge } from './src/knowledge';
 import { PlanningOverview } from './src/planning-view';
 import { DateField, Select } from './src/controls';
+import { DeleteRecordButton, type DeletedHandler } from './src/delete-record';
 import { LessonChoice, LessonStatistics, LessonOptionManager } from './src/lessons';
 import { buildPlanning } from './src/planning';
 import { mergeState, orderedGoals, replaceTarget, shiftDate } from './src/workflow';
 import {
   ApiError, request, isReviewable, isTrainable, type AppState, type FollowUp, type Goal, type Level,
-  type GoalProgress, type GoalUpdate, type GoalRevision, type Pathway, type FollowUpUpdate,
+  type GoalProgress, type GoalUpdate, type GoalRevision, type Pathway, type FollowUpUpdate, type SessionRevision,
   type Role, type SaveRequest, type SaveResult, type Session, type SessionInput, type Lesson, type LessonInput, type LessonOption, type NewLessonOption,
 } from './src/api';
 import { clearDraft, emptyInput, localDate, readDraft, saveDraft, uuid, type Draft } from './src/draft';
@@ -140,6 +141,28 @@ function Workspace() {
     return normalized;
   }, []);
 
+  const removed: DeletedHandler = (kind, id) => {
+    setData(current => mergeState(current, { ...current, deleted: [...(current.deleted ?? []), { kind, id }] }));
+    if (kind === 'goals') setSelectedGoal(null);
+    if (kind === 'sessions') {
+      setDetail(null); setEditing(false);
+      if (draft?.id === id) { setDraft(null); void persistence.current.then(() => clearDraft(scope)).catch(() => setError('记录已删除，本机草稿清理失败，请勿重新保存。')); }
+    }
+    if (kind === 'lessons') {
+      setEditingLesson(false);
+      if (lessonDraft?.id === id) { setLessonDraft(null); void lessonPersistence.current.then(() => AsyncStorage.removeItem(lessonStorageKey)).catch(() => setError('记录已删除，本机上课草稿清理失败。')); }
+    }
+    setMessage('记录已删除，其他记录保留。');
+    void refresh().catch(() => setSyncError('记录已删除，列表暂未刷新。'));
+  };
+  useEffect(() => {
+    const gone = (kind: string, id?: string) => data.deleted?.some(item => item.kind === kind && item.id === id);
+    if (gone('goals', selectedGoal?.id)) setSelectedGoal(null);
+    if (gone('sessions', detail?.id)) setDetail(null);
+  }, [data.deleted, selectedGoal?.id, detail?.id]);
+  const deletedDraft = data.deleted?.some(item => item.kind === 'sessions' && item.id === draft?.id);
+  const deletedLesson = data.deleted?.some(item => item.kind === 'lessons' && item.id === lessonDraft?.id);
+
   const scrollTop = () => scroll.current?.scrollTo({ y: 0, animated: false });
   useEffect(() => { scrollTop(); }, [tab, editing, editingLesson, selectedGoal?.id, detail?.id, showAccount]);
   useEffect(() => { if (error || message) scrollTop(); }, [error, message]);
@@ -210,7 +233,7 @@ function Workspace() {
     finally { setBusy(false); }
   };
 
-  const dirty = () => draft && (draft.pending || (draft.version === null
+  const dirty = () => draft && (draft.pending || draft.revision || (draft.version === null
     ? JSON.stringify(draft.input) !== JSON.stringify(emptyInput())
     : !data.sessions.some(s => s.id === draft.id && s.version === draft.version && JSON.stringify(inputOf(s)) === JSON.stringify(draft.input))));
 
@@ -246,6 +269,16 @@ function Workspace() {
     setDraft(draft?.id === session.id ? { ...draft, stage: 'summary' } : { id: session.id, version: session.version, input: inputOf(session), stage: 'summary' });
     setEditing(true); setEditingLesson(false); setDetail(null); setConflict(null); setError(''); setSelectedGoal(null);
     setStage('summary'); setShowPlanning(false);
+  };
+
+  const reviseSession = (session: Session) => {
+    if (!storageReady) { setError('无法读取本机草稿，请先恢复存储访问。'); return; }
+    if (draft && dirty()) { setError('请先保存当前本机草稿，再修订训练。'); return; }
+    setDraft({ id: session.id, version: session.version, input: inputOf(session), stage: 'summary', revision: {
+      note: '', difficulty_version: data.difficulties.find(item => item.source_session_id === session.id)?.version ?? null,
+      experience_version: data.experiences.find(item => item.source_session_id === session.id)?.version ?? null,
+    } });
+    setStage('summary'); setEditing(true); setDetail(null); setSelectedGoal(null); setConflict(null); setError(''); setMessage('');
   };
 
   const change = (value: Partial<SessionInput>) => {
@@ -284,7 +317,7 @@ function Workspace() {
         expected_version: lessonDraft.expectedVersion, lesson: lessonDraft.input,
       });
     } catch (e) { if (e instanceof ApiError && e.status === 409) await refresh().catch(() => undefined); throw e; }
-    setData(current => ({ ...current, lessons: [saved, ...current.lessons.filter(item => item.id !== saved.id)] }));
+    setData(current => mergeState(current, { ...current, lessons: [saved, ...current.lessons.filter(item => item.id !== saved.id)] }));
     await lessonPersistence.current;
     await AsyncStorage.removeItem(lessonStorageKey);
     setLessonDraft(null); setEditingLesson(false); setMessage('上课记录已保存。');
@@ -294,7 +327,7 @@ function Workspace() {
   const submit = (action: SaveRequest['action']) => safely(async () => {
     if (!draft) return;
     // Retain the exact request before sending. An uncertain response reuses the same operation ID.
-    const pending = draft.pending ?? { operation_id: uuid(), expected_version: draft.version, action, session: draft.input };
+    const pending: SaveRequest = draft.pending ?? { operation_id: uuid(), expected_version: draft.version, action: draft.revision ? 'revise' : action, session: draft.input, ...(draft.revision ? { revision: draft.revision } : {}) };
     const queued = { ...draft, pending };
     await persist(queued);
     setDraft(queued);
@@ -311,13 +344,13 @@ function Workspace() {
       }
       throw e;
     }
-    setData(current => ({ ...current, sessions: [result.session, ...current.sessions.filter(s => s.id !== result.session.id)] }));
+    setData(current => mergeState(current, { ...current, sessions: [result.session, ...current.sessions.filter(s => s.id !== result.session.id)] }));
     if (result.session.status === 'completed') {
       setDraft(null); setEditing(false); setDetail(result.session);
       // Await prior writes before clearing, so a delayed autosave cannot resurrect the draft.
       await persistence.current;
       await clearDraft(scope);
-      setMessage('这次训练已完成，困难与经验已按填写内容保存。');
+      setMessage(pending.action === 'revise' ? '训练修改已保存，历史版本已保留。' : '这次训练已完成，困难与经验已按填写内容保存。');
     } else {
       const saved: Draft = { id: result.session.id, version: result.session.version, input: inputOf(result.session), stage: 'summary' };
       await persist(saved); setDraft(saved);
@@ -397,14 +430,21 @@ function Workspace() {
                 setLessonDraft({ id: remoteLesson.id, expectedVersion: remoteLesson.version, input: lessonInput(remoteLesson) });
               })} />
             </Card>}
+            {deletedLesson && <><Text accessibilityRole="alert" style={styles.errorText}>记录已被管理员删除，当前本机填写仍保留，无法保存到原记录。</Text>
+              <Button title="备份填写并关闭已删除草稿" secondary disabled={busy} onPress={() => void safely(async () => {
+                await lessonPersistence.current; await AsyncStorage.setItem(`skarma:${scope}:deleted-lesson-backup:${lessonDraft.id}`, JSON.stringify(lessonDraft));
+                await AsyncStorage.removeItem(lessonStorageKey); setLessonDraft(null); setEditingLesson(false); setMessage('已备份本机填写，可以新建其他记录。');
+              })} />
+            </>}
             <LessonEditor data={data} addOption={async option => {
               const saved = await request<LessonOption>('/lesson-options', 'POST', option);
               acceptOption(saved);
               if (!saved.active) throw new Error('同名选项已停用，请在记录页的选项维护中恢复使用。');
             }} value={lessonDraft.input} change={patch => setLessonDraft(current => current && !busy ? { ...current, input: { ...current.input, ...patch } } : current)} disabled={busy} />
-            <Button title={busy ? '正在保存…' : '保存上课记录'} onPress={() => void saveLesson()} disabled={busy || lessonStale || !lessonDraft.input.course.trim() || !lessonDraft.input.teacher.trim()} />
+            <Button title={busy ? '正在保存…' : '保存上课记录'} onPress={() => void saveLesson()} disabled={busy || deletedLesson || lessonStale || !lessonDraft.input.course.trim() || !lessonDraft.input.teacher.trim()} />
+            {lessonDraft.expectedVersion !== null && <DeleteRecordButton kind="lessons" id={lessonDraft.id} version={lessonDraft.expectedVersion} label="上课记录" removed={removed} />}
           </> : editing && draft ? <>
-            <View style={styles.sectionHeader}><Text style={styles.title}>{stage === 'plan' ? '家庭干预计划' : '填写干预总结'}</Text>
+            <View style={styles.sectionHeader}><Text style={styles.title}>{draft.revision ? '修改已完成训练' : stage === 'plan' ? '家庭干预计划' : '填写干预总结'}</Text>
               <Button title="返回" secondary onPress={() => setEditing(false)} disabled={busy} /></View>
             <Hint>{draft.pending ? '上次提交结果尚未确认，请重试同一次提交。' :
               localSaved ? '草稿已保存在本机 · 正式保存后可在其他设备继续' : '正在保存本机草稿…'}</Hint>
@@ -425,16 +465,31 @@ function Workspace() {
               <Button title="采用最新记录" secondary onPress={() => void resolveConflict(true)} disabled={busy} />
               {conflict.status !== 'completed' && <Button title="保留我的内容，核对后继续" secondary onPress={() => void resolveConflict(false)} disabled={busy} />}
             </Card> : null}
+            {deletedDraft && <><Text accessibilityRole="alert" style={styles.errorText}>训练已被管理员删除，当前本机填写仍保留，无法保存到原记录。</Text>
+              <Button title="备份填写并关闭已删除草稿" secondary disabled={busy} onPress={() => void safely(async () => {
+                await persistence.current; await AsyncStorage.setItem(`skarma:${scope}:deleted-training-backup:${draft.id}`, JSON.stringify(draft));
+                await clearDraft(scope); setDraft(null); setEditing(false); setMessage('已备份本机填写，可以新建其他记录。');
+              })} />
+            </>}
+            {draft.revision && <Card><Hint>修订保留历史版本，不会再次归档目标。仅在你修改困难或待验证经验的内容／绑定时同步跟进。已验证或停用经验在跟进页单独维护，不会被训练修改覆盖；取消标记不会删除跟进，管理员已删除的跟进不会自动恢复。</Hint>
+              <Field label="本次修订说明" value={draft.revision.note} onChange={note => setDraft({ ...draft, revision: { ...draft.revision!, note } })} multiline disabled={busy} />
+            </Card>}
             <TrainingEditor stage={stage} pathways={data.pathways} draft={draft} goals={data.goals} sessions={data.sessions} difficulties={data.difficulties}
-              disabled={busy || Boolean(draft.pending)} change={change} />
-            {draft.pending ? <Button title="重试同一次提交" onPress={() => void submit(draft.pending!.action)} disabled={busy} /> :
-              <View style={styles.row}><Button title={stage === 'plan' ? '保存计划并退出' : '保存总结草稿并退出'} secondary onPress={() => void submit('save_draft')} disabled={busy} />
-                {stage === 'summary' && <Button title={busy ? '正在保存…' : '提交干预总结'} onPress={() => void submit('complete')} disabled={busy} />}</View>}
-          </> : detail ? <SessionDetail session={detail} data={data} back={() => setDetail(null)} goFollowups={() => { setDetail(null); setTab('followups'); }} />
+              disabled={busy || deletedDraft || Boolean(draft.pending)} change={change} />
+            {draft.revision && !draft.pending ? <Button title={busy ? '正在保存…' : '保存训练修改'} onPress={() => void submit('revise')} disabled={busy || deletedDraft || !draft.revision.note.trim()} /> : draft.pending ? <Button title="重试同一次提交" onPress={() => void submit(draft.pending!.action)} disabled={busy || deletedDraft} /> :
+              <View style={styles.row}><Button title={stage === 'plan' ? '保存计划并退出' : '保存总结草稿并退出'} secondary onPress={() => void submit('save_draft')} disabled={busy || deletedDraft} />
+                {stage === 'summary' && <Button title={busy ? '正在保存…' : '提交干预总结'} onPress={() => void submit('complete')} disabled={busy || deletedDraft} />}</View>}
+            {draft.revision && !draft.pending && !deletedDraft && <Button title="备份填写并取消修改" secondary disabled={busy} onPress={() => void safely(async () => {
+              await persistence.current; await AsyncStorage.setItem(`skarma:${scope}:cancelled-revision-backup:${draft.id}`, JSON.stringify(draft));
+              await clearDraft(scope); setDraft(null); setEditing(false); setDetail(data.sessions.find(item => item.id === draft.id) ?? null);
+              setMessage('本次修改未提交，填写已备份到本机。');
+            })} />}
+            {draft.version !== null && <DeleteRecordButton kind="sessions" id={draft.id} version={draft.version} label="训练" removed={removed} hint="已有困难与经验会保留，并标明原训练已删除。" />}
+          </> : detail ? <SessionDetail edit={reviseSession} removed={removed} session={data.sessions.find(item => item.id === detail.id) ?? detail} data={data} back={() => setDetail(null)} goFollowups={() => { setDetail(null); setTab('followups'); }} />
           : selectedGoal ? <>
             <View style={styles.sectionHeader}><Text style={styles.title}>{currentGoal?.title}</Text><Button title="返回" secondary onPress={() => setSelectedGoal(null)} /></View>
             <RelatedKnowledge data={data} goalId={selectedGoal.id} openPathway={pathway => { setSelectedGoal(null); setPathwayToOpen(pathway); setTab('pathways'); }} />
-            <GoalReview key={selectedGoal.id} feedback={scrollTop} scope={scope} goal={currentGoal!} goals={data.goals}
+            <GoalReview key={selectedGoal.id} removed={removed} feedback={scrollTop} scope={scope} goal={currentGoal!} goals={data.goals}
               source={id => { const s = data.sessions.find(s => s.id === id); if (s) openSession(s); }}
               save={async body => {
                 try {
@@ -494,7 +549,7 @@ function Workspace() {
               <Button title={showGoalForm ? '收起新目标' : '＋ 新建目标'} secondary onPress={() => setShowGoalForm(v => !v)} />
               {showGoalForm && <GoalForm goals={data.goals} create={async input => {
                 const saved = await request<Goal>('/goals', 'POST', input);
-                setData(current => ({ ...current, goals: [saved, ...current.goals.filter(goal => goal.id !== saved.id)] }));
+                setData(current => mergeState(current, { ...current, goals: [saved, ...current.goals.filter(goal => goal.id !== saved.id)] }));
                 setShowGoalForm(false); setMessage('新目标已保存。');
                 try { await refresh(); } catch { setSyncError('目标已保存，自动刷新暂时失败。'); }
               }} />}
@@ -503,8 +558,8 @@ function Workspace() {
                 {data.goals.filter(g => g.level === level).map(g => <GoalCard key={g.id} goal={g} data={data} onPress={() => setSelectedGoal(g)} />)}
               </View>)}
             </>}
-            {tab === 'pathways' && <PathwayLibrary data={data} initialPathway={pathwayToOpen} openGoal={setSelectedGoal} saved={(pathway: Pathway) => {
-              setData(current => ({ ...current, pathways: [pathway, ...current.pathways.filter(item => item.id !== pathway.id)] }));
+            {tab === 'pathways' && <PathwayLibrary removed={removed} data={data} initialPathway={pathwayToOpen} openGoal={setSelectedGoal} saved={(pathway: Pathway) => {
+              setData(current => mergeState(current, { ...current, pathways: [pathway, ...current.pathways.filter(item => item.id !== pathway.id)] }));
               setMessage('方法已保存。');
             }} />}
             {tab === 'history' && <>
@@ -533,16 +588,16 @@ function Workspace() {
             {tab === 'followups' && <>
               <Hint>训练中的困难进入后续跟进；成功片段先保存为待验证经验。</Hint>
               <Text style={styles.subtitle}>困难跟进 · {data.difficulties.length}</Text>
-              {data.difficulties.length ? data.difficulties.map(item => <FollowUpCard key={item.id} item={item} kind="difficulties" busy={busy} goals={data.goals} pathways={data.pathways}
+              {data.difficulties.length ? data.difficulties.map(item => <FollowUpCard key={item.id} item={item} kind="difficulties" removed={removed} busy={busy} goals={data.goals} pathways={data.pathways}
                 source={() => { const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
                 update={body => updateFollowUp('difficulties', item.id, body)} />) : <Hint>完成训练时填写困难，这里会保留来源与跟进过程。</Hint>}
               <Button title={showExperienceForm ? '收起新经验' : '＋ 新建经验'} secondary onPress={() => setShowExperienceForm(value => !value)} />
               {showExperienceForm && <ExperienceCreator data={data} cancel={() => setShowExperienceForm(false)} saved={item => {
-                setData(current => ({ ...current, experiences: [item, ...current.experiences.filter(existing => existing.id !== item.id)] }));
+                setData(current => mergeState(current, { ...current, experiences: [item, ...current.experiences.filter(existing => existing.id !== item.id)] }));
                 setShowExperienceForm(false); setMessage('独立经验已保存，待验证。');
               }} />}
               <Text style={styles.subtitle}>成功经验 · {data.experiences.length}</Text>
-              {data.experiences.length ? data.experiences.map(item => <FollowUpCard key={item.id} item={item} kind="experiences" busy={busy} goals={data.goals} pathways={data.pathways}
+              {data.experiences.length ? data.experiences.map(item => <FollowUpCard key={item.id} item={item} kind="experiences" removed={removed} busy={busy} goals={data.goals} pathways={data.pathways}
                 source={() => { const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
                 update={body => updateFollowUp('experiences', item.id, body)} />) : <Hint>已保存不等于已验证。复用前，请补充适用情况和验证依据。</Hint>}
             </>}
@@ -752,7 +807,8 @@ function goalUpdate(goal: Goal): GoalUpdate {
   return { ...fields, expected_version: version, change_note: '' };
 }
 
-function GoalReview({ scope, goal, goals, save, source, feedback }: {
+function GoalReview({ scope, goal, goals, save, source, feedback, removed }: {
+  removed: DeletedHandler;
   feedback: () => void;
   scope: string;
   goal: Goal; goals: Goal[]; save: (body: GoalUpdate) => Promise<Goal>; source: (id: string) => void;
@@ -838,6 +894,7 @@ function GoalReview({ scope, goal, goals, save, source, feedback }: {
       {error && <Text accessibilityRole="alert" style={styles.errorText}>{error}</Text>}
       <Button title={saving ? '正在保存…' : '保存目标复盘'} onPress={() => void submit()} disabled={saving || stale} />
     </Card>}
+    <DeleteRecordButton kind="goals" id={goal.id} version={goal.version} label="目标" removed={removed} hint="有下级目标或训练引用时需先处理；方法与经验会保留并解除关联。" />
     <Text style={styles.subtitle}>目标修改历史 · {history.length}</Text>
     {history.map(revision => <Card key={revision.goal.version}>
       <Text style={styles.badge}>版本 {revision.goal.version} · {new Date(revision.recorded_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</Text>
@@ -850,9 +907,16 @@ function GoalReview({ scope, goal, goals, save, source, feedback }: {
   </>;
 }
 
-function SessionDetail({ session, data, back, goFollowups }: { session: Session; data: AppState; back: () => void; goFollowups: () => void }) {
+function SessionDetail({ session, data, back, goFollowups, edit, removed }: { session: Session; data: AppState; back: () => void; goFollowups: () => void; edit: (session: Session) => void; removed: DeletedHandler }) {
+  const [history, setHistory] = useState<SessionRevision[]>([]);
+  const [historyError, setHistoryError] = useState('');
+  useEffect(() => { let active = true;
+    request<SessionRevision[]>(`/sessions/${session.id}/history`).then(value => { if (active) { setHistory(value); setHistoryError(''); } }).catch(() => { if (active) setHistoryError('修订历史暂未加载，请重试。'); });
+    return () => { active = false; };
+  }, [session.id, session.version]);
   return <>
     <View style={styles.sectionHeader}><Text style={styles.title}>训练回看</Text><Button title="返回" secondary onPress={back} /></View>
+    <Button title="修改训练" secondary onPress={() => edit(session)} />
     <Card><Text style={styles.badge}>{session.business_date} · {session.time_slot} · 已完成</Text>
       <Text style={styles.cardTitle}>{session.activities.join(' · ')}</Text><Hint>{session.organization}</Hint>
       <Text style={styles.label}>课前安排</Text><Text style={styles.body}>{session.plan || '未填写'}</Text>
@@ -866,14 +930,22 @@ function SessionDetail({ session, data, back, goFollowups }: { session: Session;
       {target.next_step ? <Text style={styles.body}>下一步：{target.next_step}</Text> : null}
     </Card>)}
     {session.has_difficulty && <Card><Text style={styles.cardTitle}>困难</Text><Text style={styles.body}>{session.difficulty}</Text>
-      <Hint>{data.difficulties.find(d => d.source_session_id === session.id)?.status === 'resolved' ? '已解决' : '已进入跟进'}</Hint></Card>}
+      <Hint>{data.difficulties.some(d => d.source_session_id === session.id) ? data.difficulties.find(d => d.source_session_id === session.id)?.status === 'resolved' ? '已解决' : '已进入跟进' : '暂无对应跟进，保留原训练总结'}</Hint></Card>}
     {session.has_experience && <Card><Text style={styles.cardTitle}>成功经验</Text><Text style={styles.body}>{session.experience}</Text>
-      <Hint>{({ verified: '已验证', stopped: '已停用', pending: '待验证' } as Record<string, string>)[data.experiences.find(e => e.source_session_id === session.id)?.status ?? 'pending']}</Hint></Card>}
+      <Hint>{data.experiences.some(e => e.source_session_id === session.id) ? ({ verified: '已验证', stopped: '已停用', pending: '待验证' } as Record<string, string>)[data.experiences.find(e => e.source_session_id === session.id)!.status] : '暂无对应跟进，保留原训练总结'}</Hint></Card>}
     {(session.has_difficulty || session.has_experience) && <Button title="查看困难与经验跟进" secondary onPress={goFollowups} />}
+    <DeleteRecordButton kind="sessions" id={session.id} version={session.version} label="训练" removed={removed} hint="已有困难与经验会保留，并标明原训练已删除。" />
+    <Text style={styles.subtitle}>训练版本与修订历史 · {history.length}</Text>
+    {historyError && <Text accessibilityRole="alert" style={styles.errorText}>{historyError}</Text>}
+    {history.map(item => <Card key={item.session.version}><Text style={styles.badge}>版本 {item.session.version}{item.recorded_at ? ` · ${new Date(item.recorded_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}` : ''}</Text>
+      <Text style={styles.cardTitle}>{item.note}</Text><Hint>{item.session.business_date}</Hint><Text style={styles.body}>安排：{item.session.plan || '未填写'}</Text><Text style={styles.body}>观察：{item.session.observation || '未填写'}</Text>
+      {item.session.has_difficulty && <Text style={styles.body}>困难：{item.session.difficulty}</Text>}{item.session.has_experience && <Text style={styles.body}>经验：{item.session.experience}</Text>}
+    </Card>)}
   </>;
 }
 
-function FollowUpCard({ item, kind, busy, source, update, goals, pathways }: {
+function FollowUpCard({ item, kind, busy, source, update, goals, pathways, removed }: {
+  removed: DeletedHandler;
   item: FollowUp; kind: 'difficulties' | 'experiences'; busy: boolean; source: () => void; goals: Goal[]; pathways: Pathway[];
   update: (input: FollowUpUpdate) => Promise<FollowUp>;
 }) {
@@ -901,7 +973,7 @@ function FollowUpCard({ item, kind, busy, source, update, goals, pathways }: {
     </>}
     {item.next_review_date && <Hint>下次回看：{item.next_review_date}</Hint>}
     {item.conclusion ? <Hint>{kind === 'experiences' ? '验证依据' : '跟进结论'}：{item.conclusion}</Hint> : null}
-    <View style={styles.row}>{item.source_session_id ? <Button title="查看来源训练" secondary onPress={source} /> : <Hint>独立记录 · 无来源训练</Hint>}<Button title={expanded ? '收起' : '更新跟进'} secondary disabled={busy} onPress={() => setExpanded(v => !v)} /></View>
+    <View style={styles.row}>{item.source_session_id ? <Button title="查看来源训练" secondary onPress={source} /> : <Hint>{item.source_deleted ? '原来源训练已删除 · 跟进保留' : '独立记录 · 无来源训练'}</Hint>}<Button title={expanded ? '收起' : '更新跟进'} secondary disabled={busy} onPress={() => setExpanded(v => !v)} /></View>
     {expanded && <>
       {version !== item.version && <><Hint>记录已被更新，当前填写仍保留。请核对最新记录后再保存。</Hint><Button title="载入最新跟进内容" secondary onPress={reset} disabled={busy} /></>}
       {<>
@@ -922,6 +994,7 @@ function FollowUpCard({ item, kind, busy, source, update, goals, pathways }: {
         finally { setSaving(false); }
       })()} />
     </>}
+    <DeleteRecordButton kind={kind} id={item.id} version={item.version} label={kind === 'experiences' ? '经验' : '困难'} removed={removed} hint="原训练总结仍保留当时填写内容。" />
   </Card>;
 }
 

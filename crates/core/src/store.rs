@@ -34,7 +34,7 @@ impl ApiError {
     pub fn conflict(message: &str) -> Self {
         Self(StatusCode::CONFLICT, message.into())
     }
-    fn missing() -> Self {
+    pub(crate) fn missing() -> Self {
         Self(StatusCode::NOT_FOUND, "记录不存在".into())
     }
 }
@@ -53,11 +53,11 @@ impl From<serde_json::Error> for ApiError {
 
 pub type Result<T> = std::result::Result<T, ApiError>;
 
-fn json<T: Serialize>(value: &T) -> Result<String> {
+pub(crate) fn json<T: Serialize>(value: &T) -> Result<String> {
     Ok(serde_json::to_string(value)?)
 }
 
-fn get<T: DeserializeOwned>(db: &dyn Sql, table: &str, id: &str) -> Result<Option<T>> {
+pub(crate) fn get<T: DeserializeOwned>(db: &dyn Sql, table: &str, id: &str) -> Result<Option<T>> {
     db.query(
         &format!("SELECT data FROM {table} WHERE id=?1"),
         params![id],
@@ -68,7 +68,7 @@ fn get<T: DeserializeOwned>(db: &dyn Sql, table: &str, id: &str) -> Result<Optio
     .transpose()
 }
 
-fn list<T: DeserializeOwned>(db: &dyn Sql, table: &str) -> Result<Vec<T>> {
+pub(crate) fn list<T: DeserializeOwned>(db: &dyn Sql, table: &str) -> Result<Vec<T>> {
     db.query(
         &format!("SELECT data FROM {table} ORDER BY rowid DESC"),
         &[],
@@ -78,7 +78,7 @@ fn list<T: DeserializeOwned>(db: &dyn Sql, table: &str) -> Result<Vec<T>> {
     .collect()
 }
 
-fn valid_id(id: &str) -> Result<()> {
+pub(crate) fn valid_id(id: &str) -> Result<()> {
     if Uuid::parse_str(id).is_err() {
         return Err(ApiError::invalid("记录 ID 格式错误"));
     }
@@ -102,6 +102,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         (6, include_str!("../migrations/006_import.sql")),
         (7, include_str!("../migrations/007_lessons.sql")),
         (8, include_str!("../migrations/008_lesson_options.sql")),
+        (9, include_str!("../migrations/009_record_changes.sql")),
     ];
     db.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);")?;
     let applied = db
@@ -273,6 +274,7 @@ pub fn update_goal(db: &dyn Sql, id: &str, request: UpdateGoal) -> Result<Goal> 
 
 pub fn state(db: &dyn Sql) -> Result<AppState> {
     Ok(AppState {
+        deleted: crate::mutations::deleted(db)?,
         goals: list(db, "goals")?,
         sessions: list(db, "sessions")?,
         difficulties: list(db, "difficulties")?,
@@ -330,6 +332,7 @@ pub fn update_lesson_option(db: &dyn Sql, input: UpdateLessonOption) -> Result<L
 }
 
 pub fn save_lesson(db: &dyn Sql, id: &str, request: SaveLesson) -> Result<Lesson> {
+    crate::mutations::ensure_not_deleted(db, "lessons", id)?;
     valid_id(id)?;
     let input = request.lesson;
     valid_date(&input.business_date)?;
@@ -457,6 +460,7 @@ fn save_pathway_links(db: &dyn Sql, pathway: &Pathway) -> Result<()> {
 }
 
 pub fn create_pathway(db: &dyn Sql, input: NewPathway) -> Result<Pathway> {
+    crate::mutations::ensure_not_deleted(db, "pathways", &input.id)?;
     valid_id(&input.id)?;
     validate_pathway(&input.title, &input.description, &input.steps)?;
     validate_links(db, "goals", &input.goal_ids)?;
@@ -523,7 +527,7 @@ fn valid_experience_content(content: &str) -> Result<()> {
     Ok(())
 }
 
-fn save_experience_links(db: &dyn Sql, item: &FollowUp) -> Result<()> {
+pub(crate) fn save_experience_links(db: &dyn Sql, item: &FollowUp) -> Result<()> {
     db.execute(
         "DELETE FROM experience_goals WHERE experience_id=?1",
         params![item.id],
@@ -548,6 +552,7 @@ fn save_experience_links(db: &dyn Sql, item: &FollowUp) -> Result<()> {
 }
 
 pub fn create_experience(db: &dyn Sql, input: NewExperience) -> Result<FollowUp> {
+    crate::mutations::ensure_not_deleted(db, "experiences", &input.id)?;
     valid_id(&input.id)?;
     valid_experience_content(&input.content)?;
     if input.goal_ids.is_empty() && input.pathway_ids.is_empty() {
@@ -570,6 +575,7 @@ pub fn create_experience(db: &dyn Sql, input: NewExperience) -> Result<FollowUp>
         id: input.id,
         version: 1,
         source_session_id: None,
+        source_deleted: false,
         content: input.content.trim().into(),
         kind: None,
         status: "pending".into(),
@@ -587,6 +593,7 @@ pub fn create_experience(db: &dyn Sql, input: NewExperience) -> Result<FollowUp>
 }
 
 pub fn create_goal(db: &dyn Sql, input: NewGoal) -> Result<Goal> {
+    crate::mutations::ensure_not_deleted(db, "goals", &input.id)?;
     valid_id(&input.id)?;
     if input.title.trim().is_empty() || input.title.len() > 300 || input.criteria.len() > 5000 {
         return Err(ApiError::invalid("请填写目标名称，并控制名称和标准长度"));
@@ -654,6 +661,7 @@ pub fn create_goal(db: &dyn Sql, input: NewGoal) -> Result<Goal> {
 }
 
 pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<SaveResult> {
+    crate::mutations::ensure_not_deleted(db, "sessions", id)?;
     valid_id(id)?;
     valid_id(&request.operation_id)?;
     let fingerprint = json(&(id, &request))?;
@@ -678,14 +686,23 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
     if previous.as_ref().map(|s| s.version) != request.expected_version {
         return Err(ApiError::conflict("这条记录已更新，请保留草稿并重新核对"));
     }
-    if previous.as_ref().is_some_and(|s| s.status == "completed") {
-        return Err(ApiError::conflict(
-            "已完成记录暂只支持回看；修订功能将单独提供",
-        ));
+    let revising = request.action == "revise";
+    if revising && !previous.as_ref().is_some_and(|s| s.status == "completed") {
+        return Err(ApiError::conflict("只能修订已完成的训练"));
+    }
+    if revising
+        && request.revision.as_ref().is_none_or(|revision| {
+            revision.note.trim().is_empty() || revision.note.chars().count() > 2000
+        })
+    {
+        return Err(ApiError::invalid("请填写本次修订说明（最多2000字）"));
+    }
+    if !revising && previous.as_ref().is_some_and(|s| s.status == "completed") {
+        return Err(ApiError::conflict("已完成训练请通过修改训练入口保存修订"));
     }
     let complete = match request.action.as_str() {
         "save_draft" => false,
-        "complete" => true,
+        "complete" | "revise" => true,
         _ => return Err(ApiError::invalid("不支持的训练操作")),
     };
     let input = request.session;
@@ -720,12 +737,19 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
             current.clone()
         };
         if complete {
-            if snapshot.version != current.version {
+            if !revising && snapshot.version != current.version {
                 return Err(ApiError::conflict("关联目标已更新，请重新核对本次目标"));
             }
-            if current.level == Level::Long
-                || (target.role == Role::Review && !current.is_reviewable())
-                || (target.role != Role::Review && !current.is_trainable())
+            if !(revising
+                && previous.as_ref().is_some_and(|s| {
+                    s.input
+                        .targets
+                        .iter()
+                        .any(|prior| prior.goal_id == target.goal_id && prior.role == target.role)
+                }))
+                && (current.level == Level::Long
+                    || (target.role == Role::Review && !current.is_reviewable())
+                    || (target.role != Role::Review && !current.is_trainable()))
             {
                 return Err(ApiError::invalid(
                     "主副目标选待训练中短期；复习选已达成、已完成或已归档中短期",
@@ -760,10 +784,15 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
             .filter(|t| t.role == Role::Primary)
             .count()
             != 1
+            && !(revising
+                && input.targets.is_empty()
+                && previous
+                    .as_ref()
+                    .is_some_and(|s| s.input.targets.is_empty()))
         {
             return Err(ApiError::invalid("完成干预需要一个主目标，副目标可选"));
         }
-        if input.activities.is_empty() || input.organization.trim().is_empty() {
+        if !revising && (input.activities.is_empty() || input.organization.trim().is_empty()) {
             return Err(ApiError::invalid("请选择训练活动和组织方式"));
         }
         if input.has_difficulty && input.difficulty.trim().is_empty() {
@@ -794,7 +823,7 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
             "INSERT INTO session_targets(session_id,goal_id,role) VALUES (?1,?2,?3)",
             params![id, target.goal_id, target.role.as_str()],
         )?;
-        if complete && target.outcome == Some(Outcome::Archive) {
+        if complete && !revising && target.outcome == Some(Outcome::Archive) {
             let mut goal: Goal =
                 get(db, "goals", &target.goal_id)?.ok_or_else(ApiError::missing)?;
             if goal.status != GoalStatus::Archived {
@@ -830,11 +859,23 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
         .find(|target| target.role == Role::Primary)
         .map(|target| vec![target.goal_id.clone()])
         .unwrap_or_default();
-    if complete && result.session.input.has_difficulty {
+    if revising {
+        let old = previous.as_ref().ok_or_else(ApiError::missing)?;
+        let revision = request
+            .revision
+            .as_ref()
+            .ok_or_else(|| ApiError::invalid("缺少修订说明"))?;
+        crate::mutations::record_session_revision(db, old, "修订前版本")?;
+        crate::mutations::record_session_revision(db, &result.session, &revision.note)?;
+        (result.difficulty_id, result.experience_id) =
+            crate::mutations::sync_followups(db, old, &result.session, revision)?;
+    }
+    if complete && !revising && result.session.input.has_difficulty {
         let item = FollowUp {
             id: Uuid::new_v4().to_string(),
             version: 1,
             source_session_id: Some(id.into()),
+            source_deleted: false,
             content: result.session.input.difficulty.trim().into(),
             kind: None,
             status: "pending".into(),
@@ -855,11 +896,12 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
         )?;
         result.difficulty_id = Some(item.id);
     }
-    if complete && result.session.input.has_experience {
+    if complete && !revising && result.session.input.has_experience {
         let item = FollowUp {
             id: Uuid::new_v4().to_string(),
             version: 1,
             source_session_id: Some(id.into()),
+            source_deleted: false,
             content: result.session.input.experience.trim().into(),
             kind: Some(result.session.input.experience_kind.clone()),
             status: "pending".into(),

@@ -135,6 +135,44 @@ async fn goal_history<R: Repository>(
         execute(&repo, proof, Command::GoalHistory { id }).await?,
     ))
 }
+async fn session_history<R: Repository>(
+    State(repo): State<R>,
+    Path(id): Path<String>,
+    proof: Option<Extension<auth::SessionProof>>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        execute(&repo, proof, Command::SessionHistory { id }).await?,
+    ))
+}
+macro_rules! delete_endpoint {
+    ($name:ident, $kind:literal) => {
+        async fn $name<R: Repository>(
+            State(repo): State<R>,
+            Path(id): Path<String>,
+            proof: Option<Extension<auth::SessionProof>>,
+            Json(request): Json<DeleteRecord>,
+        ) -> Result<Json<Value>> {
+            Ok(Json(
+                execute(
+                    &repo,
+                    proof,
+                    Command::DeleteRecord {
+                        kind: $kind.into(),
+                        id,
+                        request,
+                    },
+                )
+                .await?,
+            ))
+        }
+    };
+}
+delete_endpoint!(delete_goal, "goals");
+delete_endpoint!(delete_pathway, "pathways");
+delete_endpoint!(delete_experience, "experiences");
+delete_endpoint!(delete_difficulty, "difficulties");
+delete_endpoint!(delete_session, "sessions");
+delete_endpoint!(delete_lesson, "lessons");
 async fn create_goal<R: Repository>(
     State(repo): State<R>,
     proof: Option<Extension<auth::SessionProof>>,
@@ -283,18 +321,37 @@ pub fn router_with_auth<R: Repository>(repo: R, config: auth::AuthConfig) -> Rou
         .route("/import/commit", post(commit_import::<R>))
         .route("/goals", post(create_goal::<R>))
         .route("/pathways", post(create_pathway::<R>))
-        .route("/pathways/{id}", put(update_pathway::<R>))
+        .route(
+            "/pathways/{id}",
+            put(update_pathway::<R>).delete(delete_pathway::<R>),
+        )
         .route("/experiences", post(create_experience::<R>))
-        .route("/goals/{id}", put(update_goal::<R>))
+        .route(
+            "/goals/{id}",
+            put(update_goal::<R>).delete(delete_goal::<R>),
+        )
         .route("/goals/{id}/history", get(goal_history::<R>))
-        .route("/sessions/{id}", put(save_session::<R>))
-        .route("/lessons/{id}", put(save_lesson::<R>))
+        .route(
+            "/sessions/{id}",
+            put(save_session::<R>).delete(delete_session::<R>),
+        )
+        .route("/sessions/{id}/history", get(session_history::<R>))
+        .route(
+            "/lessons/{id}",
+            put(save_lesson::<R>).delete(delete_lesson::<R>),
+        )
         .route(
             "/lesson-options",
             post(add_lesson_option::<R>).put(update_lesson_option::<R>),
         )
-        .route("/difficulties/{id}", put(update_difficulty::<R>))
-        .route("/experiences/{id}", put(update_experience::<R>))
+        .route(
+            "/difficulties/{id}",
+            put(update_difficulty::<R>).delete(delete_difficulty::<R>),
+        )
+        .route(
+            "/experiences/{id}",
+            put(update_experience::<R>).delete(delete_experience::<R>),
+        )
         .route_layer(axum::middleware::from_fn_with_state(
             auth_state.clone(),
             auth::require_session::<R>,

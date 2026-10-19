@@ -40,15 +40,17 @@ export function orderedGoals(goals: Goal[], input: SessionInput): Goal[] {
 
 // A late GET must not replace a newer saved entity, even across overlapping refreshes.
 export function mergeState(current: AppState, incoming: AppState): AppState {
-  const merge = <T extends { id: string; version: number }>(old: T[], next: T[]) => {
+  const deleted = [...new Map([...(current.deleted ?? []), ...(incoming.deleted ?? [])].map(item => [`${item.kind}:${item.id}`, item])).values()];
+  const removed = new Set(deleted.map(item => `${item.kind}:${item.id}`));
+  const merge = <T extends { id: string; version: number }>(old: T[], next: T[], kind: string) => {
     const previous = new Map(old.map(item => [item.id, item]));
     const values = next.map(item => (previous.get(item.id)?.version ?? -1) > item.version ? previous.get(item.id)! : item);
     const ids = new Set(next.map(item => item.id));
-    return [...values, ...old.filter(item => !ids.has(item.id))];
+    return [...values, ...old.filter(item => !ids.has(item.id))].filter(item => !removed.has(`${kind}:${item.id}`));
   };
-  return { goals: merge(current.goals, incoming.goals), sessions: merge(current.sessions, incoming.sessions),
-    lessons: merge(current.lessons, incoming.lessons ?? []), pathways: merge(current.pathways, incoming.pathways),
-    difficulties: merge(current.difficulties, incoming.difficulties), experiences: merge(current.experiences, incoming.experiences),
+  return { deleted, goals: merge(current.goals, incoming.goals, 'goals'), sessions: merge(current.sessions, incoming.sessions, 'sessions'),
+    lessons: merge(current.lessons, incoming.lessons ?? [], 'lessons'), pathways: merge(current.pathways, incoming.pathways, 'pathways'),
+    difficulties: merge(current.difficulties, incoming.difficulties, 'difficulties'), experiences: merge(current.experiences, incoming.experiences, 'experiences'),
     lesson_options: merge((current.lesson_options ?? []).map(item => ({ ...item, id: `${item.kind}:${item.value}` })),
-      (incoming.lesson_options ?? []).map(item => ({ ...item, id: `${item.kind}:${item.value}` }))).map(({ id: _id, ...item }) => item) };
+      (incoming.lesson_options ?? []).map(item => ({ ...item, id: `${item.kind}:${item.value}` })), 'lesson_options').map(({ id: _id, ...item }) => item) };
 }

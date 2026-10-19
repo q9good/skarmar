@@ -77,7 +77,7 @@ pub fn router_with_auth(
         .layer(
             CorsLayer::new()
                 .allow_origin(web_origin)
-                .allow_methods([Method::GET, Method::POST, Method::PUT])
+                .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
                 .allow_headers([
                     axum::http::header::CONTENT_TYPE,
                     axum::http::HeaderName::from_static("x-skarma-request"),

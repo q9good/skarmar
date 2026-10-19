@@ -93,6 +93,7 @@ fn command(db: &Connection, action: &str, version: Option<u64>) -> SaveSession {
         })
         .collect();
     SaveSession {
+        revision: None,
         operation_id: Uuid::new_v4().to_string(),
         expected_version: version,
         action: action.into(),

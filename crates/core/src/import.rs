@@ -433,7 +433,7 @@ fn session(row: &ImportRow, map: &Mapping) -> Result<Session> {
         id: Uuid::new_v4().to_string(),
         version: 1,
         // Historical rows have no verified per-target roles or outcomes; they
-        // are read-only and intentionally have no fabricated target snapshots.
+        // keep these omissions when revised, without fabricated target snapshots.
         status: "completed".into(),
         input: SessionInput {
             business_date,
