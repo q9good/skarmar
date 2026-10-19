@@ -189,6 +189,13 @@
       "status": "done",
       "evidence": "docs/page-workflows.md",
       "verification": "2026-10-19按逐页反馈讨论确认后实现。目标领域分类与上级可选、稳定ID重试、复盘日期选择和数字输入、当天及两周默认和网页内到期弹窗；方法改名并双向展示关联，困难／经验默认主目标及显式方法绑定、验证依据统一；记录页切换机构课程／家庭干预，课程老师共享下拉及新增停用恢复、上月自然月按老师统计、保存回顶部；计划保存退出、总结草稿与单主目标完成，规划提示内嵌及未覆盖筛选。Rust工作区70项测试、原生及Wasm Clippy、类型检查、Web与Rust Wasm构建、原生SQLite／真实Rust Wasm DO共用合约、5项工作流及11项规划纯逻辑、完整test:host手机浏览器与双登录会话、备份恢复通过。所有验收使用临时合成数据；迁移008保留原课程与账号，旧记录不猜测关联。本轮未访问或修改生产数据、未部署，新功能线上尚未更新。"
+    },
+    {
+      "id": "T28",
+      "title": "目标、方法、经验与家庭干预的全新数据关联专项自测",
+      "status": "done",
+      "evidence": "docs/relationship-self-test.md",
+      "verification": "在两个独立空白临时空间，分别使用原生SQLite和真实Rust Worker/Miniflare SQLite DO，所有业务写入均通过手机宽度浏览器表单：新建1个短期目标、1个关联方法、1条独立经验、1条干预计划并完成总结，再由总结生成1条关联目标及方法的经验。核对精确ID，目标显示方法／两类经验／训练，方法显示目标和两类经验，跟进显示目标方法及正确来源，来源可跳转训练，记录页显示家庭干预。页面刷新、第二个独立登录会话、两个后端停止重启后的完整AppState对账全部通过。npm run test:relations正常退出0；截图仅含合成数据。未修改应用逻辑、访问生产数据或部署；本次不包含T10的训练直接选择方法及真实使用次数。"
     }
   ],
   "artifacts": [
@@ -214,6 +221,30 @@
       "path": "docs/artifacts/validation/page-workflows-today.png",
       "title": "今天页与机构／家庭干预说明",
       "sha256": "19fc0634d31cb6006ecbd0f3512fcbee0822fc6a470c552e9122e8e89968c435",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/relation-goal.png",
+      "title": "关联自测：目标中的方法、经验",
+      "sha256": "cb5eb22e9820efdeb3626ce201619a1c810d4e917731154316eeb54912b1e44d",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/relation-method.png",
+      "title": "关联自测：方法中的经验",
+      "sha256": "6cffd4e6b5559a93622a3c317cfb2b0af38efc5a481373a751ff3feae1340704",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/relation-experience.png",
+      "title": "关联自测：经验绑定与来源训练",
+      "sha256": "cbccceaf8d7d5d462f82cd7e60659d2b14d9589ebac9bf197f4b0d46b53999e6",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/relation-training.png",
+      "title": "关联自测：训练目标快照及成功经验",
+      "sha256": "4546a9090f0702258f8f816482b484f52af8768da958d714cec1def17bab4469",
       "synthetic": true
     }
   ]
