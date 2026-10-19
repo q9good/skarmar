@@ -48,6 +48,22 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-10-19：skarma.vip 域名接入进行中
+
+用户已在 Spaceship 购买 `skarma.vip`，授权接入现有 Cloudflare 应用。本地先安全快进到
+云端最新研究提交 `640df50`，再进行本轮配置。操作、维护及待验收项见
+[域名部署记录](custom-domain-deployment.md)（T26）。
+
+已选 Free zone，Spaceship 与注册局 RDAP 均确认委派到本 zone 的 Cloudflare NS；旧 DS 已撤。
+用户确认后删除两条扫描导入的停放页 A 记录，现有 Worker 已绑定根域 Production Custom Domain，
+添加精确新来源并发布配置，原存储绑定与空间保留。经旧入口验证新域 Origin 的匿名 logout=200、
+非法来源=403、health=200。本次未上传应用代码，T19 的界面更新仍未发布。
+
+截至 20:22（Asia/Singapore），zone 仍 Pending，代表性公共 DNS 仍缓存旧 NS，新域 HTTPS 未验收。
+Cloudflare DNSSEC 签名已开启，新 DS 尚未向 Spaceship 提交；应在 zone Active、旧 NS 缓存窗口
+结束后恢复并验证 DNSSEC。大陆无代理登录、读取和保存仍需实际网络验收，不能把绑定已保存
+当成访问问题已解决。后续云端发布前须补入新来源和 Custom Domain 配置，私密 Wrangler 文件不随 Git。
+
 用户准备在 Codex Cloud「Set up skarmar」继续开发，本次材料入口见
 [2026-10-19 云端开发交接](cloud-development-handoff-2026-10-19.md)。其中明确记录最新使用范围、
 libp2p 调研边界、暂停部署、已提交的置顶代码，以及仍未提交并独立保留的导入工作区。

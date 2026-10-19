@@ -3,6 +3,9 @@
 日期：2026-10-19，Asia/Singapore。用户本轮明确倾向自有域名，取代此前不购买域名的偏好；
 尚未提供实际域名，未购买、改 DNS、开通计费服务或部署。生产发布继续暂停。
 
+**后续进展：**用户随后购买 `skarma.vip` 并授权接入。实际操作与尚未完成的 DNS / HTTPS /
+DNSSEC / 大陆验收见 [域名部署记录](custom-domain-deployment.md)（T26）；下文保留本轮调研时的事实边界。
+
 ## 建议
 
 第一步选择 **一个可长期管理的域名 + Cloudflare Free zone + 现有 Worker 的 Custom Domain**。

@@ -138,8 +138,8 @@
       "title": "主要大陆用户的无代理访问方案与验收",
       "status": "in_progress",
       "evidence": "docs/mainland-access-plan.md",
-      "verification": "已核对 Cloudflare 自有域名路线，并补充无需自有域名的 Sealos、Railway、Render、Zeabur 完整托管候选及默认 HTTPS / 持久存储条件。T24新增亚洲VPS同源反代原Worker/DO候选，Nginx参考配置未执行。用户本轮倾向自有域名，T25核对新增五链接及官方现状，建议先Free zone + 原Worker Custom Domain，保留Rust/DO，不先购Pro/Argo或VPS。未新建、购买、绑定域名或执行候选部署。Mac 代理下健康200，TUN存在，不能等同大陆无代理验收。",
-      "blocker": "待选定 / 提供实际可管理域名，并在家人真实大陆Wi-Fi与蜂窝网络做无代理端到端验收；用户要求继续暂停新云端发布。"
+      "verification": "已核对 Cloudflare 自有域名路线，并补充无需自有域名的 Sealos、Railway、Render、Zeabur 完整托管候选及默认 HTTPS / 持久存储条件。T24新增亚洲VPS同源反代原Worker/DO候选，Nginx参考配置未执行。用户本轮倾向自有域名，T25核对新增五链接及官方现状，建议先Free zone + 原Worker Custom Domain，保留Rust/DO，不先购Pro/Argo或VPS。未新建、购买、绑定域名或执行候选部署。Mac 代理下健康200，TUN存在，不能等同大陆无代理验收。 后续用户已购买skarma.vip并授权T26接入原Worker；Free zone、新NS、Custom Domain和精确来源配置已保存，原数据绑定保留；尚未通过新域HTTPS和大陆端到端验收。",
+      "blocker": "T26等待Cloudflare zone激活、旧NS缓存到期、HTTPS证书与DNSSEC恢复验证；之后需家人真实大陆Wi-Fi及蜂窝无代理验收。新版应用发布继续暂停。"
     },
     {
       "id": "T21",
@@ -175,6 +175,14 @@
       "status": "done",
       "evidence": "docs/cloudflare-custom-domain-options.md",
       "verification": "五链接对应四份独立原文，均已读取；零度与腾讯文章经已有系统Chromium临时未登录会话读到，阿里包装链接目标与PlumePHP相同。官方核对Auto Minify弃用、CNAME flattening/Partial套餐、Argo回源与计费范围、SaaS套餐/付款信息/Worker fallback支持。更新用户倾向自有域名的偏好，完成Free zone + 原Worker Custom Domain的分阶段计划。JSON、任务ID、24处本地链接、仅文档改动及四篇正文检查通过，sync:status校验3项产物通过；未改应用、安装新依赖、访问生产账号、购买/绑定域名、改DNS或部署，未完成大陆验收，未重跑应用测试。"
+    },
+    {
+      "id": "T26",
+      "title": "将 Spaceship 的 skarma.vip 接入现有 Cloudflare Worker",
+      "status": "in_progress",
+      "evidence": "docs/custom-domain-deployment.md",
+      "verification": "2026-10-19本地安全快进Cloud研究至640df50。已获用户逐项确认：原DNSSEC关闭、两条停放A记录删除、NS改为Cloudflare分配的coleman/harleigh；注册局RDAP已返回新NS且无签名委派。原Worker Production Custom Domain已显示skarma.vip，新增精确来源配置已发布，SKARMA_DB与default空间保留。经旧入口匿名logout新域Origin=200、非法Origin=403、health=200。仅配置部署，未上传新版应用代码。",
+      "blocker": "20:22 Asia/Singapore时zone Pending、公共递归仍缓存旧NS，新域HTTPS未通。Cloudflare已开启DNSSEC签名，新DS待zone Active和旧NS TTL窗口后发布至Spaceship，再验证TLS/API/现有账号登录及大陆真实网络。"
     }
   ],
   "artifacts": [
