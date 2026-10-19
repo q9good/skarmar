@@ -75,6 +75,12 @@ China Network 入门、产品列表及 FAQ 已交叉检查。优先自有域名�
 API、草稿 origin 和 DO 标识；Nginx 示例仅供计划评审，未执行或验收。T20 大陆访问目标
 仍在进行中，未购买、配置或部署资源，生产继续暂停。
 
+2026-10-19 用户进一步倾向自有域名，已完成 [新增五链接核对与接入建议](cloudflare-custom-domain-options.md)
+（T25）。五链接实际对应四篇独立原文：零度为客户端代理节点，腾讯为静态博客 CDN，
+PlumePHP 的部分菜单与套餐建议已用官方文档纠正。先验证 Free zone + 原 Worker Custom
+Domain，不预购 Pro / Argo，不先新增 VPS；SaaS 与优选 IP 仅作条件备选。已记录域名偏好
+调整，不再将免域名作为当前硬约束；未提供 / 购买实际域名、改 DNS 或部署，T20 仍待真实验收。
+
 2026-10-19 另完成 [长期免自有域名 / 服务器调研](no-owned-infrastructure-research.md)：
 低用量成本优先时建议验证原生 App + 用户网盘 WebDAV；接受托管资源费时评估微信小程序
 与云开发内置调用；全员苹果时考虑 CloudKit。网盘多人独立授权仍需原型；此前记录的微信

@@ -9,7 +9,9 @@
 
 - **只有家人使用**，老师不会登录或操作应用。授课老师是课程记录字段。
 - 家人使用 **iPhone 和 Android 混合设备**，主要在中国大陆，需要覆盖两端。
-- 用户希望长期不购买自己的域名与服务器；免费额度、托管资源费、App 分发费用应分别说明。
+- 交接时希望长期不购买域名与服务器；用户后续已调整为**倾向自有域名**。当前入口建议见
+  `docs/cloudflare-custom-domain-options.md`（T25），仍优先低成本；没有购买或部署。免费额度、
+  域名续费、托管资源费、App 分发费用应分别说明。
 - 最新提出的技术方向是 **libp2p 主同步，网盘用于加密备份**，尚未通过原型或作为正式架构实施。
 - 用户已确认可复用之前 Tailscale 出问题的长期在线电脑，作为有持久存储的家庭中心同步节点。
   这能在主机实际可达后交接家人错时产生的变更；当前主机连接仍未恢复，云端先用模拟节点开发。
@@ -20,7 +22,7 @@
 | 顺序 | 文件 | 用途 |
 | --- | --- | --- |
 | 1 | `AGENTS.md` | Git 交接、工作区保护、凭证与产物边界 |
-| 2 | `docs/handoff.md`、`docs/workspace-state.json` | 最新实现、阻塞、任务 T01—T22 与已通过的检查 |
+| 2 | `docs/handoff.md`、`docs/workspace-state.json` | 最新实现、阻塞、任务清单与已通过的检查 |
 | 3 | `docs/libp2p-family-sync-proposal.md` | 当前 P2P 主同步 / 网盘备份方向、手机与网络限制、拟议验收 |
 | 4 | `docs/no-owned-infrastructure-research.md` | 长期免自有基础设施路线、网盘 / 小程序 / CloudKit 比较 |
 | 5 | `docs/default-https-platforms.md`、`docs/mainland-access-plan.md` | 默认 HTTPS 托管与大陆访问证据 |

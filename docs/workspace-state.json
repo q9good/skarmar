@@ -138,8 +138,8 @@
       "title": "主要大陆用户的无代理访问方案与验收",
       "status": "in_progress",
       "evidence": "docs/mainland-access-plan.md",
-      "verification": "已核对 Cloudflare 自有域名路线，并补充无需自有域名的 Sealos、Railway、Render、Zeabur 完整托管候选及默认 HTTPS / 持久存储条件。2026-10-19 云端另按用户四个链接完成T24核对，新增亚洲VPS同源反代原Worker/DO候选及直绑对照方案，检查鉴权、草稿和数据标识边界；Nginx参考配置未执行。未新建或购买资源，未执行候选平台部署。Mac 代理下健康200，TUN存在，不能等同大陆无代理验收。",
-      "blocker": "需要确定托管与入口路径、核对平台默认域名的正式使用条件，并在真实大陆运营商网络做无代理端到端验收；用户要求继续暂停新云端发布。"
+      "verification": "已核对 Cloudflare 自有域名路线，并补充无需自有域名的 Sealos、Railway、Render、Zeabur 完整托管候选及默认 HTTPS / 持久存储条件。T24新增亚洲VPS同源反代原Worker/DO候选，Nginx参考配置未执行。用户本轮倾向自有域名，T25核对新增五链接及官方现状，建议先Free zone + 原Worker Custom Domain，保留Rust/DO，不先购Pro/Argo或VPS。未新建、购买、绑定域名或执行候选部署。Mac 代理下健康200，TUN存在，不能等同大陆无代理验收。",
+      "blocker": "待选定 / 提供实际可管理域名，并在家人真实大陆Wi-Fi与蜂窝网络做无代理端到端验收；用户要求继续暂停新云端发布。"
     },
     {
       "id": "T21",
@@ -168,6 +168,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-mainland-link-review.md",
       "verification": "已读取四份正文，掘金网页验证页后经公开文章接口成功读取；以CF China Network入门、产品列表、FAQ、Custom Domains、Error1000、Nginx及OCI Always Free官方文档交叉核对。完成直绑与亚洲VPS反代原Worker/DO的对照方案及项目鉴权/同源/草稿边界评估。JSON、任务ID、19处本地文档链接、仅文档改动检查与sync:status的3项产物校验通过；未修改应用、安装Nginx、执行示例配置、登录生产、开通资源或部署，未完成大陆真机验收，未重跑应用测试。"
+    },
+    {
+      "id": "T25",
+      "title": "自有域名访问路线与新增五链接的现行条件核对",
+      "status": "done",
+      "evidence": "docs/cloudflare-custom-domain-options.md",
+      "verification": "五链接对应四份独立原文，均已读取；零度与腾讯文章经已有系统Chromium临时未登录会话读到，阿里包装链接目标与PlumePHP相同。官方核对Auto Minify弃用、CNAME flattening/Partial套餐、Argo回源与计费范围、SaaS套餐/付款信息/Worker fallback支持。更新用户倾向自有域名的偏好，完成Free zone + 原Worker Custom Domain的分阶段计划。JSON、任务ID、24处本地链接、仅文档改动及四篇正文检查通过，sync:status校验3项产物通过；未改应用、安装新依赖、访问生产账号、购买/绑定域名、改DNS或部署，未完成大陆验收，未重跑应用测试。"
     }
   ],
   "artifacts": [
