@@ -4,7 +4,7 @@
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "05cf435451565c644820e327352f246472ae905f",
+  "implementationCommit": "bcbed6512b214dd44545499f6f27c9caa3c191d2",
   "tasks": [
     {
       "id": "T01",
@@ -182,6 +182,13 @@
       "status": "done",
       "evidence": "docs/custom-domain-deployment.md",
       "verification": "2026-10-19本地安全快进Cloud研究至640df50。已获用户逐项确认：原DNSSEC关闭、两条停放A记录删除、NS改为Cloudflare分配的coleman/harleigh；注册局RDAP已返回新NS且无签名委派。原Worker Production Custom Domain已显示skarma.vip，新增精确来源配置已发布，SKARMA_DB与default空间保留。经旧入口匿名logout新域Origin=200、非法Origin=403、health=200。仅配置部署，未上传新版应用代码。 后续zone Active，Google与CF公共NS已更新；HTTPS登录页、JS、health200，匿名me401、合法Origin logout200、非法403；新旧入口同JS构建。用户明确确认已正常登录且手机直连。新DS已在Spaceship保存，注册局delegationSigned true、DS与当前DNSKEY计算摘要一致。 20:41 SGT两家公共DNS的DS与A均Status0、AD=true，新DS传播与完整验证链通过。用户已确认新域正常登录及手机直连；T20继续记录分网络与保存刷新验收。"
+    },
+    {
+      "id": "T27",
+      "title": "六页录入、关联、多浏览者刷新与家庭干预／机构课程流程完善",
+      "status": "done",
+      "evidence": "docs/page-workflows.md",
+      "verification": "2026-10-19按逐页反馈讨论确认后实现。目标领域分类与上级可选、稳定ID重试、复盘日期选择和数字输入、当天及两周默认和网页内到期弹窗；方法改名并双向展示关联，困难／经验默认主目标及显式方法绑定、验证依据统一；记录页切换机构课程／家庭干预，课程老师共享下拉及新增停用恢复、上月自然月按老师统计、保存回顶部；计划保存退出、总结草稿与单主目标完成，规划提示内嵌及未覆盖筛选。Rust工作区70项测试、原生及Wasm Clippy、类型检查、Web与Rust Wasm构建、原生SQLite／真实Rust Wasm DO共用合约、5项工作流及11项规划纯逻辑、完整test:host手机浏览器与双登录会话、备份恢复通过。所有验收使用临时合成数据；迁移008保留原课程与账号，旧记录不猜测关联。本轮未访问或修改生产数据、未部署，新功能线上尚未更新。"
     }
   ],
   "artifacts": [
@@ -193,14 +200,20 @@
     },
     {
       "path": "docs/artifacts/validation/pathways.png",
-      "title": "途径目录",
-      "sha256": "56abc303fedd6b7d2769001b0283bbf721d1c870710f495c1e9a291cf27a4871",
+      "title": "方法目录与关联目标",
+      "sha256": "afffdfe7406e0e156be0a72f2cf48794ab0b26ae8d3713bb16fe5eda2248f029",
       "synthetic": true
     },
     {
       "path": "docs/artifacts/validation/planning-charts.png",
-      "title": "规划总览环形图",
-      "sha256": "4bcf47a4065f2c1c46f57ec909a7eb0fcc7ceb5ef852cccf76792828357cf6fe",
+      "title": "计划内均衡提示与环形图",
+      "sha256": "eeb375f5b4dc6cf3bfd0a7d9a523a88f4f2ad1e2b41611857e2caa47e40e8c7a",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/page-workflows-today.png",
+      "title": "今天页与机构／家庭干预说明",
+      "sha256": "19fc0634d31cb6006ecbd0f3512fcbee0822fc6a470c552e9122e8e89968c435",
       "synthetic": true
     }
   ]
