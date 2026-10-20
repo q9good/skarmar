@@ -116,7 +116,7 @@ function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Iden
         <Input label="邮箱" value={registrationEmail} change={setRegistrationEmail} email disabled={busy} />
         <Input label="密码" value={registrationPassword} change={setRegistrationPassword} secret={!visible} newPassword disabled={busy} />
         <Input label="再次输入密码" value={registrationConfirmation} change={setRegistrationConfirmation} secret={!visible} newPassword disabled={busy} submit={() => void register()} />
-        <Text style={s.hint}>密码至少 12 个字符。邮箱供管理员核对申请使用。</Text>
+        <Text style={s.hint}>请设置非空密码，不设最小长度。邮箱供管理员核对申请使用。</Text>
         <Pressable accessibilityRole="button" onPress={() => setVisible(value => !value)}><Text style={s.link}>{visible ? '隐藏密码' : '显示密码'}</Text></Pressable>
         <Action title={busy ? '正在提交…' : '提交注册申请'} onPress={() => void register()} disabled={busy} />
         <Action title="返回登录" secondary onPress={() => { setRegistering(false); setVisible(false); setError(''); }} disabled={busy} />
@@ -180,7 +180,7 @@ export function AccountPanel({ back, logout, onImported }: { back: () => void; l
       <Input label="当前密码" value={currentPassword} change={setCurrentPassword} secret disabled={busy} />
       <Input label="新密码" value={password} change={setPassword} secret disabled={busy} />
       <Input label="再次输入新密码" value={confirmation} change={setConfirmation} secret disabled={busy} />
-      <Text style={s.hint}>至少 12 个字符。修改后所有设备需要重新登录。</Text>
+      <Text style={s.hint}>请设置非空密码，不设最小长度。修改后所有设备需要重新登录。</Text>
       <Action title="更新密码" disabled={busy} onPress={() => void act(async () => {
         if (password !== confirmation) throw new Error('两次新密码不一致');
         await request('/auth/password', 'PUT', { current_password: currentPassword, password });

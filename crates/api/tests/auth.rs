@@ -138,7 +138,8 @@ async fn daily_class_records_require_a_live_session() {
 #[tokio::test]
 async fn registration_requires_admin_approval_before_login_and_never_exposes_hashes() {
     let (db, app) = fixture();
-    let input = registration(" applicant ", " Applicant@Example.Test ");
+    let mut input = registration(" applicant ", " Applicant@Example.Test ");
+    input["password"] = json!("123456");
     let (status, headers, body) = send(&app, "POST", "/api/auth/register", None, Some(input)).await;
     assert_eq!(status, StatusCode::ACCEPTED);
     assert_eq!(body, json!({"ok":true}));
@@ -149,7 +150,7 @@ async fn registration_requires_admin_approval_before_login_and_never_exposes_has
             "POST",
             "/api/auth/login",
             None,
-            Some(json!({"username":"applicant","password":"synthetic-registration-password"}))
+            Some(json!({"username":"applicant","password":"123456"}))
         )
         .await
         .0,
@@ -213,11 +214,63 @@ async fn registration_requires_admin_approval_before_login_and_never_exposes_has
     assert_eq!(stored.0, "applicant@example.test");
     assert_eq!(stored.1, hash_before);
     assert_eq!(stored.2, "member");
-    let member = login(&app, "applicant", "synthetic-registration-password").await;
+    let member = login(&app, "applicant", "123456").await;
     assert_eq!(
         send(&app, "GET", "/api/state", Some(&member), None).await.0,
         StatusCode::OK
     );
+}
+
+#[tokio::test]
+async fn registration_accepts_one_character_but_rejects_blank_and_oversized_passwords() {
+    let (db, app) = fixture();
+    for password in [
+        String::new(),
+        " \t\n".into(),
+        "a".repeat(129),
+        "字".repeat(43),
+    ] {
+        let mut input = registration("shortpass", "shortpass@example.test");
+        input["password"] = json!(password);
+        assert_eq!(
+            send(&app, "POST", "/api/auth/register", None, Some(input))
+                .await
+                .0,
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+    }
+    assert_eq!(
+        db.0.lock()
+            .unwrap()
+            .query_row(
+                "SELECT COUNT(*) FROM auth_registration_requests",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+        0
+    );
+    let mut input = registration("shortpass", "shortpass@example.test");
+    input["password"] = json!("字");
+    assert_eq!(
+        send(&app, "POST", "/api/auth/register", None, Some(input))
+            .await
+            .0,
+        StatusCode::ACCEPTED
+    );
+    let owner = login(&app, "owner", PASSWORD).await;
+    let pending = send(&app, "GET", "/api/auth/registrations", Some(&owner), None)
+        .await
+        .2;
+    let path = format!(
+        "/api/auth/registrations/{}/approve",
+        pending[0]["id"].as_str().unwrap()
+    );
+    assert_eq!(
+        send(&app, "POST", &path, Some(&owner), None).await.0,
+        StatusCode::OK
+    );
+    login(&app, "shortpass", "字").await;
 }
 
 #[tokio::test]

@@ -63,7 +63,7 @@ docker compose up -d app
 docker compose exec -T app skarma-api healthcheck
 ```
 
-创建管理员时会在终端隐藏输入两次密码（至少 12 个字符）。数据库写入持久卷，容器重建后继续使用。`admin-init` 只在没有任何账号时成功，不能覆盖已有账号。首次启动不会导入腾讯记录。
+创建管理员时会在终端隐藏输入两次密码（不能为空，不设最小长度）。数据库写入持久卷，容器重建后继续使用。`admin-init` 只在没有任何账号时成功，不能覆盖已有账号。首次启动不会导入腾讯记录。
 
 ## 先用 Tailscale Serve 验收
 

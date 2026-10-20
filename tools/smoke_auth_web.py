@@ -29,9 +29,10 @@ with sync_playwright() as p:
         page.get_by_role('button', name='登录', exact=True).click()
         expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
 
-    applicant_password = 'synthetic-applicant-browser-password'
+    applicant_password = '7'
     page.get_by_role('button', name='申请注册', exact=True).click()
     expect(page.get_by_text('填写申请后由管理员审批，审批通过前无法登录。')).to_be_visible()
+    expect(page.get_by_text('请设置非空密码，不设最小长度。邮箱供管理员核对申请使用。', exact=True)).to_be_visible()
     page.get_by_role('textbox', name='账号', exact=True).fill('applicant')
     page.get_by_role('textbox', name='称呼', exact=True).fill('测试申请人')
     page.get_by_role('textbox', name='邮箱', exact=True).fill('applicant@example.test')
@@ -78,6 +79,10 @@ with sync_playwright() as p:
     page.get_by_role('button', name='退出登录', exact=True).click()
     expect(page.get_by_text('欢迎回来', exact=True)).to_be_visible()
 
+    login('applicant', applicant_password)
+    page.get_by_role('button', name='我的账号', exact=True).click()
+    page.get_by_role('button', name='退出登录', exact=True).click()
+    expect(page.get_by_text('欢迎回来', exact=True)).to_be_visible()
     login('teacher', MEMBER_PASSWORD)
     for route in delayed:
         route.fulfill(status=401, content_type='application/json', body='{"error":"测试：上一账号请求已过期"}')

@@ -1,0 +1,17 @@
+{
+  "config": {
+    "secrets": [
+      {
+        "name": "CLOUDFLARE_API_TOKEN",
+        "source": "environment",
+        "target": {
+          "type": "environment_variable",
+          "name": "CLOUDFLARE_API_TOKEN",
+          "allowed_domains": [
+            "api.cloudflare.com"
+          ]
+        }
+      }
+    ]
+  }
+}

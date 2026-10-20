@@ -18,7 +18,7 @@ fn password(stdin: bool) -> Result<String, Box<dyn std::error::Error>> {
         std::io::stdin().take(130).read_to_string(&mut value)?;
         Ok(value.trim_end_matches(['\r', '\n']).into())
     } else {
-        let first = rpassword::prompt_password("密码（至少 12 个字符）: ")?;
+        let first = rpassword::prompt_password("密码（不能为空）: ")?;
         let second = rpassword::prompt_password("再次输入密码: ")?;
         if first != second {
             return Err("两次密码不一致".into());

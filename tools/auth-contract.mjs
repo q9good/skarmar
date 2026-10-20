@@ -36,8 +36,11 @@ export async function authContract(label, send, expire, exec) {
   await call('GET', '/api/state', undefined, owner);
   const application = {
     username: 'applicant', display_name: 'Contract applicant',
-    email: 'applicant@example.test', password: 'synthetic-applicant-password',
+    email: 'applicant@example.test', password: '7',
   };
+  for (const password of ['', '   ', 'a'.repeat(129)]) {
+    await call('POST', '/api/auth/register', { ...application, password }, undefined, 422);
+  }
   const submitted = await call('POST', '/api/auth/register', application, undefined, 202);
   assert.deepEqual(submitted.data, { ok: true });
   assert.equal(submitted.response.headers.get('set-cookie'), null);
@@ -58,9 +61,9 @@ export async function authContract(label, send, expire, exec) {
   await call('POST', `/api/auth/registrations/${next[0].id}/reject`, undefined, owner);
   await call('POST', '/api/auth/login', { username: 'rejected', password: rejected.password }, undefined, 401);
   const { data: member } = await call('POST', '/api/auth/users', {
-    username: 'teacher', display_name: 'Contract teacher', role: 'member', password: 'synthetic-member-password',
+    username: 'teacher', display_name: 'Contract teacher', role: 'member', password: '246810',
   }, owner);
-  let teacher = await login('teacher', 'synthetic-member-password');
+  let teacher = await login('teacher', '246810');
   await call('GET', '/api/state', undefined, teacher);
   await call('DELETE', `/api/goals/${randomUUID()}`, { expected_version: 1 }, undefined, 401);
   await mutationContract(label,
@@ -70,7 +73,7 @@ export async function authContract(label, send, expire, exec) {
   await knowledgeContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
   await excelContract(label, send, teacher);
   await importContract(label, send, owner, teacher, exec);
-  await call('PUT', `/api/auth/users/${member.id}`, { active: false, password: 'short' }, owner, 422);
+  await call('PUT', `/api/auth/users/${member.id}`, { active: false, password: '' }, owner, 422);
   await call('GET', '/api/state', undefined, teacher);
   await call('GET', '/api/auth/users', undefined, teacher, 403);
   await call('POST', '/api/auth/users', { username: 'forbidden', display_name: 'Forbidden', role: 'admin', password: ownerPassword }, teacher, 403);
@@ -80,15 +83,15 @@ export async function authContract(label, send, expire, exec) {
   await call('PUT', `/api/auth/users/${member.id}`, { active: false }, owner);
   await call('GET', '/api/state', undefined, teacher, 401);
   await call('GET', '/api/export.xlsx', undefined, teacher, 401);
-  await call('PUT', `/api/auth/users/${member.id}`, { active: true, password: 'synthetic-reset-password' }, owner);
-  teacher = await login('teacher', 'synthetic-reset-password');
-  await call('PUT', '/api/auth/password', { current_password: 'synthetic-reset-password', password: 'synthetic-next-password' }, teacher);
+  await call('PUT', `/api/auth/users/${member.id}`, { active: true, password: '13579' }, owner);
+  teacher = await login('teacher', '13579');
+  await call('PUT', '/api/auth/password', { current_password: '13579', password: '新' }, teacher);
   await call('GET', '/api/state', undefined, teacher, 401);
-  teacher = await login('teacher', 'synthetic-next-password');
+  teacher = await login('teacher', '新');
   await call('POST', '/api/auth/logout', undefined, teacher);
   await call('GET', '/api/state', undefined, teacher, 401);
   await expire();
   await call('GET', '/api/state', undefined, owner, 401);
   await call('GET', '/api/export.xlsx', undefined, owner, 401);
-  console.log(`PASS ${label}: registration approval/rejection, login, secure cookies, CSRF, member permissions, disable/reset, password change, logout and expiry`);
+  console.log(`PASS ${label}: short-password registration/create/reset/change, blank/oversized rejection, approval, login, secure cookies, CSRF, member permissions and session revocation`);
 }

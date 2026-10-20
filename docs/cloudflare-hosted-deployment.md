@@ -160,7 +160,7 @@ npx wrangler secret put SKARMA_INITIAL_ADMIN_PASSWORD \
   --config deploy/cloud-worker/wrangler.toml
 ```
 
-按提示隐藏输入至少 12 个字符的密码，最多 128 字节。不要在命令参数、聊天、TOML、
+按提示隐藏输入非空密码，不设最小长度，最多128字节。不要在命令参数、聊天、TOML、
 Git、前端代码或截图里写密码。该命令会创建带有私有 secret 的 Worker 版本。
 随后在正式 HTTPS 页面用 `owner` 和刚设置的密码登录。
 

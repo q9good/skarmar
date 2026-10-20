@@ -175,10 +175,14 @@ fn normalize_email(email: &str) -> Result<String> {
     }
     Ok(value)
 }
-fn hash_password(password: &str) -> Result<String> {
-    if password.chars().count() < 12 || password.len() > 128 {
-        return Err(ApiError::invalid("密码至少 12 个字符，最多 128 字节"));
+fn validate_password(password: &str) -> Result<()> {
+    if password.trim().is_empty() || password.len() > 128 {
+        return Err(ApiError::invalid("密码不能为空或全为空白，最多128字节"));
     }
+    Ok(())
+}
+fn hash_password(password: &str) -> Result<String> {
+    validate_password(password)?;
     let salt =
         SaltString::encode_b64(Uuid::new_v4().as_bytes()).map_err(|_| ApiError::storage())?;
     Argon2::default()
@@ -302,9 +306,7 @@ fn register(db: &dyn Sql, input: RegistrationInput) -> Result<RegistrationOutcom
     if name.is_empty() || name.len() > 120 {
         return Err(ApiError::invalid("请填写称呼（最多 120 字节）"));
     }
-    if input.password.chars().count() < 12 || input.password.len() > 128 {
-        return Err(ApiError::invalid("密码至少 12 个字符，最多 128 字节"));
-    }
+    validate_password(&input.password)?;
     let time = now();
     db.execute(
         "DELETE FROM auth_registration_limits WHERE window_start<=?1",
