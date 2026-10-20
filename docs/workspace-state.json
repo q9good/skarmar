@@ -4,7 +4,7 @@
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "7a346a3b4c7ad6d3a698da3baa1fc2452ec98874",
+  "implementationCommit": "ffdd0d0ddd67d44b8d169441f5f1f0dbafe5af94",
   "tasks": [
     {
       "id": "T01",
@@ -80,7 +80,7 @@
       "id": "T12",
       "title": "同步云环境启动说明到新的配置草案",
       "status": "blocked",
-      "blocker": "旧草案 stale_base；需从当前环境设置新建 setup 会话后与新草案合并，不能重发旧草案。",
+      "blocker": "现有草案stale_base；2026-10-20读取后仅新增Cloudflare发布凭据需求仍返回同一冲突，未保存或应用。已保留docs/environment/cloudflare-publish-requirements.json及ZIP，需从当前环境设置打开新setup会话再与新草案合并，不能重发旧草案。",
       "evidence": "docs/handoff.md"
     },
     {
@@ -210,6 +210,21 @@
       "status": "done",
       "evidence": "docs/record-permissions.md",
       "verification": "2026-10-20 Asia/Singapore：实现7a346a3。删除目标/方法/困难/经验/训练/上课记录仅管理员可用，页面二次确认，事务内校验角色和确认时版本；引用目标有明确保护，解绑不级联删除其他业务记录，删除训练保留跟进并标注来源已删除，持久删除标记防旧请求重建。所有有效登录成员可修订已完成训练，保留前后版本及说明，不重放目标归档；按实际变更同步困难及待验证经验，已验证/停用经验独立维护不覆盖，取消标记不删除跟进。并发冲突保留填写、取消修改和已删除草稿均可本机备份后退出。迁移009只追加表。71项Rust测试、17项规划/工作流逻辑、原生/Wasm Clippy、TS/Web/Wasm构建通过；双后端真实HTTP合约覆盖成员403、修订、版本冲突、历史幂等、关联清理、不重建及中途SQL失败回滚。双后端手机浏览器管理员/成员实际操作、双写冲突、已验证经验保留、跨浏览者删除刷新、备份取消、已删除草稿保留和退出、重启后完整状态对账均通过；test:host既有手机流程和备份恢复回归通过。仅临时合成数据，未访问线上账号数据或部署。"
+    },
+    {
+      "id": "T31",
+      "title": "取消注册、设密及改密的12位密码最小长度",
+      "status": "done",
+      "evidence": "docs/registration-password-release.md",
+      "verification": "实现ffdd0d0。共用校验改为非空、非全空白、最多128字节，不设最小长度；注册、管理员创建/重置、自行改密及CLI提示一致，既有账号哈希不改。72项Rust、原生/Wasm Clippy、TypeScript及Web/Wasm构建通过；双后端真实HTTP合约验证1位密码注册、短密码创建/重置/改密及空白超长拒绝，审批与会话撤销不变。手机浏览器1位密码注册、审批后实际登录及既有页面/备份恢复通过。cf:check dry-run通过，代码gzip1500.70KiB。测试仅用临时合成数据，未部署。"
+    },
+    {
+      "id": "T32",
+      "title": "将T27/T30及密码调整发布到现有Cloudflare线上实例",
+      "status": "blocked",
+      "evidence": "docs/registration-password-release.md",
+      "verification": "用户已明确授权部署，无需重复请求发布许可。已完成代码、构建、两后端及手机浏览器回归和dry-run。运行环境无Cloudflare绑定，默认与既有XDG缓存目录Wrangler whoami均未登录，实际私密生产Wrangler配置不在云端。仅添加CLOUDFLARE_API_TOKEN需求的草案保存返回CONFLICT/stale_base，未确认保存/应用，未重交旧草案；完整无密钥需求JSON、说明及ZIP已落地。匿名skarma.vip首页/health/me得到403、Cloudflare错误1010，未完成线上健康验收，不能据此声称用户设备故障。未执行生产发布、读真实账号/业务数据、备份恢复或新建临时账号。",
+      "blocker": "需要在新的环境配置会话安全提供CLOUDFLARE_API_TOKEN（目标api.cloudflare.com）并应用，或在Mac已有Cloudflare登录环境接续。取得授权访问后先读取并核对现有生产配置、备份/恢复点；保留原Worker/DO/default空间、域名和来源，不用占位模板部署、不重建账号或数据。"
     }
   ],
   "artifacts": [
@@ -290,6 +305,11 @@
       "title": "删除训练后经验与来源说明保留",
       "sha256": "b84c4dfdf8f96bfdfbd746681332f0f84ae8f12f5630cad9628a00894f8bf31d",
       "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-publish-requirements.zip",
+      "title": "Cloudflare发布凭据需求包（无密钥值）",
+      "sha256": "74f08af3b4f88bc9f9e5c20b24f6f1231d6223f8b6e3b0cc47edc7b81e754998"
     }
   ]
 }

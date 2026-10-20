@@ -48,6 +48,26 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-10-20：密码最小长度取消，线上发布受凭据阻塞
+
+用户要求取消注册12位限制并部署最新版本，发布授权已给出。T31已完成，实现`ffdd0d0`：
+注册、管理员设密／重置、自行改密和CLI共用非空、非全空白、最多128字节校验，不设
+最小长度；不重写已有密码哈希。72项Rust、原生／Wasm Clippy、TS/Web/Wasm构建、
+双后端真实HTTP合约及手机浏览器注册审批后1位密码登录通过，既有业务与备份恢复回归
+通过。cf:check仅dry-run通过，gzip约1500.70KiB。详见[密码与发布记录](registration-password-release.md)。
+
+T32发布未执行：环境无Cloudflare凭据，两处Wrangler whoami均未登录，Mac实际私密
+生产配置未同步。凭据需求草案保存返回CONFLICT / stale_base；没有确认保存或应用，
+未重交旧草案。已保留完整无密钥[JSON](environment/cloudflare-publish-requirements.json)、
+[新setup接续说明](environment/cloudflare-publish-requirements.md)及[可转移ZIP](artifacts/deployment/cloudflare-publish-requirements.zip)。
+需从当前环境设置打开新setup会话后合并需求并安全应用Token，或让Mac已有登录环境接续。
+新会话须读当前草案再合并，不用此旧草案覆盖；发布授权不需再问，但实际凭据就绪必须验证。
+
+取得访问后先核对生产配置和备份／恢复点，保留skarma-web、SkarmaSpace、SKARMA_DB、
+default空间、skarma.vip及原精确来源，不重建Worker、管理员或数据库。从本云环境的
+匿名首页／health／me请求被CF错误1010以403拒绝，未完成线上验收；不能将此解释为用户
+手机站点失效。未登录生产账号、读取真实业务记录、发布新版本或改变环境网络配置。
+
 ### 2026-10-20：管理员删除与已完成训练修订
 
 用户确认删除只开放给管理员，训练修改开放给全部登录成员。T30已完成，实现提交
