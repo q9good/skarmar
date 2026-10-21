@@ -227,5 +227,74 @@ class APITests(unittest.TestCase):
                     release.smoke()
 
 
+class VerificationTests(unittest.TestCase):
+    def test_only_known_analytics_tag_and_its_newline_are_normalized(self):
+        original = b'<html><script src="/app.js"></script></html>'
+        beacon = b'<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v123" data-cf-beacon="synthetic"></script>\n'
+        modified = original.replace(b'</html>', beacon + b'</html>')
+        self.assertEqual(release.normalize_homepage(modified), (original, 1))
+        unknown = b'<script src="https://unknown.example/app.js"></script>'
+        self.assertEqual(release.normalize_homepage(unknown), (unknown, 0))
+        fake = b'<script data-src="https://static.cloudflareinsights.com/beacon.min.js/v123" src="https://unknown.example/app.js"></script>'
+        self.assertEqual(release.normalize_homepage(fake), (fake, 0))
+        self.assertNotEqual(release.normalize_homepage(modified.replace(b'/app.js', b'/changed.js'))[0], original)
+        with self.assertRaises(release.ReleaseError):
+            release.normalize_homepage(beacon + modified)
+
+    def test_existing_version_verification_has_no_write_or_upload(self):
+        api = FakeAPI()
+        api.old["annotations"] = {"workers/message": "GitHub " + SOURCE}
+        receipt = {}
+        with patch.object(release, "wrangler", side_effect=AssertionError("must not upload")), \
+                patch.object(api, "promote", side_effect=AssertionError("must not promote")), \
+                patch.object(release, "smoke", return_value={"synthetic": "passed"}):
+            release.verify_existing(config(), OLD, api, receipt)
+        self.assertEqual(receipt["state"], "verified_existing_version")
+        self.assertEqual(receipt["deployed_version"], OLD)
+        self.assertEqual(receipt["deployed_source_sha"], SOURCE)
+        self.assertNotIn("uploaded_version", receipt)
+
+    def test_verify_wrong_active_version_stops_before_public_request(self):
+        with patch.object(release, "smoke") as smoke:
+            with self.assertRaises(release.ReleaseError):
+                release.verify_existing(config(), NEW, FakeAPI(), {})
+            smoke.assert_not_called()
+
+    def test_verify_concurrent_change_does_not_claim_success(self):
+        api = FakeAPI()
+        api.change_at = 2
+        receipt = {}
+        with patch.object(release, "smoke", return_value={"synthetic": "passed"}):
+            with self.assertRaises(release.ReleaseError):
+                release.verify_existing(config(), OLD, api, receipt)
+        self.assertEqual(receipt["state"], "deployed_public_checks_pending")
+
+    def test_monitor_has_truthful_user_agent_and_no_credentials(self):
+        from unittest.mock import MagicMock
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.status = 200
+        response.read.return_value = b"synthetic"
+        opener = MagicMock()
+        opener.open.return_value = response
+        with patch.object(release.urllib.request, "build_opener", return_value=opener):
+            release.public_request("/")
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.get_header("User-agent"), "SkarmaReleaseCheck/1.0")
+        self.assertIsNone(request.get_header("Authorization"))
+        self.assertIsNone(request.get_header("Cookie"))
+
+    def test_verify_marker_requires_one_exact_uuid(self):
+        with TemporaryDirectory() as folder:
+            p = Path(folder) / "event.json"
+            with patch.dict(release.os.environ, {"GITHUB_EVENT_PATH": str(p)}):
+                for message in ["normal", "[verify-cloudflare:invalid]", f"[verify-cloudflare:{OLD}] [verify-cloudflare:{NEW}]"]:
+                    p.write_text(json.dumps({"head_commit": {"message": message}}))
+                    with self.assertRaises(release.ReleaseError):
+                        release.verification_version_from_event()
+                p.write_text(json.dumps({"head_commit": {"message": f"Verify [verify-cloudflare:{OLD}]"}}))
+                self.assertEqual(release.verification_version_from_event(), OLD)
+
+
 if __name__ == "__main__":
     unittest.main()

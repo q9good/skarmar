@@ -2,7 +2,8 @@
 
 日期：2026-10-21。目标是让云端提交可独立触发发布，不要求 Mac 持续在线。
 这条备用路径不修复 Codex 环境自身的凭据注入。原环境的 T12 继续受阻，
-Mac 已完成的 T32 版本仍是 `7398e1af-496e-415e-b113-7c6d0b68a45c`。
+Mac 的 T32 版本为 `7398e1af-496e-415e-b113-7c6d0b68a45c`；随后云端首次真实上传与激活
+已成功，新版本为 `d7925a8a-127b-4773-bc8a-445ce12460eb`，首轮公共检查失败及补验见下文。
 
 ## 原生环境与权限检查
 
@@ -75,6 +76,12 @@ gh workflow run cloudflare-release.yml --repo q9good/skarmar \
 
 这不授予未来所有业务改动自动上线的授权；每次发布应按持有人当前任务范围执行。
 
+若上传和激活已成功、只需补验公共访问，不要重复部署。提交监测修复后，可用明确的
+`[verify-cloudflare:<实际激活版本UUID>]` push标记。该模式通过API读取并锁定预期版本，
+重新构建Web以比较静态资源，跳过Rust安装/测试/构建，不调用版本上传或流量切换。
+dispatch入口可用时，也可指定`verify_version`输入。回执的`source_sha`是验收脚本提交，
+`deployed_source_sha`从原线上版本注解读取，不能将验收提交说成已上传的应用源码。
+
 ## 版本发布与数据保护
 
 1. 固定官方 Actions 提交 SHA、Node 24、Rust 1.99.0、worker-build 0.8.7 与 npm/Cargo 锁文件。
@@ -93,7 +100,9 @@ gh workflow run cloudflare-release.yml --repo q9good/skarmar \
    核对其4.149.0实现会额外同步非版本化日志设置。此处只发版本部署请求，不调用
    `triggers deploy` 或 PATCH settings，不改 Custom Domain、DNS、workers.dev、日志设置或定时任务。
    部署后核对原绑定／settings／域名元数据与实际激活版本。
-7. 首页及引用 JS 与本次构建逐字节比较，health=200、匿名 me/state=401、未知 API=404；
+7. 首页排除已识别的Cloudflare Analytics标签及其附带换行后与构建逐字节比较，引用JS
+   始终逐字节比较。未知脚本、应用变化或重复Analytics标签仍失败。监测客户端明确标识为
+   `SkarmaReleaseCheck/1.0`，不伪装浏览器，不关闭站点防护。health=200、匿名 me/state=401、未知 API=404；
    无 Cookie 的合法来源 logout=200、非法来源／无请求标记=403。不登录或新增线上测试数据。
 
 保留旧代码版本不等于整库备份。当前用户明确这些是测试数据、无需备份，故本轮允许
@@ -121,8 +130,24 @@ version_id=null，gzip 1536721 bytes；没有访问生产或实际上传。
 [run 39608250391](https://github.com/q9good/skarmar/actions/runs/39608250391) 的 validate 成功，
 15项guard测试实际执行；普通提交的 release job 为 skipped。实际推送工作流与push触发权限
 已证明可用，不能将该绿色验证run称为Cloudflare发布成功。
-当前剩余动作是在GitHub安全配置上述两项Secrets，再由云端触发明确发布标记并核对
-真实上传／激活版本及匿名检查；尚未执行本流程的生产认证或重发。
+### 首轮真实发布与监测修复
+
+用户在GitHub安全页面完成两项Secrets配置，值未读取或复制到本任务。Mac只读校验
+原TOML与7398e1af线上版本的vars/runtime匹配后，云端使用明确标记提交
+`d6834fab1db81b94b73cb9ad9b70af766c039496`触发
+[run39615145891](https://github.com/q9good/skarmar/actions/runs/39615145891)。固定依赖、
+Web构建、Rust测试和Wasm Clippy通过；实际CF授权、原存储及配置核对、上传、激活成功。
+新版本`d7925a8a-127b-4773-bc8a-445ce12460eb`，首轮receipt的state为
+`deployed_public_checks_pending`，并非未发布。完整run因后续公共首页非200而红色结束。
+[首轮脱敏回执](artifacts/deployment/cloudflare-release-20261021-initial-receipt.json)已保存。
+
+本云端对照普通客户端：Python-urllib默认UA得到1010/403，明确标识的监测UA及curl均200。
+同时查明公开首页增加一个Cloudflare Analytics脚本和换行，除此之外与构建完全一致，
+实际JS文件逐字节相同。修复明确监测UA，并只移除已核实的特定外部Analytics空内容script
+及紧随换行；没有宽泛忽略HTML或JS差异。未知/伪造/重复标签有拒绝测试。
+新增“仅补验现有版本”路径，21项隔离测试及本云端完整匿名smoke通过。
+未改WAF/BIC/其他访问防护、未扩Token权限、未重复上传或切换版本。
+Actions最终补验结果在完成后登记，不能用本地smoke替代整个Actions补验。
 
 ## 官方依据
 

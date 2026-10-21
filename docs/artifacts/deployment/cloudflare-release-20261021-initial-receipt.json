@@ -1,0 +1,10 @@
+{
+  "worker": "skarma-web",
+  "origin": "https://skarma.vip",
+  "source_sha": "d6834fab1db81b94b73cb9ad9b70af766c039496",
+  "state": "deployed_public_checks_pending",
+  "previous_version": "7398e1af-496e-415e-b113-7c6d0b68a45c",
+  "uploaded_version": "d7925a8a-127b-4773-bc8a-445ce12460eb",
+  "deployed_version": "d7925a8a-127b-4773-bc8a-445ce12460eb",
+  "error": "Public homepage did not return 200; edge blocking is not an application health result."
+}

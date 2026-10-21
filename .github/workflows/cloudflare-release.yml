@@ -7,6 +7,10 @@ on:
         description: Exact 40-character commit SHA of the selected feature branch
         required: true
         type: string
+      verify_version:
+        description: Optional active version UUID to verify without uploading or deploying
+        required: false
+        type: string
   push:
     branches: [feat/tencent-informed-web]
 
@@ -30,7 +34,8 @@ jobs:
       github.repository == 'q9good/skarmar' &&
       github.ref == 'refs/heads/feat/tencent-informed-web' &&
       (github.event_name == 'workflow_dispatch' ||
-       contains(github.event.head_commit.message, '[deploy-cloudflare]'))
+       contains(github.event.head_commit.message, '[deploy-cloudflare]') ||
+       contains(github.event.head_commit.message, '[verify-cloudflare:'))
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     concurrency:
@@ -63,25 +68,38 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - name: Install pinned dependencies and Rust toolchain
+      - name: Install pinned dependencies
+        run: npm ci
+      - name: Install pinned Rust toolchain
+        if: inputs.verify_version == '' && !contains(github.event.head_commit.message, '[verify-cloudflare:')
         run: |
-          npm ci
           rustup toolchain install 1.99.0 --profile minimal --component clippy --target wasm32-unknown-unknown
           cargo install worker-build --version 0.8.7 --locked
-      - name: Validate application and build mobile Web
+      - name: Validate and build mobile Web
         run: |
           npm run typecheck
           npm run web:build
+      - name: Validate Rust application
+        if: inputs.verify_version == '' && !contains(github.event.head_commit.message, '[verify-cloudflare:')
+        run: |
           cargo test --workspace --locked -j 4
           cargo clippy -p skarma-worker --target wasm32-unknown-unknown --locked -- -D warnings
       - name: Verify existing target, upload version, promote and check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           SKARMA_WRANGLER_TOML: ${{ secrets.SKARMA_WRANGLER_TOML }}
+          VERIFY_VERSION: ${{ inputs.verify_version }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           remote_sha=$(git ls-remote origin refs/heads/feat/tencent-informed-web | cut -f1)
           test "$remote_sha" = "$GITHUB_SHA" || { echo '::error::Branch moved; release the latest reviewed commit instead'; exit 1; }
-          python3 tools/cloudflare_release.py --deploy --source-sha "$GITHUB_SHA"
+          mode_args=(--deploy)
+          if [ -n "$VERIFY_VERSION" ]; then
+            mode_args=(--verify-version "$VERIFY_VERSION")
+          elif [[ "$HEAD_MESSAGE" == *"[verify-cloudflare:"* ]]; then
+            mode_args=(--verify-from-event)
+          fi
+          python3 tools/cloudflare_release.py "${mode_args[@]}" --source-sha "$GITHUB_SHA"
       - name: Publish sanitized release receipt
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

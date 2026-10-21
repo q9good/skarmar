@@ -185,7 +185,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def public_request(path, headers=None, method="GET"):
-    request = urllib.request.Request(ORIGIN + path, headers=headers or {}, method=method,
+    request = urllib.request.Request(ORIGIN + path,
+                                     headers={"User-Agent": "SkarmaReleaseCheck/1.0", **(headers or {})}, method=method,
                                      data=b"{}" if method == "POST" else None)
     try:
         with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
@@ -196,11 +197,32 @@ def public_request(path, headers=None, method="GET"):
         raise ReleaseError("Public HTTPS request failed; production verification remains incomplete.") from None
 
 
+def normalize_homepage(body):
+    # Cloudflare Web Analytics adds this tag plus a newline after serving the asset.
+    # Remove ONLY that exact external script, never application or unknown scripts.
+    count = 0
+
+    def remove_beacon(match):
+        nonlocal count
+        src = re.search(rb'\ssrc\s*=\s*["\x27]([^"\x27]+)["\x27]', match[0], re.I)
+        if src and re.fullmatch(rb"https://static\.cloudflareinsights\.com/beacon\.min\.js(?:/[A-Za-z0-9]+)?", src[1]):
+            count += 1
+            return b""
+        return match[0]
+
+    normalized = re.sub(rb"<script\b[^>]*>\s*</script>(?:\r?\n)?", remove_beacon, body, flags=re.I)
+    require(count <= 1, "Unexpected duplicate Cloudflare Analytics injection.")
+    return normalized, count
+
+
 def smoke():
     status, body = public_request("/")
-    require(status == 200, "Public homepage did not return 200; edge blocking is not an application health result.")
+    codes = re.findall(rb"(?:error code[: ]+|Error\s+)(\d{4})", body, re.I)
+    require(status == 200, f"Public homepage returned HTTP {status} (edge codes: "
+            + ",".join(code.decode() for code in codes) + "); public verification remains incomplete.")
     index = (ROOT / "apps/client/dist/index.html").read_bytes()
-    require(body == index, "Public homepage differs from this run's web build.")
+    normalized, beacon_count = normalize_homepage(body)
+    require(normalized == index, "Public homepage differs from this run's web build.")
     scripts = re.findall(rb'<script\b[^>]*\bsrc="([^"]+)"', index)
     require(bool(scripts), "No local JavaScript entrypoint found.")
     for raw in scripts:
@@ -220,7 +242,9 @@ def smoke():
             headers["x-skarma-request"] = "1"
         require(public_request("/api/auth/logout", headers, "POST")[0] == expected,
                 "Exact-origin verification failed.")
-    return {"homepage_and_javascript": "matched", "health": 200, "anonymous": "passed", "origins": "passed"}
+    return {"homepage": "matched" if not beacon_count else "matched_except_known_cf_analytics",
+            "javascript": "matched", "cf_analytics_tags": beacon_count,
+            "health": 200, "anonymous": "passed", "origins": "passed"}
 
 
 def run_release(config, source_sha, api, receipt):
@@ -262,10 +286,42 @@ def run_release(config, source_sha, api, receipt):
     raise last_error
 
 
+def verify_existing(config, expected_version, api, receipt):
+    """Authenticate and verify an active version without any upload or traffic mutation."""
+    require(UUID.fullmatch(expected_version) is not None, "Require an exact existing version UUID.")
+    deployment_id, active_id, active = api.current()
+    require(active_id == expected_version, "Another version is active; refusing to verify the wrong release.")
+    preserved = validate_live(config, active)
+    routing = api.routing()
+    receipt.update(deployed_version=active_id, state="deployed_public_checks_pending")
+    message = active.get("annotations", {}).get("workers/message", "")
+    source = re.fullmatch(r"GitHub ([0-9a-f]{40})", message)
+    if source:
+        receipt["deployed_source_sha"] = source[1]
+    receipt["checks"] = smoke()
+    final_deployment, final_id, final = api.current()
+    require(final_deployment == deployment_id and final_id == active_id
+            and invariant(final) == preserved and api.routing() == routing,
+            "Production changed during verification; verification is not complete.")
+    receipt["state"] = "verified_existing_version"
+
+
+def verification_version_from_event():
+    event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+    message = event.get("head_commit", {}).get("message", "")
+    matches = re.findall(r"\[verify-cloudflare:([0-9a-f-]{36})\]", message)
+    require(len(matches) == 1 and UUID.fullmatch(matches[0]) is not None,
+            "Require one explicit verify-cloudflare version marker.")
+    return matches[0]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-sha", required=True)
-    parser.add_argument("--deploy", action="store_true", help="Explicitly upload and promote the existing Worker.")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--deploy", action="store_true", help="Explicitly upload and promote the existing Worker.")
+    mode.add_argument("--verify-version", help="Only verify this active version; never upload or promote.")
+    mode.add_argument("--verify-from-event", action="store_true", help="Read an explicit verify version marker from the GitHub event.")
     args = parser.parse_args()
     receipt = {"worker": WORKER, "origin": ORIGIN, "source_sha": args.source_sha, "state": "not_deployed"}
     os.umask(0o077)
@@ -286,11 +342,17 @@ def main():
             raise ReleaseError("Invalid private production config; its contents were not logged.") from None
         CONFIG.write_text(raw)
         wrote_config = True
-        if not args.deploy:
+        expected_version = verification_version_from_event() if args.verify_from_event else args.verify_version
+        if not args.deploy and not expected_version:
             receipt["state"] = "config_validated_only"
             return
         require(bool(os.environ.get("CLOUDFLARE_API_TOKEN")), "CLOUDFLARE_API_TOKEN is not bound.")
-        run_release(config, args.source_sha, Cloudflare(config["account_id"]), receipt)
+        api = Cloudflare(config["account_id"])
+        receipt["operation"] = "verify_existing" if expected_version else "deploy"
+        if expected_version:
+            verify_existing(config, expected_version, api, receipt)
+        else:
+            run_release(config, args.source_sha, api, receipt)
     except (ReleaseError, OSError, ValueError, KeyError) as error:
         # Unexpected exceptions/JSON/OS errors can contain private paths or API values.
         receipt["error"] = str(error) if isinstance(error, ReleaseError) else "Release failed; inspect private runner diagnostics."
