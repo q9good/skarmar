@@ -4,7 +4,7 @@
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "ffdd0d0ddd67d44b8d169441f5f1f0dbafe5af94",
+  "implementationCommit": "f39ec22f4de1253f57f995ab956b09704aec1e6d",
   "tasks": [
     {
       "id": "T01",
@@ -238,6 +238,13 @@
       "status": "done",
       "evidence": "docs/functional-ui-audit-2026-10-22.md",
       "verification": "2026-10-22通过Mac Chrome Computer Use真实页面完成五个tab的合成数据新增编辑删除与整页刷新：长期中期短期目标、方法多目标关联及归档恢复、服务器计划和总结草稿、完成训练与版本修订、困难跟进、两类经验及验证依据、课程老师选项及机构课时统计。确认两项P3：正常训练保存时短暂误显示结果未确认重试提示；困难关联说明误称经验。用户明确授权后删除10条功能验收1022A合成记录；子目标及训练引用保护实际拒绝删除；训练删除保留跟进并标明来源已删除，方法和目标删除解除关联并保留其他记录。取消草稿删除路径通过。最终整页刷新逐页复核：今天0、目标原有9、方法1、困难0经验1、课程3、家庭干预71，测试课程老师选项均已停用。未修改应用或部署、未改删原有数据；未测试成员权限、多用户并发、移动端、导入导出及注册，未以历史自动化替代本轮UI证据。无障碍选中状态观察仅列为待专项复核。"
+    },
+    {
+      "id": "T35",
+      "title": "修复正常训练保存误示重试及困难关联说明的两项P3",
+      "status": "done",
+      "evidence": "docs/ui-feedback-fixes-2026-10-22.md",
+      "verification": "2026-10-22实现f39ec22。请求进行中区分busy与pending，提示和禁用按钮显示正在保存，结果不确定且请求结束后保留原重试入口；困难/经验共用说明改为当前记录。TypeScript、Expo Web构建、完整test:host通过；新增实际暂停响应的计划/完成/重试浏览器断言，503响应丢失后刷新并重试的完整请求及operation_id一致，无重复训练或跟进，困难编辑文案可见。test:mutations在原生SQLite及真实Rust Worker/Miniflare DO均通过，新增总结草稿及普通成员训练修订保存中断言，既有关联、权限、删除、并发和重启回归通过。仅隔离合成数据，新增已检查截图，未改Rust或数据库，未访问线上账号/业务数据或部署；线上复验尚未执行。"
     }
   ],
   "artifacts": [
@@ -333,6 +340,12 @@
       "path": "docs/artifacts/deployment/cloudflare-release-20261021-verified-receipt.json",
       "title": "Cloudflare Actions 既有版本补验回执（脱敏）",
       "sha256": "7d1aac90336d67624cd92cac651584f26ba9a3e8de9b02a8153465db6be47fcb"
+    },
+    {
+      "path": "docs/artifacts/validation/training-saving.png",
+      "title": "保存反馈修复：真实响应暂停时显示正在保存（合成）",
+      "sha256": "5e69339ceb6a6b69ef0813c4dbf88bdd254a67d8d8d1ed49f997cafe000a16ad",
+      "synthetic": true
     }
   ]
 }
