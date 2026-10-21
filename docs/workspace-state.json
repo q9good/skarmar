@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-21",
+  "updatedAt": "2026-10-22",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -228,9 +228,9 @@
     {
       "id": "T33",
       "title": "从Codex Cloud触发现有Cloudflare应用的受控发布链路",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/github-actions-cloudflare-release.md",
-      "verification": "2026-10-21安全同步99aa7f5，14项产物通过。原环境只读状态仍revision4/secrets空，Wrangler未认证，诊断无记录且无受支持解锁工具；未重交草案或重建资源。GH可读workflows，Secrets/Variables/Actions设置元数据403。实现仅明确push标记或受控dispatch发布的Actions、固定工具/源码SHA、私密配置校验、原版本/域名/settings核对、候选绑定完全一致才激活、并发保护及脱敏回执。15项隔离测试、YAML/固定Actions SHA及合成配置真实versions upload dry-run通过；无真实上传或生产数据访问，实际GH执行和发布仍待核验。 工作流提交e486243dcf6974611d645e0912a91c5f3f381f0f已成功推送；真实push运行39608250391的validate成功执行15项guard，release按普通提交规则skipped。证明Git推送与Actions触发可用，不代表Cloudflare发布已验收。 用户通过GitHub安全页面保存两项Secrets，Mac只读校验原私密TOML与线上匹配。云端明确标记d6834fab1db81b94b73cb9ad9b70af766c039496触发run39615145891，工具安装/Web构建/72项Rust/Wasm Clippy通过，真实API认证/原配置核对/上传/激活成功，新版本d7925a8a-127b-4773-bc8a-445ce12460eb，原绑定与域名保持。原run因默认Python-urllib被1010/403阻拦而失败，receipt明确deployed_public_checks_pending；没有误判未发布或重发。明确监测UA可200，已识别CF Analytics注入导致首页字节差异，窄范围移除已知注入后本云端完整匿名smoke通过。脚本增加只验证现有版本模式，21项隔离测试通过，准备Actions仅补验，尚未完成最终运行回执。"
+      "verification": "2026-10-21安全同步99aa7f5，14项产物通过。原环境只读状态仍revision4/secrets空，Wrangler未认证，诊断无记录且无受支持解锁工具；未重交草案或重建资源。GH可读workflows，Secrets/Variables/Actions设置元数据403。实现仅明确push标记或受控dispatch发布的Actions、固定工具/源码SHA、私密配置校验、原版本/域名/settings核对、候选绑定完全一致才激活、并发保护及脱敏回执。15项隔离测试、YAML/固定Actions SHA及合成配置真实versions upload dry-run通过；无真实上传或生产数据访问，实际GH执行和发布仍待核验。 工作流提交e486243dcf6974611d645e0912a91c5f3f381f0f已成功推送；真实push运行39608250391的validate成功执行15项guard，release按普通提交规则skipped。证明Git推送与Actions触发可用，不代表Cloudflare发布已验收。 用户通过GitHub安全页面保存两项Secrets，Mac只读校验原私密TOML与线上匹配。云端明确标记d6834fab1db81b94b73cb9ad9b70af766c039496触发run39615145891，工具安装/Web构建/72项Rust/Wasm Clippy通过，真实API认证/原配置核对/上传/激活成功，新版本d7925a8a-127b-4773-bc8a-445ce12460eb，原绑定与域名保持。原run因默认Python-urllib被1010/403阻拦而失败，receipt明确deployed_public_checks_pending；没有误判未发布或重发。明确监测UA可200，已识别CF Analytics注入导致首页字节差异，窄范围移除已知注入后本云端完整匿名smoke通过。脚本增加只验证现有版本模式，21项隔离测试通过，准备Actions仅补验，尚未完成最终运行回执。 2026-10-22独立复核Actions补验run39617784667：validate/release均成功；最终receipt为verified_existing_version，补验源码a788b18077866d44f2ebbeebc07f0bdea00861aa，实际部署版本d7925a8a-127b-4773-bc8a-445ce12460eb，部署源码仍d6834fab1db81b94b73cb9ad9b70af766c039496。首页仅排除严格匹配CF Analytics标签后匹配，JS逐字节一致，health200、匿名权限和来源检查通过。补验未上传/切流量，按设计跳过Rust工具安装和测试，首轮真实发布已执行完整Rust检查。Mac已安全同步修复；云端成功补验后因用量限制中断最后文档收尾，由Mac据真实运行证据补齐T33和最终脱敏回执。T12独立受阻不影响此路径。"
     }
   ],
   "artifacts": [
@@ -321,6 +321,11 @@
       "path": "docs/artifacts/deployment/cloudflare-release-20261021-initial-receipt.json",
       "title": "云端实际发布首轮回执（仅版本及脱敏检查结果）",
       "sha256": "565ba454514076d95bebfb78c0b919969c6c45a501f27bab26d7aa8900112af4"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261021-verified-receipt.json",
+      "title": "Cloudflare Actions 既有版本补验回执（脱敏）",
+      "sha256": "7d1aac90336d67624cd92cac651584f26ba9a3e8de9b02a8153465db6be47fcb"
     }
   ]
 }
