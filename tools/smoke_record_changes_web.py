@@ -1,6 +1,7 @@
 """Administrator-only deletion and completed training revision through forms."""
 import uuid
 from playwright.sync_api import expect
+from browser_submit import submit_while_pending
 
 
 def check_record_changes(page, context, browser, base, out, ids, second, draft, state):
@@ -38,7 +39,7 @@ def check_record_changes(page, context, browser, base, out, ids, second, draft, 
     expect(member.get_by_role('button', name='删除训练', exact=True)).to_have_count(0)
     member.get_by_role('textbox', name='本次修订说明', exact=True).scroll_into_view_if_needed()
     member.screenshot(path=str(out / 'member-training-revision.png'))
-    member.get_by_role('button', name='保存训练修改', exact=True).click()
+    submit_while_pending(member, member.get_by_role('button', name='保存训练修改', exact=True))
     expect(member.get_by_text('训练修改已保存，历史版本已保留。', exact=True)).to_be_visible()
     revised = item('sessions', ids['session'])
     assert revised['version'] == original['version'] + 1 and revised['status'] == 'completed'

@@ -33,7 +33,7 @@ export function ExperienceBindings({ goals, pathways, goalIds, pathwayIds, chang
   return <>
     <Choices label="关联目标 · 可多选" items={goals.map(goal => ({ id: goal.id, title: goalName(goal) }))} selected={goalIds} change={changeGoals} disabled={disabled} />
     <Choices label="关联方法 · 可多选" items={pathways.map(pathway => ({ id: pathway.id, title: pathway.title + (pathway.status === 'archived' ? ' · 已归档' : '') }))} selected={pathwayIds} change={changePathways} disabled={disabled} />
-    <Text style={s.hint}>可以只选目标、只选方法，也可以同时选择。方法服务哪些目标，不会自动替这条经验增加绑定。</Text>
+    <Text style={s.hint}>可以只选目标、只选方法，也可以同时选择。方法服务哪些目标，不会自动替当前记录增加绑定。</Text>
   </>;
 }
 

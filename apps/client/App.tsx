@@ -446,7 +446,7 @@ function Workspace() {
           </> : editing && draft ? <>
             <View style={styles.sectionHeader}><Text style={styles.title}>{draft.revision ? '修改已完成训练' : stage === 'plan' ? '家庭干预计划' : '填写干预总结'}</Text>
               <Button title="返回" secondary onPress={() => setEditing(false)} disabled={busy} /></View>
-            <Hint>{draft.pending ? '上次提交结果尚未确认，请重试同一次提交。' :
+            <Hint>{draft.pending ? busy ? '正在保存，请稍候…' : '上次提交结果尚未确认，请重试同一次提交。' :
               localSaved ? '草稿已保存在本机 · 正式保存后可在其他设备继续' : '正在保存本机草稿…'}</Hint>
             <Button title="刷新" secondary disabled={busy} onPress={() => void safely(async () => { await refresh(); })} />
             {stage === 'plan' && <Hint>规划提示：近 30 天有 {coverage.uncovered.length} 个短期目标尚未覆盖。{coverage.uncovered.slice(0, 3).map(row => row.goal.title).join('、')}</Hint>}
@@ -476,7 +476,7 @@ function Workspace() {
             </Card>}
             <TrainingEditor stage={stage} pathways={data.pathways} draft={draft} goals={data.goals} sessions={data.sessions} difficulties={data.difficulties}
               disabled={busy || deletedDraft || Boolean(draft.pending)} change={change} />
-            {draft.revision && !draft.pending ? <Button title={busy ? '正在保存…' : '保存训练修改'} onPress={() => void submit('revise')} disabled={busy || deletedDraft || !draft.revision.note.trim()} /> : draft.pending ? <Button title="重试同一次提交" onPress={() => void submit(draft.pending!.action)} disabled={busy || deletedDraft} /> :
+            {draft.revision && !draft.pending ? <Button title={busy ? '正在保存…' : '保存训练修改'} onPress={() => void submit('revise')} disabled={busy || deletedDraft || !draft.revision.note.trim()} /> : draft.pending ? <Button title={busy ? '正在保存…' : '重试同一次提交'} onPress={() => void submit(draft.pending!.action)} disabled={busy || deletedDraft} /> :
               <View style={styles.row}><Button title={stage === 'plan' ? '保存计划并退出' : '保存总结草稿并退出'} secondary onPress={() => void submit('save_draft')} disabled={busy || deletedDraft} />
                 {stage === 'summary' && <Button title={busy ? '正在保存…' : '提交干预总结'} onPress={() => void submit('complete')} disabled={busy || deletedDraft} />}</View>}
             {draft.revision && !draft.pending && !deletedDraft && <Button title="备份填写并取消修改" secondary disabled={busy} onPress={() => void safely(async () => {

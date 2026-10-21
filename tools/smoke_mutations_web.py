@@ -3,6 +3,7 @@
 Also runs the administrator deletion and member revision browser checks.
 """
 from playwright.sync_api import expect
+from browser_submit import submit_while_pending
 
 
 def check_mutations(page, context, browser, base, out, created, login, state):
@@ -191,7 +192,7 @@ def check_mutations(page, context, browser, base, out, created, login, state):
     page.get_by_role('button', name='填写干预总结', exact=True).click()
     page.get_by_role('textbox', name='主目标实际进度', exact=True).fill('【编辑自测】总结草稿中的观察')
     page.get_by_role('textbox', name='整次训练观察', exact=True).fill('【编辑自测】保存后还可以继续补充')
-    page.get_by_role('button', name='保存总结草稿并退出', exact=True).click()
+    submit_while_pending(page, page.get_by_role('button', name='保存总结草稿并退出', exact=True))
     expect(page.get_by_role('button', name='填写干预总结', exact=True)).to_be_visible()
     saved_draft = entry('sessions', draft['id'])
     assert saved_draft['targets'][0]['goal_id'] == second['id']

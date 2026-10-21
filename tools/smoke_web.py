@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen, build_opener, ProxyHandler
 from urllib.parse import urlparse
 
 from playwright.sync_api import expect, sync_playwright
+from browser_submit import submit_while_pending
 
 BASE = os.environ.get("SKARMA_TEST_URL", "http://127.0.0.1:3001")
 if urlparse(BASE).hostname in ('127.0.0.1', 'localhost', '::1'):
@@ -79,7 +80,7 @@ with sync_playwright() as playwright:
     page.get_by_role("button", name="轮流参与活动", exact=True).click()
     page.get_by_role("textbox", name="主目标计划", exact=True).fill("需要时表达帮助请求")
     page.get_by_role("textbox", name="副目标计划", exact=True).fill("观察轮流和帮助情况")
-    page.get_by_role("button", name="保存计划并退出", exact=True).click()
+    submit_while_pending(page, page.get_by_role("button", name="保存计划并退出", exact=True), screenshot=OUTPUT / 'training-saving.png')
     expect(page.get_by_text("草稿已保存到服务器。干预后从今天的安排填写总结。", exact=True)).to_be_visible()
     planned = state()["sessions"][0]
     assert planned["status"] == "draft" and planned["version"] == 1
@@ -107,18 +108,14 @@ with sync_playwright() as playwright:
 
     # Commit server-side, then replace the response with a gateway failure.
     # A reload must preserve and replay the same operation.
-    def lose_response(route):
-        response = route.fetch()
-        assert response.ok
-        route.fulfill(status=503, content_type="application/json", body=json.dumps({"error": "验收：网关未确认提交结果"}))
-
-    page.route("**/api/sessions/*", lose_response)
-    page.get_by_role("button", name="提交干预总结", exact=True).click()
+    pending = submit_while_pending(page, page.get_by_role("button", name="提交干预总结", exact=True), lose_response=True)
     expect(page.get_by_role("button", name="重试同一次提交", exact=True)).to_be_visible()
-    page.unroute_all(behavior="wait")
+    expect(page.get_by_text('上次提交结果尚未确认，请重试同一次提交。', exact=True)).to_be_visible()
     page.reload()
     page.get_by_role("button", name="继续填写", exact=True).click()
-    page.get_by_role("button", name="重试同一次提交", exact=True).click()
+    expect(page.get_by_text('上次提交结果尚未确认，请重试同一次提交。', exact=True)).to_be_visible()
+    replay = submit_while_pending(page, page.get_by_role("button", name="重试同一次提交", exact=True))
+    assert replay == pending, 'reload and retry must retain the exact operation ID and request'
     expect(page.get_by_text("这次训练已完成，困难与经验已按填写内容保存。", exact=True)).to_be_visible()
     completed = state()
     assert len(completed["sessions"]) == 1
@@ -133,6 +130,10 @@ with sync_playwright() as playwright:
 
     page.get_by_role("button", name="查看困难与经验跟进", exact=True).click()
     page.get_by_role("button", name="更新跟进", exact=True).nth(0).click()
+    expect(page.get_by_text('可以只选目标、只选方法，也可以同时选择。方法服务哪些目标，不会自动替当前记录增加绑定。', exact=True)).to_be_visible()
+    expect(page.get_by_text('不会自动替这条经验增加绑定。', exact=False)).to_have_count(0)
+    page.get_by_role('textbox', name='困难内容', exact=True).scroll_into_view_if_needed()
+    page.screenshot(path=str(OUTPUT / 'difficulty-binding-copy.png'))
     page.get_by_role("button", name="跟进中", exact=True).click()
     page.get_by_role("textbox", name="跟进结论", exact=True).fill("【浏览器验收】继续核对现场条件")
     page.get_by_role("textbox", name="下次回看日期（可选）", exact=True).fill(planned["business_date"])

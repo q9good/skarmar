@@ -40,3 +40,11 @@
 | [deleted-training-retains-experience.png](deleted-training-retains-experience.png) | 原训练删除后保留经验、绑定、依据及来源删除说明 |
 
 规则及双后端验收见[管理员删除与训练修订](../../record-permissions.md)。
+
+2026-10-22 保存反馈修复的合成截图：
+
+| 图片 | 内容 |
+| --- | --- |
+| [training-saving.png](training-saving.png) | 隔离示例空间中暂停真实保存响应，页面显示正在保存，不出现结果未确认提示 |
+
+验证与发布边界见[保存反馈修复](../../ui-feedback-fixes-2026-10-22.md)。
