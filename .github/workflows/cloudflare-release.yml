@@ -1,0 +1,98 @@
+name: Cloudflare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact 40-character commit SHA of the selected feature branch
+        required: true
+        type: string
+  push:
+    branches: [feat/tencent-informed-web]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Test release guards without credentials or network
+        run: python3 -m unittest discover -s tools -p 'test_cloudflare_release.py' -v
+
+  release:
+    needs: validate
+    if: >-
+      github.repository == 'q9good/skarmar' &&
+      github.ref == 'refs/heads/feat/tencent-informed-web' &&
+      (github.event_name == 'workflow_dispatch' ||
+       contains(github.event.head_commit.message, '[deploy-cloudflare]'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    concurrency:
+      group: skarma-existing-cloudflare-production
+      cancel-in-progress: false
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_OFFLINE: '1'
+      CI: 'true'
+    steps:
+      - name: Require securely configured credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SKARMA_WRANGLER_TOML: ${{ secrets.SKARMA_WRANGLER_TOML }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing repository secret CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$SKARMA_WRANGLER_TOML" || { echo '::error::Missing repository secret SKARMA_WRANGLER_TOML (existing private production configuration)'; exit 1; }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Require the exact source selected for this run
+        env:
+          REQUESTED_SHA: ${{ inputs.source_sha || github.sha }}
+        run: |
+          test "$REQUESTED_SHA" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install pinned dependencies and Rust toolchain
+        run: |
+          npm ci
+          rustup toolchain install 1.99.0 --profile minimal --component clippy --target wasm32-unknown-unknown
+          cargo install worker-build --version 0.8.7 --locked
+      - name: Validate application and build mobile Web
+        run: |
+          npm run typecheck
+          npm run web:build
+          cargo test --workspace --locked -j 4
+          cargo clippy -p skarma-worker --target wasm32-unknown-unknown --locked -- -D warnings
+      - name: Verify existing target, upload version, promote and check
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SKARMA_WRANGLER_TOML: ${{ secrets.SKARMA_WRANGLER_TOML }}
+        run: |
+          remote_sha=$(git ls-remote origin refs/heads/feat/tencent-informed-web | cut -f1)
+          test "$remote_sha" = "$GITHUB_SHA" || { echo '::error::Branch moved; release the latest reviewed commit instead'; exit 1; }
+          python3 tools/cloudflare_release.py --deploy --source-sha "$GITHUB_SHA"
+      - name: Publish sanitized release receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cloudflare-release-${{ github.sha }}
+          path: .local/cloudflare-release/receipt.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Remove private configuration and logs
+        if: always()
+        run: |
+          rm -f deploy/cloud-worker/wrangler.toml
+          rm -rf .local/cloudflare-release/private

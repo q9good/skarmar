@@ -48,6 +48,22 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-10-21：云端独立发布备用流程（T33，尚待实际凭据／运行验收）
+
+云端安全同步 Mac 发布回执到 `99aa7f5`，14项产物校验通过。用户继续要求 Cloud 自行
+完成发布，故新增T33；业务实现及T32原发布结果不变。原环境再次只读核验仍revision4、
+secrets空、Wrangler未认证；诊断工具无留存记录，可用工具没有恢复锁定发布的操作。
+未重交旧草案、重建Token/环境或修改生产设置。
+
+已准备GitHub Actions备用路径，详见[云端触发发布](github-actions-cloudflare-release.md)。
+普通push只运行隔离guard测试，明确`[deploy-cloudflare]`标记才进入发布；当前默认main
+没有工作流，不能依赖workflow_dispatch入口。需在GitHub安全设置复用既有Token，另存
+Mac原私密生产TOML，不把值交给聊天或Git。当前GH授权可读workflows，但Secrets/Variables
+及Actions设置元数据403，不等于具备凭据配置权限。发布前后及候选激活前核对原对象
+命名空间、全量vars、runtime、settings及域名，使用版本上传和官方部署API，不同步triggers。
+本地15项隔离测试、YAML与固定Actions提交检查、合成配置下真实版本上传dry-run通过，
+没有上传或访问生产业务数据；实际GitHub运行和发布另记，不能用本地dry-run替代。
+
 ### 2026-10-21：最新应用已由 Mac 发布，云环境故障反馈已提交
 
 用户要求同步最新 commit 后发布。本地安全拉取共享分支到 `f0a4e58`，云端确认同一 HEAD、

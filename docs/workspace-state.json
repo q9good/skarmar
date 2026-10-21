@@ -224,6 +224,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-21.md",
       "verification": "2026-10-21用户要求同步最新commit后发布，并说明当前均为测试数据、无需备份。本地安全同步f0a4e58，原Cloud任务确认同一HEAD且无未提交/未推送应用变更。Mac既有OAuth有效，沿用原私密生产配置，Web构建和正式配置dry-run通过后实际发布原skarma-web，版本7398e1af-496e-415e-b113-7c6d0b68a45c。旧版eb0b5584已记录；版本元数据确认原DO命名空间、SkarmaSpace/SKARMA_DB/default、认证与来源配置不变，skarma.vip保持。线上首页/JS/health=200，JS与本机构建逐字节一致；匿名me/state=401，未知API=404，合法来源logout=200，非法来源或缺标记=403。既有浏览器会话进入新版今天页，手动和后续自动刷新成功；只读聚合核对业务与账号数量未变，迁移版本9。按用户要求跳过备份，未做逐条对账、恢复演练或线上写入测试，未新增测试账号。应用验收对应仍ffdd0d0，未重复执行云端72项Rust等回归。Cloud环境反馈已提交但Token发布仍故障，T12继续受阻。"
+    },
+    {
+      "id": "T33",
+      "title": "从Codex Cloud触发现有Cloudflare应用的受控发布链路",
+      "status": "in_progress",
+      "evidence": "docs/github-actions-cloudflare-release.md",
+      "verification": "2026-10-21安全同步99aa7f5，14项产物通过。原环境只读状态仍revision4/secrets空，Wrangler未认证，诊断无记录且无受支持解锁工具；未重交草案或重建资源。GH可读workflows，Secrets/Variables/Actions设置元数据403。实现仅明确push标记或受控dispatch发布的Actions、固定工具/源码SHA、私密配置校验、原版本/域名/settings核对、候选绑定完全一致才激活、并发保护及脱敏回执。15项隔离测试、YAML/固定Actions SHA及合成配置真实versions upload dry-run通过；无真实上传或生产数据访问，实际GH执行和发布仍待核验。"
     }
   ],
   "artifacts": [
