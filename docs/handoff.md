@@ -48,6 +48,26 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-10-21：最新应用已由 Mac 发布，云环境故障反馈已提交
+
+用户要求同步最新 commit 后发布。本地安全拉取共享分支到 `f0a4e58`，云端确认同一 HEAD、
+无未提交／未推送应用改动并暂停分支修改。使用 Mac 已有 Wrangler OAuth 和原私密生产配置，
+发布到原 `skarma-web`；应用验收提交仍为 `ffdd0d0`，本轮没有改应用代码。
+
+实际版本 **`7398e1af-496e-415e-b113-7c6d0b68a45c`**，入口 **https://skarma.vip/**。
+六页流程、管理员删除／家人训练修订及取消密码最小长度现已发布。原命名空间、
+`SkarmaSpace` / `SKARMA_DB` / `default`、两个精确来源及域名均保留；发布前后业务与账号数量一致，
+迁移版本为 9。用户明确说明当前均为测试数据、无需备份，本轮跳过备份，保留上一版代码 ID。
+
+本机 Web 构建和真实生产配置 dry-run 通过；线上首页／JS／health=200，JS 与本机构建逐字节一致，
+匿名 me/state=401、未知 API=404、合法来源 logout=200、非法来源及缺少请求标记=403。
+浏览器已有账号正常显示新版今天页，手动刷新及后续自动刷新正常。未新增线上测试账号或业务记录，
+没有重复执行云端已完成的应用回归。操作和验收边界见 [实际发布记录](cloudflare-release-2026-10-21.md)。
+
+Report issue 的 Bug 反馈已按授权提交，回执为 Thanks for your feedback，没有工单编号。
+云环境仍 Publishing needs investigation，Token 未证实生效，T12 继续受阻；本地发布完成不代表
+Codex Cloud 已能自行发布。原故障过程保留在下文及 [故障记录](environment/cloudflare-token-publish-investigation.md)。
+
 ### 2026-10-21：本地同步完成，已有 Token 受环境发布故障阻塞
 
 本地已安全快进到云端 `7181b35`，14 项产物校验通过。按用户要求通过 Computer Use

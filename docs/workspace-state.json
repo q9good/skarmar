@@ -80,7 +80,7 @@
       "id": "T12",
       "title": "同步云环境启动说明到新的配置草案",
       "status": "blocked",
-      "blocker": "旧草案曾stale_base。2026-10-21已从当前环境列表创建新Edit会话，确认已有安全保存的CF网络密钥；Save and publish返回Publishing needs investigation，要求先报告问题，Save draft/Retry禁用。需平台恢复发布后再接续启动说明；不重交旧草案或重建环境。",
+      "blocker": "旧草案曾stale_base。2026-10-21新Edit确认已有安全保存的CF网络密钥，但发布返回Publishing needs investigation，Save draft/Retry禁用。已按授权提交Report issue的Bug反馈，收到Thanks for your feedback，没有工单编号，控件仍锁定。需平台恢复，不重交旧草案或重建环境；Mac完成T32不表示Cloud Token已生效。",
       "evidence": "docs/handoff.md"
     },
     {
@@ -221,10 +221,9 @@
     {
       "id": "T32",
       "title": "将T27/T30及密码调整发布到现有Cloudflare线上实例",
-      "status": "blocked",
-      "evidence": "docs/registration-password-release.md",
-      "verification": "用户已明确授权部署，无需重复请求发布许可。已完成代码、构建、两后端及手机浏览器回归和dry-run。运行环境无Cloudflare绑定，默认与既有XDG缓存目录Wrangler whoami均未登录，实际私密生产Wrangler配置不在云端。仅添加CLOUDFLARE_API_TOKEN需求的草案保存返回CONFLICT/stale_base，未确认保存/应用，未重交旧草案；完整无密钥需求JSON、说明及ZIP已落地。匿名skarma.vip首页/health/me得到403、Cloudflare错误1010，未完成线上健康验收，不能据此声称用户设备故障。未执行生产发布、读真实账号/业务数据、备份恢复或新建临时账号。 2026-10-21本地安全同步7181b35并通过14项产物校验。Computer Use在新Edit确认已保存CLOUDFLARE_API_TOKEN、环境范围、唯一允许api.cloudflare.com且Only me，用户明确复用当天Token；未读取或改写值。环境发布返回Publishing needs investigation并锁定重试；原任务再次只读核验revision仍4、secrets空、Wrangler未认证。未部署应用或读取真实训练数据，故障说明见docs/environment/cloudflare-token-publish-investigation.md。",
-      "blocker": "Token已安全保存在最新环境配置，但环境发布失败且页面要求平台调查，不能确认已应用。需先恢复发布，再实际验证密钥绑定和Wrangler认证；若旧任务仍不更新，使用已发布配置的运行环境接续。实际生产配置及备份/恢复点仍须核对，保留原Worker/DO/default空间、域名和来源。"
+      "status": "done",
+      "evidence": "docs/cloudflare-release-2026-10-21.md",
+      "verification": "2026-10-21用户要求同步最新commit后发布，并说明当前均为测试数据、无需备份。本地安全同步f0a4e58，原Cloud任务确认同一HEAD且无未提交/未推送应用变更。Mac既有OAuth有效，沿用原私密生产配置，Web构建和正式配置dry-run通过后实际发布原skarma-web，版本7398e1af-496e-415e-b113-7c6d0b68a45c。旧版eb0b5584已记录；版本元数据确认原DO命名空间、SkarmaSpace/SKARMA_DB/default、认证与来源配置不变，skarma.vip保持。线上首页/JS/health=200，JS与本机构建逐字节一致；匿名me/state=401，未知API=404，合法来源logout=200，非法来源或缺标记=403。既有浏览器会话进入新版今天页，手动和后续自动刷新成功；只读聚合核对业务与账号数量未变，迁移版本9。按用户要求跳过备份，未做逐条对账、恢复演练或线上写入测试，未新增测试账号。应用验收对应仍ffdd0d0，未重复执行云端72项Rust等回归。Cloud环境反馈已提交但Token发布仍故障，T12继续受阻。"
     }
   ],
   "artifacts": [
