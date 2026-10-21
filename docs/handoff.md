@@ -62,7 +62,10 @@ Mac原私密生产TOML，不把值交给聊天或Git。当前GH授权可读workf
 及Actions设置元数据403，不等于具备凭据配置权限。发布前后及候选激活前核对原对象
 命名空间、全量vars、runtime、settings及域名，使用版本上传和官方部署API，不同步triggers。
 本地15项隔离测试、YAML与固定Actions提交检查、合成配置下真实版本上传dry-run通过，
-没有上传或访问生产业务数据；实际GitHub运行和发布另记，不能用本地dry-run替代。
+没有上传或访问生产业务数据。工作流提交`e486243`已成功推送；真实
+[run39608250391](https://github.com/q9good/skarmar/actions/runs/39608250391)的validate通过
+15项guard，release按普通提交规则跳过。T33剩余两项GitHubSecrets安全输入及一次受控
+实际发布验证；未执行该流程的生产认证或重发，不能用绿色验证run替代发布。
 
 ### 2026-10-21：最新应用已由 Mac 发布，云环境故障反馈已提交
 

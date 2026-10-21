@@ -117,8 +117,12 @@ GitHub concurrency 只能约束本工作流，两次只读检查之间仍存在�
 两次并发检查、dry-run 不算上线、已切换后公共验收失败，以及 JS 字节和来源合约。
 使用合成账户／来源实际执行 `wrangler versions upload --dry-run --keep-vars` 退出 0，
 version_id=null，gzip 1536721 bytes；没有访问生产或实际上传。
-工作流 YAML 结构和 Actions 固定 SHA 检查通过。真实 Actions 执行／发布结果另行记录，
-在凭据实际配置并成功运行前不把此流程标为发布验收完成。
+工作流 YAML 结构和 Actions 固定 SHA 检查通过。真实 Actions 首次运行已通过：源码 `e486243dcf6974611d645e0912a91c5f3f381f0f`，
+[run 39608250391](https://github.com/q9good/skarmar/actions/runs/39608250391) 的 validate 成功，
+15项guard测试实际执行；普通提交的 release job 为 skipped。实际推送工作流与push触发权限
+已证明可用，不能将该绿色验证run称为Cloudflare发布成功。
+当前剩余动作是在GitHub安全配置上述两项Secrets，再由云端触发明确发布标记并核对
+真实上传／激活版本及匿名检查；尚未执行本流程的生产认证或重发。
 
 ## 官方依据
 

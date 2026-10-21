@@ -228,9 +228,10 @@
     {
       "id": "T33",
       "title": "从Codex Cloud触发现有Cloudflare应用的受控发布链路",
-      "status": "in_progress",
+      "status": "blocked",
       "evidence": "docs/github-actions-cloudflare-release.md",
-      "verification": "2026-10-21安全同步99aa7f5，14项产物通过。原环境只读状态仍revision4/secrets空，Wrangler未认证，诊断无记录且无受支持解锁工具；未重交草案或重建资源。GH可读workflows，Secrets/Variables/Actions设置元数据403。实现仅明确push标记或受控dispatch发布的Actions、固定工具/源码SHA、私密配置校验、原版本/域名/settings核对、候选绑定完全一致才激活、并发保护及脱敏回执。15项隔离测试、YAML/固定Actions SHA及合成配置真实versions upload dry-run通过；无真实上传或生产数据访问，实际GH执行和发布仍待核验。"
+      "verification": "2026-10-21安全同步99aa7f5，14项产物通过。原环境只读状态仍revision4/secrets空，Wrangler未认证，诊断无记录且无受支持解锁工具；未重交草案或重建资源。GH可读workflows，Secrets/Variables/Actions设置元数据403。实现仅明确push标记或受控dispatch发布的Actions、固定工具/源码SHA、私密配置校验、原版本/域名/settings核对、候选绑定完全一致才激活、并发保护及脱敏回执。15项隔离测试、YAML/固定Actions SHA及合成配置真实versions upload dry-run通过；无真实上传或生产数据访问，实际GH执行和发布仍待核验。 工作流提交e486243dcf6974611d645e0912a91c5f3f381f0f已成功推送；真实push运行39608250391的validate成功执行15项guard，release按普通提交规则skipped。证明Git推送与Actions触发可用，不代表Cloudflare发布已验收。",
+      "blocker": "需在GitHub仓库Actions Secrets安全复用既有CLOUDFLARE_API_TOKEN及Mac原私密SKARMA_WRANGLER_TOML（含account_id）。当前API授权不能管理Secrets，Codex平台加密Token不能导出搬运。两项就绪后云端可用明确push标记触发受控发布并核验实际回执；尚未执行生产认证或上传/激活，不需要Mac持续运行。原环境T12仍待平台恢复。"
     }
   ],
   "artifacts": [
