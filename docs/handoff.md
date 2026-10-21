@@ -1,6 +1,6 @@
 # 云端与本地开发交接
 
-日期：2026-10-20。代码、方案、任务状态和选定产物通过 GitHub 的同一分支交接：`feat/tencent-informed-web`。应用验收对应提交以 `docs/workspace-state.json` 为准；后续提交可以只更新交接文件，具体以 Git 历史为准。
+日期：2026-10-21。代码、方案、任务状态和选定产物通过 GitHub 的同一分支交接：`feat/tencent-informed-web`。应用验收对应提交以 `docs/workspace-state.json` 为准；后续提交可以只更新交接文件，具体以 Git 历史为准。
 
 ## 本地接续
 
@@ -47,6 +47,19 @@ npm run sync:push
 这些命令按需运行。任务进度在提交、推送和另一端拉取后可见，不是两台电脑的实时文件镜像。
 
 ## 目前完成与待办
+
+### 2026-10-21：本地同步完成，已有 Token 受环境发布故障阻塞
+
+本地已安全快进到云端 `7181b35`，14 项产物校验通过。按用户要求通过 Computer Use
+配置云端发布凭据：从当前环境列表新开 Edit，确认最新草案已经安全保存
+`CLOUDFLARE_API_TOKEN`，目标仅 `api.cloudflare.com`，环境为 Only me；用户确认复用
+当天创建的 Token。未读取、改写或重新生成值。
+
+Save and publish 返回 Publishing needs investigation，提示无法确认设置保存，并要求
+报告问题后再重新开始；Save draft / Retry 已禁用。旧任务重新核验仍为版本 4、无绑定密钥，
+Wrangler 未认证。T12 / T32 继续受阻，不能报告凭据已应用或新版应用已发布。实际步骤、
+当前证据与接续边界见 [Token 发布故障](environment/cloudflare-token-publish-investigation.md)。
+故障报告已准备但提交状态需单独确认，私有标识及截图留在本机忽略目录。
 
 ### 2026-10-20：密码最小长度取消，线上发布受凭据阻塞
 
