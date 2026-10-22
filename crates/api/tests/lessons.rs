@@ -13,6 +13,7 @@ fn lesson() -> LessonInput {
         goals: "跟唱".into(),
         problems: String::new(),
         home_cooperation: String::new(),
+        links: None,
     }
 }
 
@@ -25,6 +26,7 @@ fn shared_lesson_options_are_idempotent_versioned_and_do_not_rewrite_history() {
         &mut db,
         &id,
         SaveLesson {
+            difficulty_version: None,
             expected_version: None,
             lesson: lesson(),
         },
@@ -45,6 +47,7 @@ fn shared_lesson_options_are_idempotent_versioned_and_do_not_rewrite_history() {
     assert_eq!(option.version, 1);
     assert_eq!(store::state(&db).unwrap().lesson_options.len(), 2);
     let change = UpdateLessonOption {
+        new_value: None,
         kind: option.kind.clone(),
         value: option.value.clone(),
         active: false,
@@ -95,12 +98,13 @@ fn catalog_migration_preserves_existing_lessons_and_repeated_startup() {
         &mut db,
         &id,
         SaveLesson {
+            difficulty_version: None,
             expected_version: None,
             lesson: lesson(),
         },
     )
     .unwrap();
-    db.execute_batch("DROP TABLE lesson_options; DELETE FROM schema_migrations WHERE version=8;")
+    db.execute_batch("DROP TABLE lesson_targets; DROP INDEX one_difficulty_per_lesson; DROP TABLE lesson_options; DELETE FROM schema_migrations WHERE version IN (8,10);")
         .unwrap();
     store::initialize(&db).unwrap();
     store::initialize(&db).unwrap();
@@ -124,6 +128,7 @@ fn records_a_class_without_a_training_plan_and_supports_safe_edits() {
     store::initialize(&db).unwrap();
     let id = Uuid::new_v4().to_string();
     let request = SaveLesson {
+        difficulty_version: None,
         expected_version: None,
         lesson: lesson(),
     };
@@ -140,6 +145,7 @@ fn records_a_class_without_a_training_plan_and_supports_safe_edits() {
     let mut revised = first.input.clone();
     revised.home_cooperation = "每天练习十分钟".into();
     let update = SaveLesson {
+        difficulty_version: None,
         expected_version: Some(1),
         lesson: revised.clone(),
     };
@@ -156,6 +162,7 @@ fn records_a_class_without_a_training_plan_and_supports_safe_edits() {
             &mut db,
             &id,
             SaveLesson {
+                difficulty_version: None,
                 expected_version: Some(1),
                 lesson: revised
             }
@@ -177,6 +184,7 @@ fn course_teacher_and_date_are_validated_before_writing() {
             &mut db,
             &Uuid::new_v4().to_string(),
             SaveLesson {
+                difficulty_version: None,
                 expected_version: None,
                 lesson: no_course
             }
@@ -192,6 +200,7 @@ fn course_teacher_and_date_are_validated_before_writing() {
             &mut db,
             &Uuid::new_v4().to_string(),
             SaveLesson {
+                difficulty_version: None,
                 expected_version: None,
                 lesson: no_teacher
             }
@@ -207,6 +216,7 @@ fn course_teacher_and_date_are_validated_before_writing() {
             &mut db,
             &Uuid::new_v4().to_string(),
             SaveLesson {
+                difficulty_version: None,
                 expected_version: None,
                 lesson: invalid_date
             }
@@ -216,4 +226,37 @@ fn course_teacher_and_date_are_validated_before_writing() {
         StatusCode::UNPROCESSABLE_ENTITY
     );
     assert!(store::state(&db).unwrap().lessons.is_empty());
+}
+
+#[test]
+fn version_nine_upgrade_keeps_raw_lesson_text_and_inactive_catalog_options() {
+    let db = Connection::open_in_memory().unwrap();
+    store::initialize(&db).unwrap();
+    db.execute_batch("DROP TABLE lesson_targets; DROP INDEX one_difficulty_per_lesson; ALTER TABLE lesson_options DROP COLUMN renamed_to; DELETE FROM schema_migrations WHERE version=10;").unwrap();
+    let id = Uuid::new_v4().to_string();
+    let raw = serde_json::json!({"id":id,"version":3,"business_date":"2026-10-21","course":"历史课程","teacher":"历史老师","content":"逐字保留原文","goals":"未关联目标原文","problems":"问题备注","home_cooperation":"配合内容"}).to_string();
+    db.execute(
+        "INSERT INTO lessons(id,business_date,data) VALUES (?1,'2026-10-21',?2)",
+        [&id, &raw],
+    )
+    .unwrap();
+    db.execute(
+        "INSERT INTO lesson_options(kind,value,active,version) VALUES ('teacher','历史老师',0,4)",
+        [],
+    )
+    .unwrap();
+    store::initialize(&db).unwrap();
+    store::initialize(&db).unwrap();
+    let state = store::state(&db).unwrap();
+    assert!(state.lessons[0].input.links.is_none());
+    assert!(state.lessons[0].target_snapshots.is_empty());
+    assert_eq!(state.lesson_options[0].version, 4);
+    assert!(!state.lesson_options[0].active);
+    assert!(state.lesson_options[0].renamed_to.is_none());
+    assert_eq!(
+        db.query_row("SELECT data FROM lessons WHERE id=?1", [&id], |r| r
+            .get::<_, String>(0))
+            .unwrap(),
+        raw
+    );
 }

@@ -214,6 +214,10 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
             "上课目标",
             "存在问题",
             "家里需配合",
+            "实际方法ID",
+            "加入困难跟进",
+            "困难关联目标ID",
+            "困难关联方法ID",
         ],
         state.lessons.iter().map(|lesson| {
             vec![
@@ -226,6 +230,30 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                 lesson.input.goals.clone(),
                 lesson.input.problems.clone(),
                 lesson.input.home_cooperation.clone(),
+                lesson
+                    .input
+                    .links
+                    .as_ref()
+                    .map(|v| v.pathway_ids.join("\n"))
+                    .unwrap_or_default(),
+                if lesson.input.links.as_ref().is_some_and(|v| v.track_problem) {
+                    "是"
+                } else {
+                    "否"
+                }
+                .into(),
+                lesson
+                    .input
+                    .links
+                    .as_ref()
+                    .map(|v| v.problem_goal_ids.join("\n"))
+                    .unwrap_or_default(),
+                lesson
+                    .input
+                    .links
+                    .as_ref()
+                    .map(|v| v.problem_pathway_ids.join("\n"))
+                    .unwrap_or_default(),
             ]
         }),
     )?;
@@ -315,6 +343,7 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                 "跟进结论／验证依据",
                 "关联目标ID",
                 "关联方法ID",
+                "来源上课ID",
             ],
             items.iter().map(|item| {
                 vec![
@@ -343,6 +372,7 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                     item.conclusion.clone(),
                     item.goal_ids.join("\n"),
                     item.pathway_ids.join("\n"),
+                    optional(&item.source_lesson_id),
                 ]
             }),
         )?;
@@ -446,6 +476,45 @@ fn write(snapshot: ExportSnapshot) -> std::result::Result<Vec<u8>, XlsxError> {
                 }))
         }),
     )?;
+    let mut lesson_target_headers = vec![
+        "上课ID",
+        "上课版本",
+        "上课日期",
+        "目标ID",
+        "目标角色",
+        "逐目标内容",
+        "逐目标观察",
+    ];
+    lesson_target_headers.extend(snapshot_headers.iter().map(String::as_str));
+    sheet(
+        &mut book,
+        "课程逐目标",
+        &lesson_target_headers,
+        state.lessons.iter().flat_map(|lesson| {
+            lesson.input.links.iter().flat_map(move |links| {
+                links.targets.iter().map(move |target| {
+                    let mut row = vec![
+                        lesson.id.clone(),
+                        lesson.version.to_string(),
+                        lesson.input.business_date.clone(),
+                        target.goal_id.clone(),
+                        target.role.as_str().into(),
+                        target.plan.clone(),
+                        target.progress.clone(),
+                    ];
+                    row.extend(
+                        lesson
+                            .target_snapshots
+                            .iter()
+                            .find(|s| s.goal_id == target.goal_id)
+                            .map(|s| goal_row(&s.goal_snapshot))
+                            .unwrap_or_else(|| vec![String::new(); GOAL_HEADERS.len()]),
+                    );
+                    row
+                })
+            })
+        }),
+    )?;
     book.save_to_buffer()
 }
 
@@ -495,6 +564,7 @@ mod tests {
             id: "test".into(),
             version: 1,
             source_session_id: None,
+            source_lesson_id: None,
             content: "😀".repeat(16_384),
             kind: None,
             status: "pending".into(),

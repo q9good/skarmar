@@ -36,19 +36,37 @@ export function LessonOptionManager({ options, saved }: { options: LessonOption[
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [renaming, setRenaming] = useState<LessonOption | null>(null);
+  const [newName, setNewName] = useState('');
   return <View style={{ gap: 10 }}>
     <Pressable accessibilityRole="button" onPress={() => setOpen(!open)} style={{ padding: 12, backgroundColor: '#E9F2E9', borderRadius: 10 }}><Text>{open ? '收起选项维护' : '维护课程和老师选项'}</Text></Pressable>
     {open && <><Text>停用只影响后续选择，不改变历史记录或课时统计。新增选项可在上课表单中操作。</Text>
       {error && <Text accessibilityRole="alert" style={{ color: '#925231' }}>{error}</Text>}
+      <Text>改名只影响以后选择；历史上课记录保留当时名称。已更名的旧选项不能恢复，避免混用名称。</Text>
       {options.map(option => <View key={`${option.kind}:${option.value}`} style={{ padding: 10, borderBottomWidth: 1, borderColor: '#E0E6DD', gap: 6 }}>
         <Text>{option.kind === 'course' ? '课程' : '老师'}：{option.value}{option.active ? '' : ' · 已停用'}</Text>
+        {option.renamed_to ? <Text>已更名为：{option.renamed_to}</Text> : <>
+        <Pressable accessibilityRole="button" accessibilityLabel={`改名${option.kind === 'course' ? '课程' : '老师'}：${option.value}`} disabled={busy} onPress={() => {setRenaming(option);setNewName(option.value);setError('');}} style={{padding:10}}><Text>改名</Text></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={`${option.active ? '停用' : '恢复'}${option.kind === 'course' ? '课程' : '老师'}：${option.value}`} disabled={busy} onPress={() => void (async () => {
           setBusy(true); setError('');
           try { saved(await request<LessonOption>('/lesson-options', 'PUT', { kind: option.kind, value: option.value, active: !option.active, expected_version: option.version })); }
           catch (e) { setError(e instanceof Error ? e.message : '选项更新失败'); }
           finally { setBusy(false); }
         })()} style={{ padding: 10 }}><Text>{option.active ? '停用' : '恢复使用'}</Text></Pressable>
+        </>}
       </View>)}
+      {renaming && <View style={{gap:8}}>
+        <TextInput accessibilityLabel="选项新名称" value={newName} onChangeText={setNewName} editable={!busy} style={{borderWidth:1,padding:12}} />
+        <Pressable accessibilityRole="button" accessibilityState={{disabled:busy || !newName.trim()}} disabled={busy || !newName.trim()} onPress={() => void (async () => {
+          setBusy(true);setError('');
+          try {
+            const next=await request<LessonOption>('/lesson-options','PUT',{...renaming,expected_version:renaming.version,new_value:newName.trim()});
+            if(next.value!==renaming.value) saved({...renaming,active:false,version:renaming.version+1,renamed_to:next.value});
+            saved(next);setRenaming(null);
+          } catch(e) {setError(e instanceof Error?e.message:'改名失败，请重试');} finally {setBusy(false);}
+        })()} style={{padding:12}}><Text>{busy?'正在保存…':'保存新名称'}</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={()=>setRenaming(null)} style={{padding:12}}><Text>取消改名</Text></Pressable>
+      </View>}
       {!options.length && <Text>还没有选项，可先新增上课记录。</Text>}
     </>}
   </View>;

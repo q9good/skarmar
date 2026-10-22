@@ -13,9 +13,9 @@ import { LessonChoice, LessonStatistics, LessonOptionManager } from './src/lesso
 import { buildPlanning } from './src/planning';
 import { mergeState, orderedGoals, replaceTarget, shiftDate } from './src/workflow';
 import {
-  ApiError, request, isReviewable, isTrainable, type AppState, type FollowUp, type Goal, type Level,
+  ApiError, request, isReviewable, isTrainable, emptyLessonLinks, type AppState, type FollowUp, type Goal, type Level,
   type GoalProgress, type GoalUpdate, type GoalRevision, type Pathway, type FollowUpUpdate, type SessionRevision,
-  type Role, type SaveRequest, type SaveResult, type Session, type SessionInput, type Lesson, type LessonInput, type LessonOption, type NewLessonOption,
+  type LessonLinks, type Role, type SaveRequest, type SaveResult, type Session, type SessionInput, type Lesson, type LessonInput, type LessonOption, type NewLessonOption,
 } from './src/api';
 import { clearDraft, emptyInput, localDate, readDraft, saveDraft, uuid, type Draft } from './src/draft';
 
@@ -29,16 +29,23 @@ const activities = ['桌面教学', '感统活动', '游戏', '家务劳动', '�
 const tabs = [ ['today', '☀', '今天'], ['goals', '◎', '目标'], ['pathways', '↗', '方法'], ['history', '▤', '记录'], ['followups', '◇', '跟进'] ] as const;
 type Tab = typeof tabs[number][0];
 const emptyState: AppState = { goals: [], sessions: [], difficulties: [], experiences: [], pathways: [], lessons: [] };
-type LessonDraft = { id: string; expectedVersion: number | null; input: LessonInput };
-const emptyLesson = (): LessonInput => ({ business_date: localDate(), course: '', teacher: '', content: '', goals: '', problems: '', home_cooperation: '' });
-const lessonInput = ({ id: _id, version: _version, ...input }: Lesson): LessonInput => input;
+type LessonDraft = { id: string; expectedVersion: number | null; input: LessonInput; difficultyVersion?: number | null };
+const emptyLesson = (): LessonInput => ({ business_date: localDate(), course: '', teacher: '', content: '', goals: '', problems: '', home_cooperation: '', links: emptyLessonLinks() });
+const lessonInput = ({ id: _id, version: _version, target_snapshots: _snapshots, ...input }: Lesson): LessonInput => input;
 function readLessonDraft(raw: string | null): LessonDraft | null {
   if (!raw) return null;
   try {
     const value: LessonDraft = JSON.parse(raw);
     const fields: (keyof LessonInput)[] = ['business_date', 'course', 'teacher', 'content', 'goals', 'problems', 'home_cooperation'];
     if (typeof value.id === 'string' && (value.expectedVersion === null || Number.isSafeInteger(value.expectedVersion)) &&
-      fields.every(key => typeof value.input?.[key] === 'string')) return value;
+      fields.every(key => typeof value.input?.[key] === 'string')) {
+      const links = value.input.links;
+      const ids = (values: unknown): values is string[] => Array.isArray(values) && values.every(v => typeof v === 'string');
+      if (links !== undefined && (!links || !Array.isArray(links.targets) || typeof links.track_problem !== 'boolean' ||
+        !ids(links.pathway_ids) || !ids(links.problem_goal_ids) || !ids(links.problem_pathway_ids) ||
+        !links.targets.every(t => t && typeof t.goal_id === 'string' && ['primary','secondary','review'].includes(t.role) && typeof t.plan === 'string' && typeof t.progress === 'string'))) return null;
+      return value;
+    }
   } catch { /* Discard an unreadable local draft. */ }
   return null;
 }
@@ -306,7 +313,7 @@ function Workspace() {
     if (lessonDraft && lessonDraft.id !== lesson.id && lessonDirty()) {
       setEditingLesson(true); setError('请先保存当前上课记录，再打开另一条。'); return;
     }
-    setLessonDraft({ id: lesson.id, expectedVersion: lesson.version, input: lessonInput(lesson) });
+    setLessonDraft({ id: lesson.id, expectedVersion: lesson.version, input: lessonInput(lesson), difficultyVersion: data.difficulties.find(item => item.source_lesson_id === lesson.id && !item.source_deleted)?.version ?? null });
     setEditingLesson(true); setEditing(false); setDetail(null); setSelectedGoal(null); setError('');
   };
   const saveLesson = () => safely(async () => {
@@ -314,7 +321,7 @@ function Workspace() {
     let saved: Lesson;
     try {
       saved = await request<Lesson>(`/lessons/${lessonDraft.id}`, 'PUT', {
-        expected_version: lessonDraft.expectedVersion, lesson: lessonDraft.input,
+        expected_version: lessonDraft.expectedVersion, lesson: lessonDraft.input, difficulty_version: lessonDraft.difficultyVersion ?? null,
       });
     } catch (e) { if (e instanceof ApiError && e.status === 409) await refresh().catch(() => undefined); throw e; }
     setData(current => mergeState(current, { ...current, lessons: [saved, ...current.lessons.filter(item => item.id !== saved.id)] }));
@@ -383,7 +390,8 @@ function Workspace() {
   const dueGoals = data.goals.filter(g => g.next_review_date && g.next_review_date <= today);
   const currentGoal = selectedGoal ? data.goals.find(goal => goal.id === selectedGoal.id) ?? selectedGoal : null;
   const remoteLesson = lessonDraft?.expectedVersion !== null ? data.lessons.find(item => item.id === lessonDraft?.id) : undefined;
-  const lessonStale = Boolean(remoteLesson && remoteLesson.version !== lessonDraft?.expectedVersion);
+  const currentLessonDifficulty = data.difficulties.find(item=>item.source_lesson_id===lessonDraft?.id&&!item.source_deleted);
+  const lessonStale = Boolean(remoteLesson && (remoteLesson.version !== lessonDraft?.expectedVersion || (lessonDraft?.input.links?.track_problem && (currentLessonDifficulty?.version ?? null) !== (lessonDraft?.difficultyVersion ?? null))));
   const reminders = dueGoals.filter(goal => !reviewDismissed.includes(`${goal.id}:${goal.next_review_date}`));
   const dismissReminders = () => {
     const next = [...new Set([...reviewDismissed, ...reminders.map(goal => `${goal.id}:${goal.next_review_date}`)])];
@@ -422,12 +430,12 @@ function Workspace() {
             <Hint>无需先建训练计划。课程名称和授课老师为必填项。</Hint>
             <Hint>{lessonLocalSaved ? '上课草稿已保存在本机' : '正在保存本机上课草稿…'}</Hint>
             {lessonStale && remoteLesson && <Card>
-              <Text style={styles.errorText}>上课记录已有新版本，当前填写仍保留。请核对后重新填写修改。</Text>
+              <Text style={styles.errorText}>上课记录或关联困难已有新版本，当前填写仍保留。请核对后重新填写修改。</Text>
               <Hint>最新课程：{remoteLesson.course} · 老师：{remoteLesson.teacher}</Hint>
               <Text style={styles.body}>最新内容：{remoteLesson.content || '未填写'}</Text>
               <Button title="备份我的填写并载入最新上课记录" secondary disabled={busy} onPress={() => void safely(async () => {
                 await AsyncStorage.setItem(`skarma:${scope}:lesson-conflict-backup:${lessonDraft.id}`, JSON.stringify(lessonDraft));
-                setLessonDraft({ id: remoteLesson.id, expectedVersion: remoteLesson.version, input: lessonInput(remoteLesson) });
+                setLessonDraft({ id: remoteLesson.id, expectedVersion: remoteLesson.version, input: lessonInput(remoteLesson), difficultyVersion: data.difficulties.find(item => item.source_lesson_id === remoteLesson.id && !item.source_deleted)?.version ?? null });
               })} />
             </Card>}
             {deletedLesson && <><Text accessibilityRole="alert" style={styles.errorText}>记录已被管理员删除，当前本机填写仍保留，无法保存到原记录。</Text>
@@ -436,13 +444,18 @@ function Workspace() {
                 await AsyncStorage.removeItem(lessonStorageKey); setLessonDraft(null); setEditingLesson(false); setMessage('已备份本机填写，可以新建其他记录。');
               })} />
             </>}
-            <LessonEditor data={data} addOption={async option => {
+            <Button title={showPlanning?'收起课程规划提示':'查看课程均衡规划提示'} secondary disabled={busy} onPress={()=>setShowPlanning(!showPlanning)} />
+            {showPlanning && <PlanningOverview data={data} today={today} disabled={busy} hasDraft context="lesson" continueDraft={()=>setShowPlanning(false)}
+              plan={goal=>setLessonDraft(current=>{if(!current)return current;const links=current.input.links??emptyLessonLinks();if(links.targets.some(t=>t.goal_id===goal.id))return current;return {...current,input:{...current.input,links:{...links,targets:[...links.targets,{goal_id:goal.id,role:links.targets.length?'secondary':'primary',plan:'',progress:''}]}}};})}
+              openGoal={goal=>{setEditingLesson(false);setSelectedGoal(goal);}} openPathway={pathway=>{setEditingLesson(false);setPathwayToOpen(pathway);setTab('pathways');}} />}
+            <LessonEditor data={data} openGoal={goal=>{setEditingLesson(false);setSelectedGoal(goal);}} openPathway={pathway=>{setEditingLesson(false);setPathwayToOpen(pathway);setTab('pathways');}} addOption={async option => {
               const saved = await request<LessonOption>('/lesson-options', 'POST', option);
               acceptOption(saved);
               if (!saved.active) throw new Error('同名选项已停用，请在记录页的选项维护中恢复使用。');
             }} value={lessonDraft.input} change={patch => setLessonDraft(current => current && !busy ? { ...current, input: { ...current.input, ...patch } } : current)} disabled={busy} />
+            {data.difficulties.some(item=>item.source_lesson_id===lessonDraft.id&&!item.source_deleted) && <Button title="查看课程困难跟进" secondary onPress={()=>{setEditingLesson(false);setTab('followups');}} />}
             <Button title={busy ? '正在保存…' : '保存上课记录'} onPress={() => void saveLesson()} disabled={busy || deletedLesson || lessonStale || !lessonDraft.input.course.trim() || !lessonDraft.input.teacher.trim()} />
-            {lessonDraft.expectedVersion !== null && <DeleteRecordButton kind="lessons" id={lessonDraft.id} version={lessonDraft.expectedVersion} label="上课记录" removed={removed} />}
+            {lessonDraft.expectedVersion !== null && <DeleteRecordButton kind="lessons" id={lessonDraft.id} version={lessonDraft.expectedVersion} label="上课记录" hint="来源困难会保留，并标明来源上课已删除。" removed={removed} />}
           </> : editing && draft ? <>
             <View style={styles.sectionHeader}><Text style={styles.title}>{draft.revision ? '修改已完成训练' : stage === 'plan' ? '家庭干预计划' : '填写干预总结'}</Text>
               <Button title="返回" secondary onPress={() => setEditing(false)} disabled={busy} /></View>
@@ -488,7 +501,7 @@ function Workspace() {
           </> : detail ? <SessionDetail edit={reviseSession} removed={removed} session={data.sessions.find(item => item.id === detail.id) ?? detail} data={data} back={() => setDetail(null)} goFollowups={() => { setDetail(null); setTab('followups'); }} />
           : selectedGoal ? <>
             <View style={styles.sectionHeader}><Text style={styles.title}>{currentGoal?.title}</Text><Button title="返回" secondary onPress={() => setSelectedGoal(null)} /></View>
-            <RelatedKnowledge data={data} goalId={selectedGoal.id} openPathway={pathway => { setSelectedGoal(null); setPathwayToOpen(pathway); setTab('pathways'); }} />
+            <RelatedKnowledge data={data} openLesson={openLesson} goalId={selectedGoal.id} openPathway={pathway => { setSelectedGoal(null); setPathwayToOpen(pathway); setTab('pathways'); }} />
             <GoalReview key={selectedGoal.id} removed={removed} feedback={scrollTop} scope={scope} goal={currentGoal!} goals={data.goals}
               source={id => { const s = data.sessions.find(s => s.id === id); if (s) openSession(s); }}
               save={async body => {
@@ -558,7 +571,7 @@ function Workspace() {
                 {data.goals.filter(g => g.level === level).map(g => <GoalCard key={g.id} goal={g} data={data} onPress={() => setSelectedGoal(g)} />)}
               </View>)}
             </>}
-            {tab === 'pathways' && <PathwayLibrary removed={removed} data={data} initialPathway={pathwayToOpen} openGoal={setSelectedGoal} saved={(pathway: Pathway) => {
+            {tab === 'pathways' && <PathwayLibrary removed={removed} data={data} openLesson={openLesson} initialPathway={pathwayToOpen} openGoal={setSelectedGoal} saved={(pathway: Pathway) => {
               setData(current => mergeState(current, { ...current, pathways: [pathway, ...current.pathways.filter(item => item.id !== pathway.id)] }));
               setMessage('方法已保存。');
             }} />}
@@ -586,10 +599,10 @@ function Workspace() {
               </>}
             </>}
             {tab === 'followups' && <>
-              <Hint>训练中的困难进入后续跟进；成功片段先保存为待验证经验。</Hint>
+              <Hint>家庭干预与机构课程的问题可进入困难跟进；成功片段先保存为待验证经验。</Hint>
               <Text style={styles.subtitle}>困难跟进 · {data.difficulties.length}</Text>
               {data.difficulties.length ? data.difficulties.map(item => <FollowUpCard key={item.id} item={item} kind="difficulties" removed={removed} busy={busy} goals={data.goals} pathways={data.pathways}
-                source={() => { const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
+                source={() => { const lesson=data.lessons.find(l=>l.id===item.source_lesson_id);if(lesson){openLesson(lesson);return;} const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
                 update={body => updateFollowUp('difficulties', item.id, body)} />) : <Hint>完成训练时填写困难，这里会保留来源与跟进过程。</Hint>}
               <Button title={showExperienceForm ? '收起新经验' : '＋ 新建经验'} secondary onPress={() => setShowExperienceForm(value => !value)} />
               {showExperienceForm && <ExperienceCreator data={data} cancel={() => setShowExperienceForm(false)} saved={item => {
@@ -598,7 +611,7 @@ function Workspace() {
               }} />}
               <Text style={styles.subtitle}>成功经验 · {data.experiences.length}</Text>
               {data.experiences.length ? data.experiences.map(item => <FollowUpCard key={item.id} item={item} kind="experiences" removed={removed} busy={busy} goals={data.goals} pathways={data.pathways}
-                source={() => { const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
+                source={() => { const lesson=data.lessons.find(l=>l.id===item.source_lesson_id);if(lesson){openLesson(lesson);return;} const s = data.sessions.find(s => s.id === item.source_session_id); if (s) openSession(s); }}
                 update={body => updateFollowUp('experiences', item.id, body)} />) : <Hint>已保存不等于已验证。复用前，请补充适用情况和验证依据。</Hint>}
             </>}
           </>}
@@ -631,20 +644,75 @@ function Stat({ number, label }: { number: number; label: string }) {
   return <View style={styles.stat}><Text style={styles.statNumber}>{number}</Text><Text style={styles.hint}>{label}</Text></View>;
 }
 
-function LessonEditor({ value, change, disabled, data, addOption }: { value: LessonInput; change: (patch: Partial<LessonInput>) => void; disabled: boolean; data: AppState; addOption: (option: NewLessonOption) => Promise<void> }) {
+function LessonEditor({ value, change, disabled, data, addOption, openGoal, openPathway }: {
+  value: LessonInput; change: (patch: Partial<LessonInput>) => void; disabled: boolean; data: AppState;
+  addOption: (option: NewLessonOption) => Promise<void>; openGoal: (goal: Goal) => void; openPathway: (pathway: Pathway) => void;
+}) {
+  const links = value.links ?? emptyLessonLinks();
+  const patch = (next: Partial<LessonLinks>) => change({ links: { ...links, ...next } });
   const choices = (kind: LessonOption['kind']) => {
     const stopped = new Set((data.lesson_options ?? []).filter(option => option.kind === kind && !option.active).map(option => option.value));
     return [...(data.lesson_options ?? []).filter(option => option.kind === kind && option.active).map(option => option.value), ...data.lessons.map(lesson => kind === 'course' ? lesson.course : lesson.teacher)].filter(name => !stopped.has(name));
   };
-  return <Card>
-    <DateField label="上课日期" value={value.business_date} onChange={business_date => change({ business_date })} disabled={disabled} />
-    <LessonChoice label="课程名称（必填）" kind="course" value={value.course} values={choices('course')} change={course => change({ course })} add={addOption} disabled={disabled} />
-    <LessonChoice label="授课老师（必填）" kind="teacher" value={value.teacher} values={choices('teacher')} change={teacher => change({ teacher })} add={addOption} disabled={disabled} />
-    <Field label="上课内容" value={value.content} onChange={content => change({ content })} multiline disabled={disabled} />
-    <Field label="目标" value={value.goals} onChange={goals => change({ goals })} multiline disabled={disabled} />
-    <Field label="存在问题" value={value.problems} onChange={problems => change({ problems })} multiline disabled={disabled} />
-    <Field label="需要家里配合的" value={value.home_cooperation} onChange={home_cooperation => change({ home_cooperation })} multiline disabled={disabled} />
-  </Card>;
+  const changeTargets = (targets: LessonLinks['targets']) => patch({ targets: targets.length && !targets.some(t=>t.role==='primary') ? targets.map((t,i)=>i===0?{...t,role:'primary'}:t) : targets });
+  const primary = links.targets.find(t=>t.role==='primary');
+  const methods = [...data.pathways].sort((a,b)=>Number(b.goal_ids.some(id=>links.targets.some(t=>t.goal_id===id)))-Number(a.goal_ids.some(id=>links.targets.some(t=>t.goal_id===id))));
+  return <>
+    <Card><Text style={styles.cardTitle}>1 · 上课安排与内容</Text>
+      <DateField label="上课日期" value={value.business_date} onChange={business_date => change({ business_date })} disabled={disabled} />
+      <LessonChoice label="课程名称（必填）" kind="course" value={value.course} values={choices('course')} change={course => change({ course })} add={addOption} disabled={disabled} />
+      <LessonChoice label="授课老师（必填）" kind="teacher" value={value.teacher} values={choices('teacher')} change={teacher => change({ teacher })} add={addOption} disabled={disabled} />
+      <Field label="上课内容" value={value.content} onChange={content => change({ content })} multiline disabled={disabled} />
+    </Card>
+    <Card><Text style={styles.cardTitle}>2 · 本次课程目标</Text>
+      <Hint>参照干预计划选择主目标和副目标，逐个记录内容与观察。选择目标后保留一个主目标；将其他目标设为主目标可交换角色。可以先只记录课程，稍后补充关联；上课不会自动改变目标的达成或归档状态。</Hint>
+      {links.targets.map((target,index)=>{
+        const goal=data.goals.find(g=>g.id===target.goal_id);
+        return <View key={target.goal_id} style={styles.target}>
+          <Text style={styles.cardTitle}>{roles[target.role]} · {goal?.title ?? '目标待核对'}</Text>
+          <Hint>{goal?.criteria}</Hint>
+          <Select label={`更换课程${roles[target.role]}`} value={target.goal_id} disabled={disabled}
+            options={data.goals.filter(g=>g.level!=='long').map(g=>({value:g.id,label:g.title+(g.status==='archived'?' · 已归档':'')}))}
+            onChange={id=>changeTargets(replaceTarget(links.targets.map(t=>({...t,outcome:null,next_step:''})),index,id))} />
+          <Select label={`课程目标角色：${goal?.title ?? target.goal_id}`} value={target.role} disabled={disabled}
+            options={Object.entries(roles).filter(([value])=>target.role!=='primary'||value==='primary').map(([value,label])=>({value,label}))} onChange={role=>{
+              const next=role as Role;
+              changeTargets(links.targets.map((t,i)=>i===index?{...t,role:next}:next==='primary'&&t.role==='primary'?{...t,role:target.role==='primary'?'secondary':target.role}:t));
+            }} />
+          <Field label={`课程${roles[target.role]}内容`} value={target.plan} multiline disabled={disabled} onChange={plan=>patch({targets:links.targets.map((t,i)=>i===index?{...t,plan}:t)})} />
+          <Field label={`课程${roles[target.role]}观察`} value={target.progress} multiline disabled={disabled} onChange={progress=>patch({targets:links.targets.map((t,i)=>i===index?{...t,progress}:t)})} />
+          <Button title={`移除课程目标：${goal?.title}`} secondary disabled={disabled} onPress={()=>changeTargets(links.targets.filter((_,i)=>i!==index))} />
+          {goal && <Button title={`查看课程目标：${goal.title}`} secondary disabled={disabled} onPress={()=>openGoal(goal)} />}
+        </View>;
+      })}
+      <Select label="添加课程目标" value="" disabled={disabled} options={[{value:'',label:links.targets.length?'选择副目标或复习目标':'选择主目标'},...data.goals.filter(g=>g.level!=='long'&&!links.targets.some(t=>t.goal_id===g.id)).map(g=>({value:g.id,label:g.title+(g.status==='archived'?' · 已归档':'')}))]}
+        onChange={id=>{if(id)patch({targets:[...links.targets,{goal_id:id,role:links.targets.length?'secondary':'primary',plan:'',progress:''}]});}} />
+      <Field label="目标补充说明（保留原文）" value={value.goals} onChange={goals => change({ goals })} multiline disabled={disabled} />
+      {!links.targets.length && value.goals ? <Hint>目标原文已保留，尚未选择关联目标；不会根据文字自动猜测关联。</Hint> : null}
+    </Card>
+    <Card><Text style={styles.cardTitle}>3 · 本次实际使用的方法</Text>
+      <Hint>仅选择这节课实际用过的方法。方法的适用目标不会自动成为课程目标；已有关联目标的方法排在前面。</Hint>
+      {methods.map(method=><View key={method.id}>
+        <Pressable accessibilityRole="checkbox" accessibilityLabel={`课程实际方法：${method.title}`} accessibilityState={{checked:links.pathway_ids.includes(method.id),disabled}} aria-checked={links.pathway_ids.includes(method.id)} disabled={disabled}
+          onPress={()=>patch({pathway_ids:links.pathway_ids.includes(method.id)?links.pathway_ids.filter(id=>id!==method.id):[...links.pathway_ids,method.id]})} style={styles.chip}>
+          <Text>{links.pathway_ids.includes(method.id)?'✓ ':''}{method.title}{method.status==='archived'?' · 已归档':''}</Text>
+        </Pressable>
+        {links.pathway_ids.includes(method.id) && <><Hint>{method.steps || method.description}</Hint><Button title={`查看课程方法：${method.title}`} secondary disabled={disabled} onPress={()=>openPathway(method)} /></>}
+      </View>)}
+      {!methods.length && <Hint>暂无方法，可先保存课程，再到方法页新增。</Hint>}
+    </Card>
+    <Card><Text style={styles.cardTitle}>4 · 问题与家庭配合</Text>
+      <Field label="存在问题" value={value.problems} onChange={problems => change({ problems })} multiline disabled={disabled} />
+      <Text style={styles.label}>加入困难跟进</Text><View style={styles.row}>{[false,true].map(v=><Chip key={String(v)} title={v?'需要跟进':'仅保留课程备注'} selected={links.track_problem===v} disabled={disabled} onPress={()=>patch({track_problem:v,...(v&&!links.problem_goal_ids.length&&!links.problem_pathway_ids.length?{problem_goal_ids:primary?[primary.goal_id]:[],problem_pathway_ids:links.pathway_ids}: {})})} />)}</View>
+      {links.track_problem && <>
+        <Hint>默认关联本次主目标及实际方法，可独立调整。保存后进入困难跟进，保留上课来源；已单独修改或解决的内容不会被静默覆盖，取消此选项也不删除既有困难。</Hint>
+        <ExperienceBindings goals={[...data.goals].sort((a,b)=>Number(links.targets.some(t=>t.goal_id===b.id))-Number(links.targets.some(t=>t.goal_id===a.id)))} pathways={methods}
+          goalIds={links.problem_goal_ids} pathwayIds={links.problem_pathway_ids} disabled={disabled}
+          changeGoals={problem_goal_ids=>patch({problem_goal_ids})} changePathways={problem_pathway_ids=>patch({problem_pathway_ids})} />
+      </>}
+      <Field label="需要家里配合的" value={value.home_cooperation} onChange={home_cooperation => change({ home_cooperation })} multiline disabled={disabled} />
+    </Card>
+  </>;
 }
 
 function LessonCard({ lesson, onPress }: { lesson: Lesson; onPress: () => void }) {
@@ -719,7 +787,7 @@ function TrainingEditor({ draft, goals, sessions, difficulties, disabled, change
         const last = sessions.filter(s => s.id !== draft.id && s.status === 'completed')
           .sort((a, b) => b.business_date.localeCompare(a.business_date))
           .flatMap(s => s.targets.filter(t => t.goal_id === target.goal_id).map(t => ({ date: s.business_date, progress: t.progress })))[0];
-        const unresolved = difficulties.filter(d => d.status !== 'resolved' && sessions.some(s => s.id === d.source_session_id && s.targets.some(t => t.goal_id === target.goal_id)));
+        const unresolved = difficulties.filter(d => d.status !== 'resolved' && (d.goal_ids.includes(target.goal_id) || d.pathway_ids.some(id=>pathways.some(path=>path.id===id && path.goal_ids.includes(target.goal_id))) || sessions.some(s => s.id === d.source_session_id && s.targets.some(t => t.goal_id === target.goal_id))));
         return <View style={styles.target} key={target.goal_id}>
           <View style={styles.sectionHeader}><Text style={styles.cardTitle}>{roles[target.role]} · {goal?.title ?? '目标已变更'}</Text>
             <Pressable accessibilityRole="button" accessibilityLabel={`移除${goal?.title}`} disabled={disabled} onPress={() => change({ targets: input.targets.filter((_, i) => i !== index) })}><Text style={styles.link}>移除</Text></Pressable></View>
@@ -728,7 +796,7 @@ function TrainingEditor({ draft, goals, sessions, difficulties, disabled, change
             options={goals.filter(item => item.id === target.goal_id || (target.role === 'review' ? isReviewable(item) : isTrainable(item))).map(item => ({ value: item.id, label: item.title }))}
             onChange={id => change({ targets: replaceTarget(input.targets, index, id) })} />
           {last && <Text style={styles.context}>上次（{last.date}）：{last.progress || '未填写逐目标观察'}</Text>}
-          {unresolved.length > 0 && <Hint>相关训练中有 {unresolved.length} 条未解决困难，可在跟进页查看。</Hint>}
+          {unresolved.length > 0 && <Hint>相关目标或方法有 {unresolved.length} 条未解决困难，可在跟进页查看。</Hint>}
           <Field label={`${roles[target.role]}计划`} value={target.plan} onChange={v => updateTarget(index, { plan: v })} multiline placeholder="这次准备如何围绕该目标开展？" disabled={disabled} />
         </View>;
       })}
@@ -973,7 +1041,7 @@ function FollowUpCard({ item, kind, busy, source, update, goals, pathways, remov
     </>}
     {item.next_review_date && <Hint>下次回看：{item.next_review_date}</Hint>}
     {item.conclusion ? <Hint>{kind === 'experiences' ? '验证依据' : '跟进结论'}：{item.conclusion}</Hint> : null}
-    <View style={styles.row}>{item.source_session_id ? <Button title="查看来源训练" secondary onPress={source} /> : <Hint>{item.source_deleted ? '原来源训练已删除 · 跟进保留' : '独立记录 · 无来源训练'}</Hint>}<Button title={expanded ? '收起' : '更新跟进'} secondary disabled={busy} onPress={() => setExpanded(v => !v)} /></View>
+    <View style={styles.row}>{!item.source_deleted && (item.source_session_id || item.source_lesson_id) ? <Button title={item.source_lesson_id ? '查看来源上课' : '查看来源训练'} secondary onPress={source} /> : <Hint>{item.source_deleted ? item.source_lesson_id ? '原来源上课记录已删除 · 跟进保留' : '原来源训练已删除 · 跟进保留' : '独立记录 · 无来源训练'}</Hint>}<Button title={expanded ? '收起' : '更新跟进'} secondary disabled={busy} onPress={() => setExpanded(v => !v)} /></View>
     {expanded && <>
       {version !== item.version && <><Hint>记录已被更新，当前填写仍保留。请核对最新记录后再保存。</Hint><Button title="载入最新跟进内容" secondary onPress={reset} disabled={busy} /></>}
       {<>

@@ -32,10 +32,15 @@ export type Session = SessionInput & {
 export type LessonInput = {
   business_date: string; course: string; teacher: string; content: string;
   goals: string; problems: string; home_cooperation: string;
+  links?: LessonLinks;
 };
-export type Lesson = LessonInput & { id: string; version: number };
+export type LessonTarget = Pick<Target, 'goal_id' | 'role' | 'plan' | 'progress'>;
+export type LessonLinks = { targets: LessonTarget[]; pathway_ids: string[]; track_problem: boolean; problem_goal_ids: string[]; problem_pathway_ids: string[] };
+export const emptyLessonLinks = (): LessonLinks => ({ targets: [], pathway_ids: [], track_problem: false, problem_goal_ids: [], problem_pathway_ids: [] });
+export type Lesson = LessonInput & { id: string; version: number; target_snapshots?: { goal_id: string; goal_snapshot: Goal }[] };
 export type FollowUp = {
   id: string; version: number; source_session_id: string | null; content: string;
+  source_lesson_id?: string | null;
   kind: 'general' | 'task' | null; status: string;
   next_review_date: string | null; conclusion: string;
   goal_ids: string[]; pathway_ids: string[];
@@ -49,7 +54,7 @@ export type Pathway = {
   id: string; version: number; title: string; description: string; steps: string;
   status: 'active' | 'archived'; goal_ids: string[];
 };
-export type LessonOption = { kind: 'course' | 'teacher'; value: string; active: boolean; version: number };
+export type LessonOption = { kind: 'course' | 'teacher'; value: string; active: boolean; version: number; renamed_to?: string | null };
 export type NewLessonOption = Pick<LessonOption, 'kind' | 'value'>;
 export type AppState = { goals: Goal[]; sessions: Session[]; difficulties: FollowUp[]; experiences: FollowUp[]; pathways: Pathway[]; lessons: Lesson[]; lesson_options?: LessonOption[]; deleted?: { kind: string; id: string }[] };
 export type SessionRevisionInput = { note: string; difficulty_version: number | null; experience_version: number | null };

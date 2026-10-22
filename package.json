@@ -20,6 +20,7 @@
     "test:container": "node tools/check-container.mjs",
     "test:workflow": "node tools/test-workflow.mjs",
     "test:relations": "node tools/check-relations.mjs",
+    "test:lesson-links": "node tools/check-relations.mjs --lessons",
     "test:mutations": "node tools/check-relations.mjs --mutations"
   },
   "devDependencies": {

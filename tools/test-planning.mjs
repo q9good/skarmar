@@ -90,3 +90,39 @@ test('empty space yields zero coverage and finite values', () => {
   const result = buildPlanning(data([], []), options);
   assert.deepEqual(result.rows, []); assert.equal(result.coverage, 0); assert.equal(result.goalsWithPathways, 0);
 });
+
+const lesson = (id, date, targets, patch = {}) => ({ id, business_date: date,
+  links: { targets: targets.map(goal => ({ goal_id: goal.id, role: 'primary', progress: `课程观察 ${goal.id}`, plan: '' })), pathway_ids: ['actual'] },
+  target_snapshots: targets.map(goal => ({ goal_id: goal.id, goal_snapshot: { ...goal } })), ...patch });
+test('family and lessons count separately with a combined view, never inferring legacy text links', () => {
+  const one = lesson('same-id', '2026-10-18', [short]);
+  const fixture = { ...data([session('same-id', '2026-10-18', [short])]), lessons: [one, one,
+    lesson('old', '2026-09-18', [short]), lesson('future', '2026-10-19', [short]),
+    lesson('legacy', '2026-10-18', [], { links: undefined, goals: short.id })] };
+  const family = buildPlanning(fixture, options);
+  const classes = buildPlanning(fixture, { ...options, source: 'lessons' });
+  const both = buildPlanning(fixture, { ...options, source: 'all' });
+  assert.equal(row(family, short.id).count, 1); assert.equal(row(classes, short.id).count, 1);
+  assert.equal(row(both, short.id).count, 2);
+  assert.equal(row(both, short.id).familyCount, 1); assert.equal(row(both, short.id).lessonCount, 1);
+  assert.equal(family.completedCount, 1); assert.equal(classes.completedCount, 2); assert.equal(both.completedCount, 3);
+  assert.equal(row(classes, short.id).observation, '课程观察 short');
+});
+test('lesson medium rollup keeps saved hierarchy and deduplicates parent plus children', () => {
+  const newParent = goal('new-parent', 'medium');
+  const fixture = { ...data([], [medium, newParent, { ...short, parent_id: newParent.id }, other]),
+    lessons: [lesson('both', '2026-10-18', [short, medium, other]), lesson('boundary', '2026-09-19', [short])] };
+  const result = buildPlanning(fixture, { ...options, level: 'medium', source: 'lessons' });
+  assert.equal(row(result, medium.id).count, 2); assert.equal(row(result, medium.id).directCount, 1);
+  assert.equal(row(result, newParent.id).count, 0);
+});
+test('lesson method usage counts explicit actual uses once, within the period only', () => {
+  const fixture = { ...data([], [short], [{ id: 'actual', status: 'active', goal_ids: [] }, { id: 'applicable', status: 'active', goal_ids: [short.id] }]),
+    lessons: [lesson('used', '2026-10-18', [short]), lesson('used', '2026-10-18', [short]),
+      lesson('old', '2026-09-18', [short]), lesson('future', '2026-10-19', [short])] };
+  const result = buildPlanning(fixture, options);
+  assert.equal(result.pathways.find(p => p.pathway.id === 'actual').lessonUseCount, 1);
+  assert.equal(result.pathways.find(p => p.pathway.id === 'applicable').lessonUseCount, 0);
+  assert.equal(row(result, short.id).pathwayCount, 1);
+  assert.equal(row(result, short.id).count, 0);
+});

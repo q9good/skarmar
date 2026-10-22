@@ -232,6 +232,37 @@ pub struct LessonInput {
     pub goals: String,
     pub problems: String,
     pub home_cooperation: String,
+    /// Omission preserves links for legacy clients; explicit empty links clear them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<LessonLinks>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LessonLinks {
+    #[serde(default)]
+    pub targets: Vec<LessonTarget>,
+    #[serde(default)]
+    pub pathway_ids: Vec<String>,
+    #[serde(default)]
+    pub track_problem: bool,
+    #[serde(default)]
+    pub problem_goal_ids: Vec<String>,
+    #[serde(default)]
+    pub problem_pathway_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct LessonTarget {
+    pub goal_id: String,
+    pub role: Role,
+    pub plan: String,
+    pub progress: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct LessonTargetSnapshot {
+    pub goal_id: String,
+    pub goal_snapshot: Goal,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -240,12 +271,16 @@ pub struct Lesson {
     pub version: u64,
     #[serde(flatten)]
     pub input: LessonInput,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub target_snapshots: Vec<LessonTargetSnapshot>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SaveLesson {
     pub expected_version: Option<u64>,
     pub lesson: LessonInput,
+    #[serde(default)]
+    pub difficulty_version: Option<u64>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -254,6 +289,8 @@ pub struct LessonOption {
     pub value: String,
     pub active: bool,
     pub version: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub renamed_to: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -268,6 +305,8 @@ pub struct UpdateLessonOption {
     pub value: String,
     pub active: bool,
     pub expected_version: u64,
+    #[serde(default)]
+    pub new_value: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -275,6 +314,8 @@ pub struct FollowUp {
     pub id: String,
     pub version: u64,
     pub source_session_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_lesson_id: Option<String>,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub source_deleted: bool,
     pub content: String,

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import type { AppState, Goal, Pathway } from './api';
-import { buildPlanning, needsTraining, progressGroup, progressGroups, type PlanningLevel, type PlanningPeriod } from './planning';
+import { buildPlanning, needsTraining, progressGroup, progressGroups, type PlanningLevel, type PlanningPeriod, type PlanningSource } from './planning';
 
 const palette = ['#538A76', '#537DAD', '#C49661', '#9A80A3', '#6A9FA4', '#BE7C6B', '#A7AFA6'];
 type Segment = { id: string; title: string; value: number; color: string };
@@ -41,17 +41,19 @@ function Chart({ title, segments, unit, explanation, select, grid }: { title: st
   </View>;
 }
 
-export function PlanningOverview({ data, today, plan, openGoal, openPathway, hasDraft, continueDraft, disabled }: {
+export function PlanningOverview({ data, today, plan, openGoal, openPathway, hasDraft, continueDraft, disabled, context = 'training' }: {
   data: AppState; today: string; plan: (goal: Goal) => void; openGoal: (goal: Goal) => void;
-  openPathway: (pathway: Pathway) => void; hasDraft: boolean; continueDraft: () => void; disabled: boolean;
+  openPathway: (pathway: Pathway) => void; hasDraft: boolean; continueDraft: () => void; disabled: boolean; context?: 'training' | 'lesson';
 }) {
   const [days, setDays] = useState<PlanningPeriod>(30);
+  const [source, setSource] = useState<PlanningSource>(context === 'lesson' ? 'lessons' : 'family');
+  const noun = source === 'family' ? '训练' : source === 'lessons' ? '上课' : '活动';
   const [level, setLevel] = useState<PlanningLevel>('short');
   const [includeArchived, setIncludeArchived] = useState(false);
   const [view, setView] = useState<'goals' | 'pathways'>('goals');
   const [onlyUncovered, setOnlyUncovered] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const summary = useMemo(() => buildPlanning(data, { today, days, level, includeArchived }), [data, today, days, level, includeArchived]);
+  const summary = useMemo(() => buildPlanning(data, { today, days, level, includeArchived, source }), [data, today, days, level, includeArchived, source]);
   const resetList = () => { setSelectedId(null); setOnlyUncovered(false); };
   const ranked = [...summary.rows].filter(row => row.count > 0).sort((a, b) => b.count - a.count || a.goal.id.localeCompare(b.goal.id));
   const top = ranked.slice(0, 6);
@@ -62,31 +64,32 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
   const rows = summary.rows.filter(row => (!onlyUncovered || summary.uncovered.includes(row)) && (!selectedId || (selectedId === 'remaining' ? remainingIds.has(row.goal.id) : row.goal.id === selectedId)));
   const maxCount = Math.max(1, ...summary.rows.map(row => row.count));
   return <>
-    <Text style={s.body}>先看看哪些方向最近较少被照顾，再安排这一次。均衡推进不要求每个目标训练次数相同。</Text>
-    {hasDraft && <Action title="继续当前训练计划" press={continueDraft} disabled={disabled} />}
+    <Text style={s.body}>先看看哪些方向最近较少被照顾，再安排这一次。均衡推进不要求每个目标次数相同。</Text>
+    {hasDraft && <Action title={context === 'lesson' ? '继续当前上课记录' : '继续当前训练计划'} press={continueDraft} disabled={disabled} />}
     <View style={s.card}>
-      <Text style={s.label}>训练统计时间</Text><View style={s.row}>
+      <Text style={s.label}>统计来源</Text><View style={s.row}>{(['family','lessons','all'] as const).map(value => <Action key={value} title={{family:'家庭干预覆盖',lessons:'机构课程覆盖',all:'合计覆盖'}[value]} selected={source===value} press={()=>{setSource(value);resetList();}} />)}</View>
+      <Text style={s.label}>统计时间</Text><View style={s.row}>
         {([7, 30, 90, null] as const).map(value => <Action key={String(value)} title={value === null ? '全部记录' : `近 ${value} 天`} selected={days === value} press={() => { setDays(value); resetList(); }} />)}
-      </View><Text style={s.hint}>{summary.start ?? '最早记录'} — {today} · 按训练发生日期，含今天</Text>
+      </View><Text style={s.hint}>{summary.start ?? '最早记录'} — {today} · 按实际发生日期，含今天</Text>
       <View style={s.row}>{(['short', 'medium'] as const).map(value => <Action key={value} title={value === 'short' ? '短期目标' : '中期目标'} selected={level === value} press={() => { setLevel(value); resetList(); }} />)}
         <Action title={includeArchived ? '已包含归档' : '包含归档目标'} selected={includeArchived} press={() => { setIncludeArchived(!includeArchived); resetList(); }} /></View>
       <View style={s.row}><Action title="目标进展与训练" selected={view === 'goals'} press={() => setView('goals')} /><Action title="方法覆盖" selected={view === 'pathways'} press={() => setView('pathways')} /></View>
     </View>
     {view === 'goals' ? <>
       <View style={s.card} testID="planning-summary"><Text style={s.title}>这段时间照顾到了哪些目标？</Text>
-        <Text style={s.body}>已覆盖 {summary.coveredGoals} / {summary.rows.length} 个目标 · 完成 {summary.completedCount} 场训练</Text>
-        <Text style={s.body}>{summary.uncovered.length} 个仍待推进的目标近期没有训练记录</Text>
+        <Text style={s.body}>已覆盖 {summary.coveredGoals} / {summary.rows.length} 个目标 · 完成 {summary.completedCount} {source === 'family' ? '场训练' : source === 'lessons' ? '节机构课程' : '次活动'}</Text>
+        <Text style={s.body}>{summary.uncovered.length} 个仍待推进的目标近期没有{noun}记录</Text>
         <Text style={s.hint}>零次表示所选时间内未记录，不表示没有能力或从未练习。已达成、已完成及归档目标不列入待推进提醒。</Text>
         {summary.uncovered.length > 0 && <Action title="查看近期未覆盖目标" press={() => { setOnlyUncovered(true); setSelectedId(null); }} />}
       </View>
       {!onlyUncovered && !selectedId && <View style={s.charts}>
-        <Chart grid title="训练分布" unit="次目标覆盖" segments={distribution}
-          explanation="每场训练对同一目标只计一次；涉及多个目标会分别计数。图中比例表示训练覆盖分配，不代表时长或能力达成率。"
+        <Chart grid title={`${noun}分布`} unit="次目标覆盖" segments={distribution}
+          explanation="每条所选来源记录对同一目标只计一次；涉及多个目标分别计数。比例表示覆盖分配，不代表时长或能力达成率。"
           select={id => { setOnlyUncovered(false); setSelectedId(id); }} />
         <Chart grid title="当前目标进展" unit="个目标" segments={summary.progress}
-          explanation="根据目标当前确认的状态统计，不受训练时间筛选影响。归档本身不等于已达成；尚未设置量化达成百分比。" />
+          explanation="根据目标当前确认的状态统计，不受记录时间筛选影响。归档本身不等于已达成；尚未设置量化达成百分比。" />
       </View>}
-      {level === 'medium' && <Text style={s.hint}>中期次数包含直接训练及当时所属短期目标的训练；同一场不重复计数。下属短期达成数按当前目标关系计算。</Text>}
+      {level === 'medium' && <Text style={s.hint}>中期次数包含直接记录及当时所属短期目标的覆盖；同一条记录不重复计数。下属短期达成数按当前目标关系计算。</Text>}
       <View style={s.card}><Text style={s.title}>安排前逐个看看</Text><Text style={s.hint}>默认按所选时间内次数从少到多排列；相同次数时，较久未记录的在前。</Text>
         {(onlyUncovered || selectedId) && <><Text style={s.label}>{onlyUncovered ? '正在查看：近期未覆盖且仍待推进' : `正在查看：${selectedId === 'remaining' ? `其余 ${remaining.length} 个目标` : summary.rows.find(row => row.goal.id === selectedId)?.goal.title ?? '所选目标'}`}</Text>
           <Action title="显示全部目标" press={resetList} /></>}
@@ -98,12 +101,13 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
         return <View key={row.goal.id} style={s.card} testID={`planning-goal-${row.goal.id}`}>
           <Text style={s.title}>{row.goal.title}</Text>
           <Text style={[s.label, { color: group.color }]}>{row.goal.progress_status === 'achieved' ? '已达成' : row.goal.progress_status === 'completed' ? '已完成' : group.title}{row.goal.status === 'archived' ? ' · 已归档' : ''}</Text>
-          <Text style={s.body}>所选时间 {row.count} 次 · 最近训练 {row.lastDate ?? '暂无记录'}</Text>
-          <View style={s.track} accessibilityRole="image" accessibilityLabel={`${row.goal.title}训练覆盖 ${row.count} 次，本范围最多 ${maxCount === 1 && !ranked.length ? 0 : maxCount} 次`}>
+          <Text style={s.body}>所选时间 {row.count} 次 · 最近{noun} {row.lastDate ?? '暂无记录'}</Text>
+          <Text style={s.hint}>家庭干预 {row.familyCount} 次 · 机构课程 {row.lessonCount} 节 · 合计 {row.familyCount+row.lessonCount} 次</Text>
+          <View style={s.track} accessibilityRole="image" accessibilityLabel={`${row.goal.title}${noun}覆盖 ${row.count} 次，本范围最多 ${maxCount === 1 && !ranked.length ? 0 : maxCount} 次`}>
             <View style={[s.fill, { width: `${row.count / maxCount * 100}%` }]} />
           </View>
           {level === 'medium' && <>
-            <Text style={s.hint}>直接训练 {row.directCount} 次 · 仅通过下属短期覆盖 {row.childOnlyCount} 次</Text>
+            <Text style={s.hint}>直接记录 {row.directCount} 次 · 仅通过下属短期覆盖 {row.childOnlyCount} 次</Text>
             <Text style={s.body}>下属短期已达成／完成 {row.completedChildren} / {row.totalChildren} 个</Text>
             {row.totalChildren > 0 ? <Ring size={88} center={`${row.completedChildren}/${row.totalChildren}`} label={`${row.goal.title}下属短期达成情况`} unit="已达成" segments={[
               { id: 'done', title: '已达成／完成', value: row.completedChildren, color: '#538A76' },
@@ -114,7 +118,7 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
           {row.observation ? <Text style={s.observation}>最近观察 · {row.observationDate}：{row.observation}</Text> : <Text style={s.hint}>尚无逐目标观察，可先核对目标与活动是否合适。</Text>}
           <Text style={s.hint}>明确关联的使用中方法 {row.pathwayCount} 条</Text>
           <View style={s.row}>
-            <Action title={hasDraft ? '加入当前计划' : '围绕此目标规划'} disabled={disabled} press={() => plan(row.goal)} />
+            <Action title={context === 'lesson' ? '加入当前课程' : hasDraft ? '加入当前计划' : '围绕此目标规划'} disabled={disabled} press={() => plan(row.goal)} />
             <Action title="查看目标与经验" press={() => openGoal(row.goal)} />
           </View>
           {!needsTraining(row.goal) && <Text style={s.hint}>此目标将以“复习”角色加入计划。</Text>}
@@ -125,11 +129,12 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
         { id: 'with', title: '已有使用中方法', value: summary.goalsWithPathways, color: '#538A76' },
         { id: 'without', title: '尚无使用中方法', value: summary.rows.length - summary.goalsWithPathways, color: '#C49661' },
       ]} explanation="按当前明确关联统计，与训练时间筛选无关。归档方法不计入覆盖；适用关系不表示训练时实际用过。" />
-      <View style={s.card}><Text style={s.title}>有哪些方式可以尝试？</Text><Text style={s.body}>目前尚未记录每次实际使用的方法，因此不展示方法训练次数。</Text>
+      <View style={s.card}><Text style={s.title}>有哪些方式可以尝试？</Text><Text style={s.body}>家庭干预尚未记录每次实际使用的方法；机构课程按明确选择的实际方法统计，不从适用关系推算。</Text>
         <Text style={s.hint}>下面按明确绑定展示适用目标与经验数量。长期目标的绑定不会自动推算到中短期目标；经验数量不表示方法有效程度。</Text></View>
       {!summary.pathways.length && <View style={s.card}><Text style={s.body}>尚无此范围的方法，可到“方法”页创建并关联目标。</Text></View>}
-      {summary.pathways.map(({ pathway, goals, experienceCount }) => <View key={pathway.id} style={s.card} testID={`planning-pathway-${pathway.id}`}>
+      {summary.pathways.map(({ pathway, goals, experienceCount, lessonUseCount }) => <View key={pathway.id} style={s.card} testID={`planning-pathway-${pathway.id}`}>
         <Text style={s.title}>{pathway.title}</Text><Text style={s.hint}>{pathway.status === 'archived' ? '已归档' : '使用中'} · 当前范围适用 {goals.length} 个目标 · {experienceCount} 条经验</Text>
+        <Text style={s.hint}>所选时间机构课程实际使用 {lessonUseCount} 节 · 家庭实际使用次数待接入</Text>
         <Text style={s.body}>{goals.map(goal => goal.title).join('、') || '当前范围暂无明确关联目标'}</Text>
         {pathway.description ? <Text style={s.hint}>{pathway.description}</Text> : null}
         <Action title="查看方法与细节" press={() => openPathway(pathway)} />

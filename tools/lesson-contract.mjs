@@ -1,8 +1,9 @@
 // Shared daily-class-record contract on native SQLite and Durable Object SQLite.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { lessonLinksContract } from './lesson-links-contract.mjs';
 
-export async function lessonContract(label, api) {
+export async function lessonContract(label, api, exec, admin) {
   const before = await api('GET', '/api/state');
   const id = randomUUID();
   const path = `/api/lessons/${id}`;
@@ -37,5 +38,6 @@ export async function lessonContract(label, api) {
   await api('POST', '/api/lesson-options', { kind: 'teacher', value: ' ' }, 422);
   const afterOptions = await api('GET', '/api/state');
   assert.deepEqual(afterOptions.lessons, state.lessons, 'stopping an option never rewrites saved records');
+  await lessonLinksContract(label, api, exec, admin);
   console.log(`PASS ${label}: independent class records, course/teacher required, optional fields, edit and stale-version conflict`);
 }

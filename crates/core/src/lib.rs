@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod config;
 pub mod import;
+pub mod lessons;
 pub mod model;
 pub mod mutations;
 pub mod sql;

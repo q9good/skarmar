@@ -7,7 +7,7 @@ import zipfile
 from xml.etree import ElementTree as ET
 
 NS = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-SHEETS = ['说明', '目标', '训练记录', '上课记录', '逐目标明细', '困难', '经验', '目标历史', '途径', '目的途径关系', '经验关联']
+SHEETS = ['说明', '目标', '训练记录', '上课记录', '逐目标明细', '困难', '经验', '目标历史', '途径', '目的途径关系', '经验关联', '课程逐目标']
 
 
 def read_workbook(data):
@@ -61,6 +61,26 @@ def verify_fixture(payload):
         assert {row[id_column] for row in sheets[name]} == {item['id'] for item in state[key]}, name
         assert len(sheets[name]) == len(state[key]), name
     assert len(sheets['逐目标明细']) == sum(len(session['targets']) for session in state['sessions'])
+    assert len(sheets['课程逐目标']) == sum(len(lesson.get('links', {}).get('targets', [])) for lesson in state['lessons'])
+    for lesson in state['lessons']:
+        links = lesson.get('links') or {}
+        row = next(row for row in sheets['上课记录'] if row['记录ID'] == lesson['id'])
+        assert row['实际方法ID'] == '\n'.join(links.get('pathway_ids', []))
+        assert row['困难关联目标ID'] == '\n'.join(links.get('problem_goal_ids', []))
+        assert row['困难关联方法ID'] == '\n'.join(links.get('problem_pathway_ids', []))
+        assert row['加入困难跟进'] == ('是' if links.get('track_problem') else '否')
+        for target in links.get('targets', []):
+            detail = next(row for row in sheets['课程逐目标'] if row['上课ID'] == lesson['id'] and row['目标ID'] == target['goal_id'])
+            assert detail['逐目标内容'] == target['plan']
+            assert detail['逐目标观察'] == target['progress']
+            assert detail['目标角色'] == target['role']
+            snapshot = next((v['goal_snapshot'] for v in lesson.get('target_snapshots', []) if v['goal_id'] == target['goal_id']), None)
+            assert detail['当时目标名称'] == (snapshot['title'] if snapshot else '')
+            assert detail['当时达成标准'] == (snapshot['criteria'] if snapshot else '')
+    for name, key in [('困难', 'difficulties'), ('经验', 'experiences')]:
+        for item in state[key]:
+            row = next(row for row in sheets[name] if row['记录ID'] == item['id'])
+            assert row['来源上课ID'] == (item.get('source_lesson_id') or '')
     revisions = payload['history']
     assert {(row['目标ID'], row['版本']) for row in sheets['目标历史']} == {(r['goal']['id'], str(r['goal']['version'])) for r in revisions}
     assert len(sheets['目标历史']) == len(revisions)
@@ -103,7 +123,7 @@ def verify_fixture(payload):
     all_text = json.dumps(sheets, ensure_ascii=False)
     for private in ['password_hash', 'token_hash', 'auth_sessions', 'synthetic-owner-contract-password']:
         assert private not in all_text
-    print('PASS Excel: eleven sheets, complete purpose/pathway/experience relations, historical snapshots and literal text')
+    print('PASS Excel: twelve sheets, complete purpose/pathway/experience relations, historical snapshots and literal text')
 
 
 if __name__ == '__main__':

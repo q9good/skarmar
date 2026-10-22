@@ -85,7 +85,7 @@ pub(crate) fn valid_id(id: &str) -> Result<()> {
     Ok(())
 }
 
-fn valid_date(date: &str) -> Result<()> {
+pub(crate) fn valid_date(date: &str) -> Result<()> {
     if date.len() != 10 || chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").is_err() {
         return Err(ApiError::invalid("请选择有效日期，格式为 YYYY-MM-DD"));
     }
@@ -103,6 +103,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         (7, include_str!("../migrations/007_lessons.sql")),
         (8, include_str!("../migrations/008_lesson_options.sql")),
         (9, include_str!("../migrations/009_record_changes.sql")),
+        (10, include_str!("../migrations/010_lesson_links.sql")),
     ];
     db.execute_batch("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY);")?;
     let applied = db
@@ -281,8 +282,8 @@ pub fn state(db: &dyn Sql) -> Result<AppState> {
         experiences: list(db, "experiences")?,
         pathways: list(db, "pathways")?,
         lessons: list(db, "lessons")?,
-        lesson_options: db.query("SELECT kind,value,CAST(active AS TEXT),CAST(version AS TEXT) FROM lesson_options ORDER BY kind,value", &[])?
-            .into_iter().map(|row| Ok(LessonOption { kind: row[0].clone(), value: row[1].clone(), active: row[2] == "1", version: row[3].parse().map_err(|_| ApiError::storage())? })).collect::<Result<_>>()?,
+        lesson_options: db.query("SELECT kind,value,CAST(active AS TEXT),CAST(version AS TEXT),COALESCE(renamed_to,'') FROM lesson_options ORDER BY kind,value", &[])?
+            .into_iter().map(|row| Ok(LessonOption { kind: row[0].clone(), value: row[1].clone(), active: row[2] == "1", version: row[3].parse().map_err(|_| ApiError::storage())?, renamed_to: if row[4].is_empty() {None} else {Some(row[4].clone())} })).collect::<Result<_>>()?,
     })
 }
 
@@ -293,26 +294,34 @@ pub fn add_lesson_option(db: &dyn Sql, input: NewLessonOption) -> Result<LessonO
         "teacher" => 100,
         _ => return Err(ApiError::invalid("选项类型无效")),
     };
-    if value.is_empty() || value.chars().count() > limit {
+    if value.is_empty() || value == "__new__" || value.chars().count() > limit {
         return Err(ApiError::invalid("请填写有效的课程或老师名称"));
     }
     db.execute(
         "INSERT OR IGNORE INTO lesson_options(kind,value) VALUES (?1,?2)",
         params![input.kind, value],
     )?;
-    let row = db.query("SELECT CAST(active AS TEXT),CAST(version AS TEXT) FROM lesson_options WHERE kind=?1 AND value=?2", params![input.kind, value])?.into_iter().next().ok_or_else(ApiError::missing)?;
+    let row = db.query("SELECT CAST(active AS TEXT),CAST(version AS TEXT),COALESCE(renamed_to,'') FROM lesson_options WHERE kind=?1 AND value=?2", params![input.kind, value])?.into_iter().next().ok_or_else(ApiError::missing)?;
     Ok(LessonOption {
         kind: input.kind,
         value: value.into(),
         active: row[0] == "1",
         version: row[1].parse().map_err(|_| ApiError::storage())?,
+        renamed_to: if row[2].is_empty() {
+            None
+        } else {
+            Some(row[2].clone())
+        },
     })
 }
 
 pub fn update_lesson_option(db: &dyn Sql, input: UpdateLessonOption) -> Result<LessonOption> {
-    let row = db.query("SELECT CAST(active AS TEXT),CAST(version AS TEXT) FROM lesson_options WHERE kind=?1 AND value=?2", params![input.kind, input.value])?.into_iter().next().ok_or_else(ApiError::missing)?;
+    if input.new_value.is_some() {
+        return crate::lessons::rename_option(db, input);
+    }
+    let row = db.query("SELECT CAST(active AS TEXT),CAST(version AS TEXT),COALESCE(renamed_to,'') FROM lesson_options WHERE kind=?1 AND value=?2", params![input.kind, input.value])?.into_iter().next().ok_or_else(ApiError::missing)?;
     let version: u64 = row[1].parse().map_err(|_| ApiError::storage())?;
-    if version != input.expected_version {
+    if version != input.expected_version || !row[2].is_empty() {
         return Err(ApiError::conflict("选项已被更新，请刷新后核对"));
     }
     db.execute(
@@ -328,83 +337,12 @@ pub fn update_lesson_option(db: &dyn Sql, input: UpdateLessonOption) -> Result<L
         value: input.value,
         active: input.active,
         version: version + 1,
+        renamed_to: None,
     })
 }
 
 pub fn save_lesson(db: &dyn Sql, id: &str, request: SaveLesson) -> Result<Lesson> {
-    crate::mutations::ensure_not_deleted(db, "lessons", id)?;
-    valid_id(id)?;
-    let input = request.lesson;
-    valid_date(&input.business_date)?;
-    if input.course.trim().is_empty() || input.teacher.trim().is_empty() {
-        return Err(ApiError::invalid("请填写课程名称和授课老师"));
-    }
-    if input.course.chars().count() > 200
-        || input.teacher.chars().count() > 100
-        || [
-            &input.content,
-            &input.goals,
-            &input.problems,
-            &input.home_cooperation,
-        ]
-        .iter()
-        .any(|value| value.chars().count() > 10_000)
-    {
-        return Err(ApiError::invalid("上课记录内容过长，请适当缩短"));
-    }
-    let input = LessonInput {
-        course: input.course.trim().into(),
-        teacher: input.teacher.trim().into(),
-        ..input
-    };
-    for (kind, value) in [("course", &input.course), ("teacher", &input.teacher)] {
-        add_lesson_option(
-            db,
-            NewLessonOption {
-                kind: kind.into(),
-                value: value.clone(),
-            },
-        )?;
-    }
-    let current: Option<Lesson> = get(db, "lessons", id)?;
-    match (current, request.expected_version) {
-        (None, None) => {
-            let lesson = Lesson {
-                id: id.into(),
-                version: 1,
-                input,
-            };
-            db.execute(
-                "INSERT INTO lessons(id,business_date,data) VALUES (?1,?2,?3)",
-                params![lesson.id, lesson.input.business_date, json(&lesson)?],
-            )?;
-            Ok(lesson)
-        }
-        (Some(current), expected)
-            if current.input == input
-                && (Some(current.version) == expected
-                    || (current.version == 1 && expected.is_none())
-                    || expected.is_some_and(|v| v.checked_add(1) == Some(current.version))) =>
-        {
-            Ok(current)
-        }
-        (Some(current), Some(expected)) if current.version == expected => {
-            let lesson = Lesson {
-                id: id.into(),
-                version: current
-                    .version
-                    .checked_add(1)
-                    .ok_or_else(|| ApiError::invalid("记录版本超出范围"))?,
-                input,
-            };
-            db.execute(
-                "UPDATE lessons SET business_date=?1,data=?2 WHERE id=?3",
-                params![lesson.input.business_date, json(&lesson)?, id],
-            )?;
-            Ok(lesson)
-        }
-        _ => Err(ApiError::conflict("上课记录已被更新，请刷新后核对")),
-    }
+    crate::lessons::save(db, id, request)
 }
 
 pub fn export_snapshot(db: &dyn Sql) -> Result<ExportSnapshot> {
@@ -415,7 +353,7 @@ pub fn export_snapshot(db: &dyn Sql) -> Result<ExportSnapshot> {
     })
 }
 
-fn validate_links(db: &dyn Sql, table: &str, ids: &[String]) -> Result<()> {
+pub(crate) fn validate_links(db: &dyn Sql, table: &str, ids: &[String]) -> Result<()> {
     if ids.len() > 100 {
         return Err(ApiError::invalid("单条记录最多关联 100 个目标或方法"));
     }
@@ -575,6 +513,7 @@ pub fn create_experience(db: &dyn Sql, input: NewExperience) -> Result<FollowUp>
         id: input.id,
         version: 1,
         source_session_id: None,
+        source_lesson_id: None,
         source_deleted: false,
         content: input.content.trim().into(),
         kind: None,
@@ -875,6 +814,7 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
             id: Uuid::new_v4().to_string(),
             version: 1,
             source_session_id: Some(id.into()),
+            source_lesson_id: None,
             source_deleted: false,
             content: result.session.input.difficulty.trim().into(),
             kind: None,
@@ -901,6 +841,7 @@ pub fn save_session(db: &dyn Sql, id: &str, request: SaveSession) -> Result<Save
             id: Uuid::new_v4().to_string(),
             version: 1,
             source_session_id: Some(id.into()),
+            source_lesson_id: None,
             source_deleted: false,
             content: result.session.input.experience.trim().into(),
             kind: Some(result.session.input.experience_kind.clone()),

@@ -151,7 +151,7 @@ async function contract(label, send, exec) {
   for (const response of responses) await response.text();
   const final = await api('GET', '/api/state');
   assert.equal(final.sessions.find(record => record.id === other).version, 2);
-  await lessonContract(label, api);
+  await lessonContract(label, api, exec);
   await knowledgeContract(label, api, exec);
   const method = await api('POST', '/api/pathways', { id: randomUUID(), title: 'contract follow-up method', description: '', steps: '', goal_ids: [secondary.id] });
   const single = structuredClone(session);

@@ -88,7 +88,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='中期目标', exact=True).click()
     parent_card = page.get_by_test_id('planning-goal-' + medium['id'])
     expect(parent_card.get_by_text('所选时间 2 次 · 最近训练 ' + str(today), exact=True)).to_be_visible()
-    expect(parent_card.get_by_text('直接训练 1 次 · 仅通过下属短期覆盖 1 次', exact=True)).to_be_visible()
+    expect(parent_card.get_by_text('直接记录 1 次 · 仅通过下属短期覆盖 1 次', exact=True)).to_be_visible()
     expect(page.get_by_test_id('planning-goal-' + another_medium['id']).get_by_text('下属短期已达成／完成 1 / 2 个', exact=True)).to_be_visible()
     page.get_by_role('button', name='短期目标', exact=True).click()
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
@@ -100,7 +100,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='方法覆盖', exact=True).click()
     path_card = page.get_by_test_id('planning-pathway-' + pathway['id'])
     expect(path_card.get_by_text('使用中 · 当前范围适用 2 个目标 · 1 条经验', exact=True)).to_be_visible()
-    expect(page.get_by_text('目前尚未记录每次实际使用的方法，因此不展示方法训练次数。', exact=True)).to_be_visible()
+    expect(page.get_by_text('家庭干预尚未记录每次实际使用的方法；机构课程按明确选择的实际方法统计，不从适用关系推算。', exact=True)).to_be_visible()
     path_card.get_by_role('button', name='查看方法与细节', exact=True).click()
     expect(page.get_by_role('textbox', name='方法名称', exact=True)).to_have_value(pathway['title'])
 

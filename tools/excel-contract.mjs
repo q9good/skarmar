@@ -40,6 +40,11 @@ export async function excelContract(label, send, cookie) {
   const result = await api('PUT', `/sessions/${completed}`, { operation_id: randomUUID(), action: 'complete', expected_version: null, session: input });
   await api('PUT', `/difficulties/${result.difficulty_id}`, { expected_version: 1, status: 'resolved', next_review_date: '2026-10-20', conclusion: '采用分步提示后改善' });
   await api('PUT', `/experiences/${result.experience_id}`, { expected_version: 1, status: 'verified', next_review_date: null, conclusion: '在不同活动中观察到有效' });
+  const lessonMethod = await api('POST', '/pathways', { id: randomUUID(), title: '导出课程实际方法', description: '', steps: '', goal_ids: [goal.id] });
+  await api('PUT', `/lessons/${randomUUID()}`, { expected_version: null, lesson: {
+    business_date: '2026-10-13', course: '导出课程', teacher: '导出老师', content: '=课程原文', goals: '保留目标原文', problems: '课程问题', home_cooperation: '',
+    links: { targets: [{ goal_id: goal.id, role: 'primary', plan: '+课程内容', progress: '-课程观察' }], pathway_ids: [lessonMethod.id], track_problem: true, problem_goal_ids: [goal.id], problem_pathway_ids: [lessonMethod.id] },
+  } });
   await api('PUT', `/goals/${goal.id}`, { ...goal, expected_version: goal.version, title: '复盘后的当前名称', criteria: '新标准', change_note: '依据本次观察调整' });
   const draft = randomUUID();
   await api('PUT', `/sessions/${draft}`, { operation_id: randomUUID(), action: 'save_draft', expected_version: null, session: { ...input, targets: [{ ...input.targets[0], progress: '', outcome: null }] } });

@@ -128,6 +128,17 @@ pub fn delete_record(
                 "目标仍被训练引用，请先修改或删除关联训练；停止使用可选择归档",
             ));
         }
+        if !db
+            .query(
+                "SELECT lesson_id FROM lesson_targets WHERE goal_id=?1",
+                params![id],
+            )?
+            .is_empty()
+        {
+            return Err(ApiError::conflict(
+                "目标仍被上课记录引用，请先修改或删除关联上课记录；停止使用可选择归档",
+            ));
+        }
     }
     db.execute("INSERT INTO deleted_records(kind,id,version,data,deleted_at,deleted_by,source_session_id) VALUES (?1,?2,?3,?4,?5,?6,?7)",
         params![kind,id,request.expected_version as i64,store::json(&data)?,chrono::Utc::now().to_rfc3339(),actor,data["source_session_id"].as_str().map(str::to_owned)])?;
@@ -190,6 +201,26 @@ pub fn delete_record(
                 if session.status == "completed" {
                     record_session_revision(db, &session, "管理员删除了关联的目标或方法")?;
                 }
+            }
+        }
+    }
+    if kind == "goals" || kind == "pathways" {
+        for mut lesson in store::list::<Lesson>(db, "lessons")? {
+            let before = store::json(&lesson.input)?;
+            if let Some(links) = lesson.input.links.as_mut() {
+                if kind == "goals" {
+                    links.problem_goal_ids.retain(|v| v != id);
+                } else {
+                    links.pathway_ids.retain(|v| v != id);
+                    links.problem_pathway_ids.retain(|v| v != id);
+                }
+            }
+            if before != store::json(&lesson.input)? {
+                lesson.version += 1;
+                db.execute(
+                    "UPDATE lessons SET data=?1 WHERE id=?2",
+                    params![store::json(&lesson)?, lesson.id],
+                )?;
             }
         }
     }
@@ -259,6 +290,19 @@ pub fn delete_record(
                     )?;
                 }
             }
+        }
+        "lessons" => {
+            for mut item in store::list::<FollowUp>(db, "difficulties")? {
+                if item.source_lesson_id.as_deref() == Some(id) {
+                    item.source_deleted = true;
+                    item.version += 1;
+                    db.execute(
+                        "UPDATE difficulties SET data=?1 WHERE id=?2",
+                        params![store::json(&item)?, item.id],
+                    )?;
+                }
+            }
+            db.execute("DELETE FROM lesson_targets WHERE lesson_id=?1", params![id])?;
         }
         _ => {}
     }
@@ -363,6 +407,7 @@ pub fn sync_followups(
             id: Uuid::new_v4().to_string(),
             version: 0,
             source_session_id: Some(new.id.clone()),
+            source_lesson_id: None,
             source_deleted: false,
             content: String::new(),
             kind: None,

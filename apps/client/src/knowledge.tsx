@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { ApiError, request, type AppState, type FollowUp, type Goal, type Pathway } from './api';
+import { ApiError, request, type AppState, type FollowUp, type Goal, type Pathway, type Lesson } from './api';
 import { uuid } from './draft';
 import { DeleteRecordButton, type DeletedHandler } from './delete-record';
 
@@ -18,7 +18,7 @@ function Choices({ label, items, selected, change, disabled }: {
 }) {
   return <View style={s.field}><Text style={s.label}>{label}</Text><View style={s.row}>
     {items.map(item => <Pressable key={item.id} accessibilityRole="checkbox" accessibilityLabel={item.title}
-      accessibilityState={{ checked: selected.includes(item.id), disabled }} disabled={disabled}
+      accessibilityState={{ checked: selected.includes(item.id), disabled }} aria-checked={selected.includes(item.id)} disabled={disabled}
       onPress={() => change(toggle(selected, item.id))} style={[s.choice, selected.includes(item.id) && s.checked]}>
       <Text style={s.body}>{selected.includes(item.id) ? '✓ ' : ''}{item.title}</Text>
     </Pressable>)}
@@ -62,7 +62,7 @@ export function ExperienceCreator({ data, saved, cancel }: { data: AppState; sav
   </View>;
 }
 
-export function RelatedKnowledge({ data, goalId, pathwayId, openPathway }: { data: AppState; goalId?: string; pathwayId?: string; openPathway?: (pathway: Pathway) => void }) {
+export function RelatedKnowledge({ data, goalId, pathwayId, openPathway, openLesson }: { data: AppState; goalId?: string; pathwayId?: string; openPathway?: (pathway: Pathway) => void; openLesson?: (lesson: Lesson) => void }) {
   const related = data.pathways.filter(pathway => pathway.id === pathwayId || (goalId && pathway.goal_ids.includes(goalId)));
   const pathwayIds = new Set(related.map(pathway => pathway.id));
   const experiences = data.experiences.filter(item => (goalId && item.goal_ids.includes(goalId)) || item.pathway_ids.some(id => pathwayIds.has(id)));
@@ -74,6 +74,13 @@ export function RelatedKnowledge({ data, goalId, pathwayId, openPathway }: { dat
     {difficulties.length > 0 && <><Text style={s.title}>关联困难 · {difficulties.length}</Text>
       {difficulties.map(item => <View key={item.id} style={s.field}><Text style={s.hint}>{item.status === 'resolved' ? '已解决' : '待跟进'}</Text><Text style={s.body}>{item.content}</Text>{item.conclusion && <Text style={s.hint}>跟进结论：{item.conclusion}</Text>}</View>)}
     </>}
+    <Text style={s.title}>相关机构课程</Text>
+    {data.lessons.filter(lesson=>(goalId && lesson.links?.targets.some(target=>target.goal_id===goalId)) || (pathwayId && lesson.links?.pathway_ids.includes(pathwayId))).map(lesson=><View key={lesson.id} style={s.field}>
+      <Text style={s.label}>{lesson.business_date} · {lesson.course} · {lesson.teacher}</Text>
+      <Text style={s.body}>{lesson.content}</Text>
+      {lesson.links?.targets.filter(target=>!goalId||target.goal_id===goalId).map(target=><Text key={target.goal_id} style={s.hint}>{target.plan}{target.progress ? ` · 观察：${target.progress}` : ''}</Text>)}
+      {openLesson && <Action title={`查看上课记录：${lesson.course} · ${lesson.business_date}`} press={()=>openLesson(lesson)} />}
+    </View>)}
     <Text style={s.title}>关联经验</Text>
     {experiences.length ? experiences.map(item => <View key={item.id} style={s.field}>
       <Text style={s.hint}>{[goalId && item.goal_ids.includes(goalId) ? '关联目标' : '', item.pathway_ids.some(id => pathwayIds.has(id)) ? '方法细节' : ''].filter(Boolean).join(' · ')} · {item.status === 'verified' ? '已验证' : item.status === 'stopped' ? '已停用' : '待验证'}</Text>
@@ -83,7 +90,7 @@ export function RelatedKnowledge({ data, goalId, pathwayId, openPathway }: { dat
   </View>;
 }
 
-export function PathwayLibrary({ data, saved, initialPathway, openGoal, removed }: { data: AppState; saved: (pathway: Pathway) => void; initialPathway?: Pathway; openGoal: (goal: Goal) => void; removed: DeletedHandler }) {
+export function PathwayLibrary({ data, saved, initialPathway, openGoal, removed, openLesson }: { data: AppState; saved: (pathway: Pathway) => void; initialPathway?: Pathway; openGoal: (goal: Goal) => void; removed: DeletedHandler; openLesson?: (lesson: Lesson) => void }) {
   const [editing, setEditing] = useState<Pathway | 'new' | null>(initialPathway ?? null);
   useEffect(() => { if (editing && editing !== 'new' && data.deleted?.some(item => item.kind === 'pathways' && item.id === editing.id)) setEditing(null); }, [data.deleted, editing]);
   if (editing) return <>
@@ -93,8 +100,8 @@ export function PathwayLibrary({ data, saved, initialPathway, openGoal, removed 
     })}</View>}
     <PathwayForm key={editing === 'new' ? 'new' : editing.id} initial={editing === 'new' ? undefined : data.pathways.find(item => item.id === editing.id) ?? editing} goals={data.goals}
       saved={pathway => { saved(pathway); setEditing(null); }} cancel={() => setEditing(null)} />
-    {editing !== 'new' && <RelatedKnowledge data={data} pathwayId={editing.id} />}
-    {editing !== 'new' && <DeleteRecordButton kind="pathways" id={editing.id} version={(data.pathways.find(item => item.id === editing.id) ?? editing).version} label="方法" removed={removed} hint="经验会保留，并解除与此方法的关联。" />}
+    {editing !== 'new' && <RelatedKnowledge data={data} openLesson={openLesson} pathwayId={editing.id} />}
+    {editing !== 'new' && <DeleteRecordButton kind="pathways" id={editing.id} version={(data.pathways.find(item => item.id === editing.id) ?? editing).version} label="方法" removed={removed} hint="上课记录、困难与经验会保留，并解除与此方法的关联。" />}
   </>;
   return <>
     <Text style={s.hint}>目标回答“要达到什么”，方法回答“怎样实现”。同一个方法可以服务多个目标，每个目标也可以尝试多种方法。</Text>

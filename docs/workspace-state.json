@@ -245,6 +245,13 @@
       "status": "done",
       "evidence": "docs/ui-feedback-fixes-2026-10-22.md",
       "verification": "2026-10-22实现f39ec22。请求进行中区分busy与pending，提示和禁用按钮显示正在保存，结果不确定且请求结束后保留原重试入口；困难/经验共用说明改为当前记录。TypeScript、Expo Web构建、完整test:host通过；新增实际暂停响应的计划/完成/重试浏览器断言，503响应丢失后刷新并重试的完整请求及operation_id一致，无重复训练或跟进，困难编辑文案可见。test:mutations在原生SQLite及真实Rust Worker/Miniflare DO均通过，新增总结草稿及普通成员训练修订保存中断言，既有关联、权限、删除、并发和重启回归通过。仅隔离合成数据，新增已检查截图，未改Rust或数据库，未访问线上账号/业务数据或部署；线上复验尚未执行。"
+    },
+    {
+      "id": "T36",
+      "title": "机构课程共享选项维护及目标／方法／困难／规划关联",
+      "status": "done",
+      "evidence": "docs/lesson-linked-workflows-2026-10-22.md",
+      "verification": "2026-10-22按用户确认分别统计家庭干预／机构课程并提供合计，课程与老师选项新增、改名、停用恢复且历史名称保留。课程增加主副复习目标、逐目标内容观察与目标快照、实际方法和来源困难；目标／方法详情及跟进来源跳转、规划提示、Excel十二表关联可核对。迁移010在原SQLite/DO追加；课程与困难原子保存、版本冲突保留本机草稿并可备份采用最新，重复重试不重复跟进；独立维护／已解决困难受保护、删除困难不复活、删除来源课程保留困难。73项Rust、14项规划及6项工作流、原生／Wasm Clippy、TS／Web／Worker构建通过；test:runtimes与test:lesson-links均在原生SQLite及真实Rust Worker/Miniflare DO通过，含非法绑定、后段SQL回滚、成员权限、管理员删除、历史快照与完整Excel字段核对、390x844页面新增编辑刷新／共享选项／三来源统计及重启状态对账；既有test:host、双后端test:mutations通过。两个合成截图已人工检查并入清单。仅隔离临时合成数据，未访问生产或部署；家庭实际方法选择与次数仍属T10待办。"
     }
   ],
   "artifacts": [
@@ -345,6 +352,18 @@
       "path": "docs/artifacts/validation/training-saving.png",
       "title": "保存反馈修复：真实响应暂停时显示正在保存（合成）",
       "sha256": "5e69339ceb6a6b69ef0813c4dbf88bdd254a67d8d8d1ed49f997cafe000a16ad",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/lesson-targets.png",
+      "title": "机构课程：共享下拉与课程目标角色（合成）",
+      "sha256": "9f5c305e93749ff1ea7cc779638a839050d14e2de6d75b2c6daa1d4d70cdc7df",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/lesson-planning.png",
+      "title": "课程规划：明确实际使用方法及机构次数（合成）",
+      "sha256": "39d673b5c71b0e1213088c09214dcbaf9cde467e5433ef4be6b8e35057436646",
       "synthetic": true
     }
   ]

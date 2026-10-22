@@ -69,7 +69,8 @@ export async function authContract(label, send, expire, exec) {
   await mutationContract(label,
     async (method, path, body, expected = 200) => (await call(method, path, body, owner, expected)).data,
     async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data, exec);
-  await lessonContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
+  await lessonContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data, exec,
+    async (method, path, body, expected = 200) => (await call(method, path, body, owner, expected)).data);
   await knowledgeContract(label, async (method, path, body, expected = 200) => (await call(method, path, body, teacher, expected)).data);
   await excelContract(label, send, teacher);
   await importContract(label, send, owner, teacher, exec);
