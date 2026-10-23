@@ -246,22 +246,28 @@
       "title": "修复正常训练保存误示重试及困难关联说明的两项P3",
       "status": "done",
       "evidence": "docs/ui-feedback-fixes-2026-10-22.md",
-      "verification": "2026-10-22实现f39ec22。请求进行中区分busy与pending，提示和禁用按钮显示正在保存，结果不确定且请求结束后保留原重试入口；困难/经验共用说明改为当前记录。TypeScript、Expo Web构建、完整test:host通过；新增实际暂停响应的计划/完成/重试浏览器断言，503响应丢失后刷新并重试的完整请求及operation_id一致，无重复训练或跟进，困难编辑文案可见。test:mutations在原生SQLite及真实Rust Worker/Miniflare DO均通过，新增总结草稿及普通成员训练修订保存中断言，既有关联、权限、删除、并发和重启回归通过。仅隔离合成数据，新增已检查截图，未改Rust或数据库，未访问线上账号/业务数据或部署；线上复验尚未执行。"
+      "verification": "2026-10-22实现f39ec22。请求进行中区分busy与pending，提示和禁用按钮显示正在保存，结果不确定且请求结束后保留原重试入口；困难/经验共用说明改为当前记录。TypeScript、Expo Web构建、完整test:host通过；新增实际暂停响应的计划/完成/重试浏览器断言，503响应丢失后刷新并重试的完整请求及operation_id一致，无重复训练或跟进，困难编辑文案可见。test:mutations在原生SQLite及真实Rust Worker/Miniflare DO均通过，新增总结草稿及普通成员训练修订保存中断言，既有关联、权限、删除、并发和重启回归通过。仅隔离合成数据，新增已检查截图，未改Rust或数据库，未访问线上账号/业务数据或部署；线上复验尚未执行。 后续2026-10-23已由T38仅发布代码上线，源1842a77，实际版本c5055bf5-1e98-4935-878d-e392032100c3，公开页面／JS／健康／匿名与来源检查通过；未登录生产账号执行功能写入复验。"
     },
     {
       "id": "T36",
       "title": "机构课程共享选项维护及目标／方法／困难／规划关联",
       "status": "done",
       "evidence": "docs/lesson-linked-workflows-2026-10-22.md",
-      "verification": "2026-10-22实现5eaa910，按用户确认分别统计家庭干预／机构课程并提供合计，课程与老师选项新增、改名、停用恢复且历史名称保留。课程增加主副复习目标、逐目标内容观察与目标快照、实际方法和来源困难；目标／方法详情及跟进来源跳转、规划提示、Excel十二表关联可核对。迁移010在原SQLite/DO追加；课程与困难原子保存、版本冲突保留本机草稿并可备份采用最新，重复重试不重复跟进；独立维护／已解决困难受保护、删除困难不复活、删除来源课程保留困难。73项Rust、14项规划及6项工作流、原生／Wasm Clippy、TS／Web／Worker构建通过；test:runtimes与test:lesson-links均在原生SQLite及真实Rust Worker/Miniflare DO通过，含非法绑定、后段SQL回滚、成员权限、管理员删除、历史快照与完整Excel字段核对、390x844页面新增编辑刷新／共享选项／三来源统计及重启状态对账；既有test:host、双后端test:mutations通过。两个合成截图已人工检查并入清单。仅隔离临时合成数据，未访问生产或部署；家庭实际方法选择与次数仍属T10待办。"
+      "verification": "2026-10-22实现5eaa910，按用户确认分别统计家庭干预／机构课程并提供合计，课程与老师选项新增、改名、停用恢复且历史名称保留。课程增加主副复习目标、逐目标内容观察与目标快照、实际方法和来源困难；目标／方法详情及跟进来源跳转、规划提示、Excel十二表关联可核对。迁移010在原SQLite/DO追加；课程与困难原子保存、版本冲突保留本机草稿并可备份采用最新，重复重试不重复跟进；独立维护／已解决困难受保护、删除困难不复活、删除来源课程保留困难。73项Rust、14项规划及6项工作流、原生／Wasm Clippy、TS／Web／Worker构建通过；test:runtimes与test:lesson-links均在原生SQLite及真实Rust Worker/Miniflare DO通过，含非法绑定、后段SQL回滚、成员权限、管理员删除、历史快照与完整Excel字段核对、390x844页面新增编辑刷新／共享选项／三来源统计及重启状态对账；既有test:host、双后端test:mutations通过。两个合成截图已人工检查并入清单。仅隔离临时合成数据，未访问生产或部署；家庭实际方法选择与次数仍属T10待办。 后续2026-10-23已由T38仅发布代码上线，源1842a77，实际版本c5055bf5-1e98-4935-878d-e392032100c3，公开页面／JS／健康／匿名与来源检查通过；未登录生产账号执行功能写入复验。"
     },
     {
       "id": "T37",
-      "title": "追加合成测试数据并发布T35/T36到原Cloudflare实例",
-      "status": "blocked",
+      "title": "合成测试数据追加（用户本轮暂缓）",
+      "status": "todo",
       "evidence": "docs/demo-data-restore-2026-10-23.md",
-      "verification": "2026-10-23用户要求先恢复一批测试数据再部署。已准备固定演示测试1023批次15条，通过普通应用认证API先追加旧版兼容14条基础记录，原发布验收后补课程关系及第2条困难。固定ID/操作ID与现有版本保护，重复不新增、编辑或删除后拒绝覆盖，不清库、不复活旧ID、不重建账号；发布流程新增显式恢复标记和可选应用登录Secret，原普通发布/只补验模式隔离。9项恢复guard、21项发布guard、YAML和执行顺序检查通过；test:demo-restore在原生SQLite及真实Rust Worker/Miniflare DO通过，含真实认证API、保留原有对照目标、14至15条、重复幂等、独立修改拒绝、重启完整对账。GitHub读取应用Secret元数据403不能判断是否存在，将以真实Actions第一步检查；尚未执行线上数据写入或本轮发布。 实际触发dab357b，run39916347222的validate通过，release在第2步Require securely configured credentials失败，实际错误注解仅缺SKARMA_TEST_LOGIN；原有CF两项Secrets非空检查通过。构建、应用登录／数据追加、版本上传与激活全部跳过，没有产生恢复或发布回执；新增脱敏凭据检查证据。匿名health200/status ok。",
-      "blocker": "需用户在GitHub Repository Actions Secret安全页面添加SKARMA_TEST_LOGIN，内容为现有已审批站点账号的username/password JSON（成员即可），不要发聊天；已给出具体入口及格式。配置后新建明确恢复+发布标记提交，保持分支不动等待完整执行；原CLOUDFLARE_API_TOKEN和SKARMA_WRANGLER_TOML不用重设。尚未恢复线上数据或发布。"
+      "verification": "2026-10-23用户要求先恢复一批测试数据再部署。已准备固定演示测试1023批次15条，通过普通应用认证API先追加旧版兼容14条基础记录，原发布验收后补课程关系及第2条困难。固定ID/操作ID与现有版本保护，重复不新增、编辑或删除后拒绝覆盖，不清库、不复活旧ID、不重建账号；发布流程新增显式恢复标记和可选应用登录Secret，原普通发布/只补验模式隔离。9项恢复guard、21项发布guard、YAML和执行顺序检查通过；test:demo-restore在原生SQLite及真实Rust Worker/Miniflare DO通过，含真实认证API、保留原有对照目标、14至15条、重复幂等、独立修改拒绝、重启完整对账。GitHub读取应用Secret元数据403不能判断是否存在，将以真实Actions第一步检查；尚未执行线上数据写入或本轮发布。 实际触发dab357b，run39916347222的validate通过，release在第2步Require securely configured credentials失败，实际错误注解仅缺SKARMA_TEST_LOGIN；原有CF两项Secrets非空检查通过。构建、应用登录／数据追加、版本上传与激活全部跳过，没有产生恢复或发布回执；新增脱敏凭据检查证据。匿名health200/status ok。 用户后续改为直接发布、跳过测试数据恢复；恢复本轮暂缓，不再要求提供网站账号。本任务仅保留恢复脚本和历史凭据检查证据，未执行线上追加，代码发布由T38记录。"
+    },
+    {
+      "id": "T38",
+      "title": "跳过测试数据恢复，仅发布T35/T36到原Cloudflare实例",
+      "status": "done",
+      "evidence": "docs/cloudflare-release-2026-10-23.md",
+      "verification": "2026-10-23用户明确改为直接发布，不提供应用账号。以1842a7717b3cdec34c4a9b91354611949d2094bf仅发布标记触发run39918589092，validate/release均success；两阶段测试数据及恢复产物步骤均skipped。原有CF Token/TOML检查、TS/Web构建、Rust测试与Wasm Clippy通过；实际API认证、目标配置核对、版本上传及100%激活成功，receipt deployed_and_verified。旧d7925a8a-127b-4773-bc8a-445ce12460eb→新c5055bf5-1e98-4935-878d-e392032100c3，上传及激活版本相同；保留原Worker/SkarmaSpace/SKARMA_DB/default、来源、域名与settings元数据。首页仅排除一个已知CF Analytics标签后与构建一致、JS字节匹配、health200、匿名me/state401及未知API404、合法来源logout200/非法及缺标记403通过。已下载核对脱敏回执并入清单，应用验收实现仍5eaa910。没有应用登录、测试数据追加、生产业务内容读取／写入测试、账号重建或资源重建；未宣称完成登录后的线上CRUD或迁移版本/行数核对。"
     }
   ],
   "artifacts": [
@@ -380,6 +386,11 @@
       "path": "docs/artifacts/deployment/demo-restore-20261023-credentials-check.json",
       "title": "演示数据恢复与发布：真实Actions凭据检查受阻回执（不含密钥或业务数据）",
       "sha256": "fd9f56c45b45f01e79949efc35020c841ed9b9d74037b8b5ce2bcc00027f59d0"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261023-code-only-receipt.json",
+      "title": "T35/T36仅代码发布：真实上传激活及公共验收脱敏回执",
+      "sha256": "33bb6e43c4a7bd69f38d2ed0c32c2ce413dd79e6db52cac55124726a1fedcc2b"
     }
   ]
 }

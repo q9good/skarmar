@@ -48,6 +48,21 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-10-23：T35/T36已仅发布代码上线（T38完成）
+
+用户改为直接发布，跳过合成数据恢复，不需要提供网站账号。触发源`1842a77`，
+[run39918589092](https://github.com/q9good/skarmar/actions/runs/39918589092)的validate/release均success，恢复基础记录、补课程关联和恢复产物步骤均skipped。
+实际版本 **`c5055bf5-1e98-4935-878d-e392032100c3`**，旧版本`d7925a8a-127b-4773-bc8a-445ce12460eb`。
+[发布记录](cloudflare-release-2026-10-23.md)和[脱敏回执](artifacts/deployment/cloudflare-release-20261023-code-only-receipt.json)已保存。
+
+TS/Web构建、Rust测试与Wasm Clippy通过；原配置／绑定／来源／域名／settings核对通过，
+实际上传并100%激活成功。首页仅排除一个已知Analytics标签后与构建匹配、JS字节一致、
+health200、匿名权限及来源检查通过。没有应用登录、恢复测试数据或执行生产业务写入测试，
+没有重建Worker/DO/default/账号；未将匿名检查称为登录后的业务CRUD或迁移行数验收。
+原代码实现仍5eaa910，当前线上含T35保存反馈修复及T36机构课程关联／规划／选项维护。
+T37恢复合成数据改为todo、按用户本轮指示暂缓，不再要求应用凭据；T10家庭实际方法选择及
+使用次数仍待实现。21项交接产物校验；T12云环境自身凭据故障与Actions成功分别记录。
+
 ### 2026-10-23：恢复与发布已实际触发，缺少应用登录Secret（T37受阻）
 
 用户要求先恢复一批测试数据，再部署T35/T36。已准备[固定15条合成批次与安全入口](demo-data-restore-2026-10-23.md)：
