@@ -268,6 +268,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-23.md",
       "verification": "2026-10-23用户明确改为直接发布，不提供应用账号。以1842a7717b3cdec34c4a9b91354611949d2094bf仅发布标记触发run39918589092，validate/release均success；两阶段测试数据及恢复产物步骤均skipped。原有CF Token/TOML检查、TS/Web构建、Rust测试与Wasm Clippy通过；实际API认证、目标配置核对、版本上传及100%激活成功，receipt deployed_and_verified。旧d7925a8a-127b-4773-bc8a-445ce12460eb→新c5055bf5-1e98-4935-878d-e392032100c3，上传及激活版本相同；保留原Worker/SkarmaSpace/SKARMA_DB/default、来源、域名与settings元数据。首页仅排除一个已知CF Analytics标签后与构建一致、JS字节匹配、health200、匿名me/state401及未知API404、合法来源logout200/非法及缺标记403通过。已下载核对脱敏回执并入清单，应用验收实现仍5eaa910。没有应用登录、测试数据追加、生产业务内容读取／写入测试、账号重建或资源重建；未宣称完成登录后的线上CRUD或迁移版本/行数核对。"
+    },
+    {
+      "id": "T39",
+      "title": "必要产品调研、家庭PDCA PRD草案与现有实现差距（文档完成待评审）",
+      "status": "done",
+      "evidence": "docs/product-discovery-2026-10-23.md",
+      "verification": "2026-10-23从干净1334739安全sync:pull，用户明确所提供的是框架和想法而非正式PRD。实际读取WHO／CDC／NICE、AFIRM、IRIS两页、GAS、Baby Connect／CentralReach／Otsimo官方介绍及W3C两份指导共12份采用来源，比较轻量家庭记录／机构平台／游戏工具、进展观察、老人表单和周期复盘；形成调研、PRD0.1和覆盖R01至R14的静态源码差距表。用户确认完成目标的方法靠后、课程只做节数明细金额线下算、中短期隔周／长期方法经验每月／停滞困难每周且可改日期暂停；其余流程字段阈值待评审。补充家人接手、实际方法和版本、逐次反馈与复盘行动、反例证据及历史兼容，提供下一阶段合成情境验证方案。新增文档链接／锚点、JSON／稳定任务ID、需求编号覆盖、diff范围和21项既有产物校验通过；应用验收提交仍5eaa910。没有竞品登录试用、家人真机研究、应用测试重跑、应用修改、生产业务访问、合成数据恢复或部署；done仅指调研和文档交付，PRD尚未批准实施。"
     }
   ],
   "artifacts": [
