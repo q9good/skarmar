@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-22",
+  "updatedAt": "2026-10-23",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -254,6 +254,13 @@
       "status": "done",
       "evidence": "docs/lesson-linked-workflows-2026-10-22.md",
       "verification": "2026-10-22实现5eaa910，按用户确认分别统计家庭干预／机构课程并提供合计，课程与老师选项新增、改名、停用恢复且历史名称保留。课程增加主副复习目标、逐目标内容观察与目标快照、实际方法和来源困难；目标／方法详情及跟进来源跳转、规划提示、Excel十二表关联可核对。迁移010在原SQLite/DO追加；课程与困难原子保存、版本冲突保留本机草稿并可备份采用最新，重复重试不重复跟进；独立维护／已解决困难受保护、删除困难不复活、删除来源课程保留困难。73项Rust、14项规划及6项工作流、原生／Wasm Clippy、TS／Web／Worker构建通过；test:runtimes与test:lesson-links均在原生SQLite及真实Rust Worker/Miniflare DO通过，含非法绑定、后段SQL回滚、成员权限、管理员删除、历史快照与完整Excel字段核对、390x844页面新增编辑刷新／共享选项／三来源统计及重启状态对账；既有test:host、双后端test:mutations通过。两个合成截图已人工检查并入清单。仅隔离临时合成数据，未访问生产或部署；家庭实际方法选择与次数仍属T10待办。"
+    },
+    {
+      "id": "T37",
+      "title": "追加合成测试数据并发布T35/T36到原Cloudflare实例",
+      "status": "in_progress",
+      "evidence": "docs/demo-data-restore-2026-10-23.md",
+      "verification": "2026-10-23用户要求先恢复一批测试数据再部署。已准备固定演示测试1023批次15条，通过普通应用认证API先追加旧版兼容14条基础记录，原发布验收后补课程关系及第2条困难。固定ID/操作ID与现有版本保护，重复不新增、编辑或删除后拒绝覆盖，不清库、不复活旧ID、不重建账号；发布流程新增显式恢复标记和可选应用登录Secret，原普通发布/只补验模式隔离。9项恢复guard、21项发布guard、YAML和执行顺序检查通过；test:demo-restore在原生SQLite及真实Rust Worker/Miniflare DO通过，含真实认证API、保留原有对照目标、14至15条、重复幂等、独立修改拒绝、重启完整对账。GitHub读取应用Secret元数据403不能判断是否存在，将以真实Actions第一步检查；尚未执行线上数据写入或本轮发布。"
     }
   ],
   "artifacts": [

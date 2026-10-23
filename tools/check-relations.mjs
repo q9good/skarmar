@@ -13,7 +13,8 @@ await mkdir(resolve(root, '.local'), { recursive: true });
 const scratch = await mkdtemp(resolve(root, '.local/relation-selftest-'));
 const mutations = process.argv.includes('--mutations');
 const lessons = process.argv.includes('--lessons');
-const output = resolve(root, lessons ? '.local/lesson-links-selftest-evidence' : mutations ? '.local/mutation-selftest-evidence' : '.local/relation-selftest-evidence');
+const restoreDemo = process.argv.includes('--restore-demo');
+const output = resolve(root, restoreDemo ? '.local/demo-restore-selftest-evidence' : lessons ? '.local/lesson-links-selftest-evidence' : mutations ? '.local/mutation-selftest-evidence' : '.local/relation-selftest-evidence');
 await mkdir(output, { recursive: true });
 const binary = resolve(root, 'target/debug/skarma-api');
 const bindings = { SKARMA_STORAGE: 'sqlite', SKARMA_AUTH: 'required', SKARMA_DEMO: '0', SKARMA_PRODUCTION: '0', SKARMA_PUBLIC_URL: '', SKARMA_SPACE: 'relation-selftest' };
@@ -45,7 +46,7 @@ async function verifyRestart(origin, expected) {
 async function browserCheck(origin, backend) {
   const destination = resolve(output, backend);
   await rm(destination, { recursive: true, force: true });
-  const browser = spawn('python3', [lessons ? 'tools/smoke_lesson_links_web.py' : 'tools/smoke_relations_web.py'], { cwd: root, env: { ...process.env, SKARMA_TEST_URL: origin, SKARMA_RELATION_OUTPUT: destination, SKARMA_TEST_MUTATIONS: mutations ? '1' : '0' }, stdio: 'inherit' });
+  const browser = spawn('python3', [restoreDemo ? 'tools/smoke_restore_demo.py' : lessons ? 'tools/smoke_lesson_links_web.py' : 'tools/smoke_relations_web.py'], { cwd: root, env: { ...process.env, SKARMA_TEST_URL: origin, SKARMA_RELATION_OUTPUT: destination, SKARMA_TEST_MUTATIONS: mutations ? '1' : '0', ...(restoreDemo ? { SKARMA_TEST_LOGIN: JSON.stringify({username:'owner',password:ownerPassword}) } : {}) }, stdio: 'inherit' });
   const [code] = await once(browser, 'exit');
   assert.equal(code, 0, `${backend} browser relationship test failed`);
   return readFile(resolve(destination, 'result.json'), 'utf8').then(JSON.parse);

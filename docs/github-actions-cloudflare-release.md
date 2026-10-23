@@ -83,6 +83,17 @@ gh workflow run cloudflare-release.yml --repo q9good/skarmar \
 dispatch入口可用时，也可指定`verify_version`输入。回执的`source_sha`是验收脚本提交，
 `deployed_source_sha`从原线上版本注解读取，不能将验收提交说成已上传的应用源码。
 
+## 追加合成数据的显式发布任务
+
+2026-10-23新增可选两阶段[演示数据追加流程](demo-data-restore-2026-10-23.md)。只有用户
+明确要求的恢复任务才使用`[restore-demo:20261023]`及发布标记；它需要额外的应用账号
+Secret `SKARMA_TEST_LOGIN`，普通成员即可。没有用Cloudflare Token绕过应用登录。
+原有普通发布不要求该Secret，也不恢复数据；verify-only模式拒绝同时恢复。
+
+顺序为检查凭据／构建测试→普通API追加14条基础记录→原发布和公共验收→课程关系补齐为15条。
+缺少账号即在数据写入和发布前失败，不重置账号或停用认证。每阶段仅输出批次自身数量及
+脱敏错误，真实数据与Cookie不进日志或artifact；普通发布的绑定和元数据保护规则不变。
+
 ## 版本发布与数据保护
 
 1. 固定官方 Actions 提交 SHA、Node 24、Rust 1.99.0、worker-build 0.8.7 与 npm/Cargo 锁文件。

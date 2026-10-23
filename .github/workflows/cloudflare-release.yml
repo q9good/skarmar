@@ -7,6 +7,11 @@ on:
         description: Exact 40-character commit SHA of the selected feature branch
         required: true
         type: string
+      restore_demo:
+        description: Append the reviewed synthetic 20261023 batch before release and link courses after activation
+        required: false
+        type: boolean
+        default: false
       verify_version:
         description: Optional active version UUID to verify without uploading or deploying
         required: false
@@ -26,7 +31,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Test release guards without credentials or network
-        run: python3 -m unittest discover -s tools -p 'test_cloudflare_release.py' -v
+        run: |
+          python3 -m unittest discover -s tools -p 'test_cloudflare_release.py' -v
+          python3 -m unittest discover -s tools -p 'test_restore_demo_batch.py' -v
 
   release:
     needs: validate
@@ -51,9 +58,17 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           SKARMA_WRANGLER_TOML: ${{ secrets.SKARMA_WRANGLER_TOML }}
+          SKARMA_TEST_LOGIN: ${{ secrets.SKARMA_TEST_LOGIN }}
+          RESTORE_DEMO: ${{ inputs.restore_demo || contains(github.event.head_commit.message, '[restore-demo:20261023]') }}
+          VERIFY_VERSION: ${{ inputs.verify_version }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing repository secret CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$SKARMA_WRANGLER_TOML" || { echo '::error::Missing repository secret SKARMA_WRANGLER_TOML (existing private production configuration)'; exit 1; }
+          if [ "$RESTORE_DEMO" = 'true' ]; then
+            test -z "$VERIFY_VERSION" && [[ "$HEAD_MESSAGE" != *"[verify-cloudflare:"* ]] || { echo '::error::Restore cannot run in verify-only mode'; exit 1; }
+            test -n "$SKARMA_TEST_LOGIN" || { echo '::error::Missing repository secret SKARMA_TEST_LOGIN (existing approved application login)'; exit 1; }
+          fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
@@ -84,6 +99,14 @@ jobs:
         run: |
           cargo test --workspace --locked -j 4
           cargo clippy -p skarma-worker --target wasm32-unknown-unknown --locked -- -D warnings
+      - name: Append reviewed synthetic records before releasing code
+        if: inputs.restore_demo || contains(github.event.head_commit.message, '[restore-demo:20261023]')
+        env:
+          SKARMA_TEST_LOGIN: ${{ secrets.SKARMA_TEST_LOGIN }}
+        run: |
+          remote_sha=$(git ls-remote origin refs/heads/feat/tencent-informed-web | cut -f1)
+          test "$remote_sha" = "$GITHUB_SHA" || { echo '::error::Branch moved before restore'; exit 1; }
+          python3 tools/restore_demo_batch.py --phase base --confirm-append skarma-demo-20261023
       - name: Verify existing target, upload version, promote and check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -100,6 +123,20 @@ jobs:
             mode_args=(--verify-from-event)
           fi
           python3 tools/cloudflare_release.py "${mode_args[@]}" --source-sha "$GITHUB_SHA"
+      - name: Link the synthetic courses after confirmed activation
+        if: inputs.restore_demo || contains(github.event.head_commit.message, '[restore-demo:20261023]')
+        env:
+          SKARMA_TEST_LOGIN: ${{ secrets.SKARMA_TEST_LOGIN }}
+        run: python3 tools/restore_demo_batch.py --phase links --confirm-append skarma-demo-20261023
+      - name: Publish sanitized synthetic restore receipts
+        if: always() && (inputs.restore_demo || contains(github.event.head_commit.message, '[restore-demo:20261023]'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: demo-restore-${{ github.sha }}
+          path: .local/demo-restore/*.json
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 30
       - name: Publish sanitized release receipt
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

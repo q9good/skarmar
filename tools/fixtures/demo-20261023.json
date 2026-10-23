@@ -1,0 +1,219 @@
+{
+  "batch": "skarma-demo-20261023",
+  "synthetic": true,
+  "anchor_date": "2026-10-23",
+  "goals": [
+    {
+      "id": "e767d91a-a9f4-5c4f-b125-ec6e12b6f5b4",
+      "title": "【演示测试1023】共同参与日常生活",
+      "level": "long",
+      "parent_id": null,
+      "area": "生活与沟通",
+      "criteria": "合成演示标准：记录具体表现与所需帮助，不代表真实儿童数据"
+    },
+    {
+      "id": "195b879c-26be-5003-82f3-dfafd3e46803",
+      "title": "【演示测试1023】主动表达与互动",
+      "level": "medium",
+      "parent_id": "e767d91a-a9f4-5c4f-b125-ec6e12b6f5b4",
+      "area": "沟通",
+      "criteria": "合成演示标准：记录具体表现与所需帮助，不代表真实儿童数据"
+    },
+    {
+      "id": "2e76db22-5a1c-53f2-bb97-4aeb1d3ac294",
+      "title": "【演示测试1023】独立参与生活步骤",
+      "level": "medium",
+      "parent_id": "e767d91a-a9f4-5c4f-b125-ec6e12b6f5b4",
+      "area": "生活自理",
+      "criteria": "合成演示标准：记录具体表现与所需帮助，不代表真实儿童数据"
+    },
+    {
+      "id": "6cceded4-ced2-5214-88d9-439e33bbe500",
+      "title": "【演示测试1023】主动表达需要",
+      "level": "short",
+      "parent_id": "195b879c-26be-5003-82f3-dfafd3e46803",
+      "area": "沟通",
+      "criteria": "合成演示标准：记录具体表现与所需帮助，不代表真实儿童数据"
+    },
+    {
+      "id": "3d113802-2b17-59f9-9774-106a55f51508",
+      "title": "【演示测试1023】轮流参与音乐活动",
+      "level": "short",
+      "parent_id": "195b879c-26be-5003-82f3-dfafd3e46803",
+      "area": "互动",
+      "criteria": "合成演示标准：记录具体表现与所需帮助，不代表真实儿童数据"
+    },
+    {
+      "id": "706a020f-f0c3-5c43-8824-9869ad17b39c",
+      "title": "【演示测试1023】尝试洗手步骤",
+      "level": "short",
+      "parent_id": "2e76db22-5a1c-53f2-bb97-4aeb1d3ac294",
+      "area": "生活自理",
+      "criteria": "合成演示标准：记录具体表现与所需帮助，不代表真实儿童数据"
+    }
+  ],
+  "pathways": [
+    {
+      "id": "a2ea4234-66aa-57d3-8541-21575667a440",
+      "title": "【演示测试1023】视觉选项与等待",
+      "description": "仅供演示关联",
+      "steps": "展示两个选项，等待五秒，再按需要提示",
+      "goal_ids": [
+        "6cceded4-ced2-5214-88d9-439e33bbe500",
+        "3d113802-2b17-59f9-9774-106a55f51508"
+      ]
+    }
+  ],
+  "experiences": [
+    {
+      "id": "bd8db675-2b9d-5919-ba63-94e1088d98f7",
+      "content": "【演示测试1023】先理解需要，再提供适量支持",
+      "goal_ids": [
+        "e767d91a-a9f4-5c4f-b125-ec6e12b6f5b4"
+      ],
+      "pathway_ids": [
+        "a2ea4234-66aa-57d3-8541-21575667a440"
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "5017e4ca-fd76-5ffb-a777-f35a46221560",
+      "operation_id": "6283add9-b23c-567e-ae48-adb186ef9b71",
+      "status": "completed",
+      "input": {
+        "business_date": "2026-10-23",
+        "time_slot": "上午",
+        "activities": [
+          "游戏"
+        ],
+        "organization": "居家",
+        "plan": "【演示测试1023】家人共同选择玩具",
+        "observation": "【演示测试1023】提供选项后主动表达一次",
+        "targets": [
+          {
+            "goal_id": "6cceded4-ced2-5214-88d9-439e33bbe500",
+            "role": "primary",
+            "plan": "保留选择和等待机会",
+            "progress": "合成观察：在提示下完成一次",
+            "outcome": "continue",
+            "next_step": "继续观察"
+          }
+        ],
+        "has_difficulty": true,
+        "difficulty": "【演示测试1023】等待时仍需要提醒",
+        "has_experience": true,
+        "experience": "【演示测试1023】减少选项有助于表达",
+        "experience_kind": "task",
+        "difficulty_goal_ids": [
+          "6cceded4-ced2-5214-88d9-439e33bbe500"
+        ],
+        "difficulty_pathway_ids": [
+          "a2ea4234-66aa-57d3-8541-21575667a440"
+        ],
+        "experience_goal_ids": [
+          "6cceded4-ced2-5214-88d9-439e33bbe500"
+        ],
+        "experience_pathway_ids": [
+          "a2ea4234-66aa-57d3-8541-21575667a440"
+        ]
+      }
+    },
+    {
+      "id": "3f7195fa-c2f3-531f-9aab-5693b0acb12d",
+      "operation_id": "96a2d00d-e5c5-5bc2-9a11-956855aaa6aa",
+      "status": "draft",
+      "input": {
+        "business_date": "2026-10-23",
+        "time_slot": "晚上",
+        "activities": [
+          "游戏"
+        ],
+        "organization": "居家",
+        "plan": "【演示测试1023】今晚轮流唱歌计划",
+        "observation": "",
+        "targets": [
+          {
+            "goal_id": "3d113802-2b17-59f9-9774-106a55f51508",
+            "role": "primary",
+            "plan": "保留选择和等待机会",
+            "progress": "",
+            "outcome": null,
+            "next_step": ""
+          }
+        ],
+        "has_difficulty": false,
+        "difficulty": "",
+        "has_experience": false,
+        "experience": "",
+        "experience_kind": "task",
+        "difficulty_goal_ids": [],
+        "difficulty_pathway_ids": [],
+        "experience_goal_ids": [],
+        "experience_pathway_ids": []
+      }
+    }
+  ],
+  "lessons": [
+    {
+      "id": "59be25d8-e561-576e-9cc2-fb4f985eb445",
+      "input": {
+        "business_date": "2026-10-23",
+        "course": "【演示测试1023】音乐互动课",
+        "teacher": "【演示测试1023】机构甲老师",
+        "content": "【演示测试1023】机构共同唱歌、选择和轮流",
+        "goals": "合成课程目标原文：【演示测试1023】轮流参与音乐活动",
+        "problems": "【演示测试1023】轮流等待需要帮助",
+        "home_cooperation": "合成配合事项：在家观察相同场景"
+      },
+      "links": {
+        "targets": [
+          {
+            "goal_id": "3d113802-2b17-59f9-9774-106a55f51508",
+            "role": "primary",
+            "plan": "逐目标内容：提供轮流选择机会",
+            "progress": "逐目标观察：完成两次选择"
+          }
+        ],
+        "pathway_ids": [
+          "a2ea4234-66aa-57d3-8541-21575667a440"
+        ],
+        "track_problem": true,
+        "problem_goal_ids": [
+          "3d113802-2b17-59f9-9774-106a55f51508"
+        ],
+        "problem_pathway_ids": [
+          "a2ea4234-66aa-57d3-8541-21575667a440"
+        ]
+      }
+    },
+    {
+      "id": "78a06ad2-70aa-5318-b83c-49fedc8005bc",
+      "input": {
+        "business_date": "2026-09-30",
+        "course": "【演示测试1023】音乐互动课",
+        "teacher": "【演示测试1023】机构乙老师",
+        "content": "【演示测试1023】机构共同唱歌、选择和轮流",
+        "goals": "合成课程目标原文：【演示测试1023】主动表达需要",
+        "problems": "",
+        "home_cooperation": "合成配合事项：在家观察相同场景"
+      },
+      "links": {
+        "targets": [
+          {
+            "goal_id": "6cceded4-ced2-5214-88d9-439e33bbe500",
+            "role": "primary",
+            "plan": "逐目标内容：提供轮流选择机会",
+            "progress": "逐目标观察：完成两次选择"
+          }
+        ],
+        "pathway_ids": [
+          "a2ea4234-66aa-57d3-8541-21575667a440"
+        ],
+        "track_problem": false,
+        "problem_goal_ids": [],
+        "problem_pathway_ids": []
+      }
+    }
+  ]
+}
