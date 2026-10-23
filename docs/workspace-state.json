@@ -258,9 +258,10 @@
     {
       "id": "T37",
       "title": "追加合成测试数据并发布T35/T36到原Cloudflare实例",
-      "status": "in_progress",
+      "status": "blocked",
       "evidence": "docs/demo-data-restore-2026-10-23.md",
-      "verification": "2026-10-23用户要求先恢复一批测试数据再部署。已准备固定演示测试1023批次15条，通过普通应用认证API先追加旧版兼容14条基础记录，原发布验收后补课程关系及第2条困难。固定ID/操作ID与现有版本保护，重复不新增、编辑或删除后拒绝覆盖，不清库、不复活旧ID、不重建账号；发布流程新增显式恢复标记和可选应用登录Secret，原普通发布/只补验模式隔离。9项恢复guard、21项发布guard、YAML和执行顺序检查通过；test:demo-restore在原生SQLite及真实Rust Worker/Miniflare DO通过，含真实认证API、保留原有对照目标、14至15条、重复幂等、独立修改拒绝、重启完整对账。GitHub读取应用Secret元数据403不能判断是否存在，将以真实Actions第一步检查；尚未执行线上数据写入或本轮发布。"
+      "verification": "2026-10-23用户要求先恢复一批测试数据再部署。已准备固定演示测试1023批次15条，通过普通应用认证API先追加旧版兼容14条基础记录，原发布验收后补课程关系及第2条困难。固定ID/操作ID与现有版本保护，重复不新增、编辑或删除后拒绝覆盖，不清库、不复活旧ID、不重建账号；发布流程新增显式恢复标记和可选应用登录Secret，原普通发布/只补验模式隔离。9项恢复guard、21项发布guard、YAML和执行顺序检查通过；test:demo-restore在原生SQLite及真实Rust Worker/Miniflare DO通过，含真实认证API、保留原有对照目标、14至15条、重复幂等、独立修改拒绝、重启完整对账。GitHub读取应用Secret元数据403不能判断是否存在，将以真实Actions第一步检查；尚未执行线上数据写入或本轮发布。 实际触发dab357b，run39916347222的validate通过，release在第2步Require securely configured credentials失败，实际错误注解仅缺SKARMA_TEST_LOGIN；原有CF两项Secrets非空检查通过。构建、应用登录／数据追加、版本上传与激活全部跳过，没有产生恢复或发布回执；新增脱敏凭据检查证据。匿名health200/status ok。",
+      "blocker": "需用户在GitHub Repository Actions Secret安全页面添加SKARMA_TEST_LOGIN，内容为现有已审批站点账号的username/password JSON（成员即可），不要发聊天；已给出具体入口及格式。配置后新建明确恢复+发布标记提交，保持分支不动等待完整执行；原CLOUDFLARE_API_TOKEN和SKARMA_WRANGLER_TOML不用重设。尚未恢复线上数据或发布。"
     }
   ],
   "artifacts": [
@@ -374,6 +375,11 @@
       "title": "课程规划：明确实际使用方法及机构次数（合成）",
       "sha256": "39d673b5c71b0e1213088c09214dcbaf9cde467e5433ef4be6b8e35057436646",
       "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/deployment/demo-restore-20261023-credentials-check.json",
+      "title": "演示数据恢复与发布：真实Actions凭据检查受阻回执（不含密钥或业务数据）",
+      "sha256": "fd9f56c45b45f01e79949efc35020c841ed9b9d74037b8b5ce2bcc00027f59d0"
     }
   ]
 }

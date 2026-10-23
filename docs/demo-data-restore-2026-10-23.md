@@ -43,3 +43,16 @@ npm run sync:push
 普通push仍只运行guard；只补验模式禁止恢复数据。发布期间保持分支不动。工作流先检查三项Secrets，再构建／测试，恢复基础记录，发布并验收，最后补课程关联。公开artifact仅脱敏的release receipt及两个restore receipts；不会上传状态响应、账号、Cookie、完整环境配置或数据库。
 
 本轮本机验证：9项合成恢复guard、21项原发布guard、YAML结构／固定Actions提交／阶段顺序检查通过。`npm run test:demo-restore`在原生SQLite与真实Rust Worker/Miniflare DO隔离空间通过：有认证API、保留既有对照目标、基础14条→完整15条、重复两阶段零新增／不改状态、独立编辑后拒绝覆盖、两后端重启全状态对账。未把这些检查称为线上恢复或部署成功。T35/T36应用验收提交仍为5eaa910，部署版本以真实release receipt为准。
+
+## 本轮真实运行结果：凭据检查受阻
+
+已授权触发提交`dab357b9f6a6d9643b71afe51d7742ab4987a0b1`，
+[run39916347222](https://github.com/q9good/skarmar/actions/runs/39916347222)。validate成功；
+release第2步Require securely configured credentials失败，实际错误注解为
+`Missing repository secret SKARMA_TEST_LOGIN (existing approved application login)`。
+原有CF Token和生产TOML的非空检查通过，不需要重新生成或重设。所有应用登录、数据
+恢复、构建和部署步骤均跳过，未读写线上业务数据，也未上传／切换版本；匿名health200。
+
+[凭据检查回执](artifacts/deployment/demo-restore-20261023-credentials-check.json)仅记录安全状态，
+不是恢复或发布完成回执。已向用户提供安全Secret入口，等其保存后再创建新标记提交执行。
+仅补齐Secret时不要重做数据批次或更换ID；部署过程中仍需保持远端SHA不变。

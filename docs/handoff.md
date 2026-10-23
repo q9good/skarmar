@@ -48,7 +48,7 @@ npm run sync:push
 
 ## 目前完成与待办
 
-### 2026-10-23：准备追加演示数据并发布（T37）
+### 2026-10-23：恢复与发布已实际触发，缺少应用登录Secret（T37受阻）
 
 用户要求先恢复一批测试数据，再部署T35/T36。已准备[固定15条合成批次与安全入口](demo-data-restore-2026-10-23.md)：
 普通应用认证API先追加14条旧版兼容基础记录，原发布／公开验收后再补课程关联和来源困难。
@@ -56,9 +56,15 @@ npm run sync:push
 9项恢复guard、21项发布guard及YAML检查通过，原生SQLite／真实Rust Worker/Miniflare DO
 的认证追加、幂等、独立修改保护和重启对账通过。应用实现仍5eaa910，未新增业务功能。
 
-现有Cloud环境仍无生产登录会话，CF发布Token只用于控制面；新增可选GitHub应用登录
-Secret后才可通过普通API恢复数据，普通成员即可。Secrets元数据403不能证明其缺失，
-真实运行第一步确认。当前尚未实际恢复线上记录或发布，不将本机成功称为线上完成。
+已用触发提交`dab357b`运行[Actions 39916347222](https://github.com/q9good/skarmar/actions/runs/39916347222)：
+validate成功，release第2步凭据检查失败，实际注解仅缺`SKARMA_TEST_LOGIN`；原有CF两项
+Secrets非空检查通过。所有构建、应用登录、数据追加、Worker上传／激活步骤跳过，未恢复
+线上数据或发布。匿名health200/status ok；20项产物校验含[脱敏凭据检查回执](artifacts/deployment/demo-restore-20261023-credentials-check.json)。
+
+已给用户具体GitHub安全输入入口与JSON格式，等其安全保存既有已审批应用账号（成员即可）
+后再用新的明确恢复／发布标记提交执行。不要让用户把密码发聊天，不重设CF Token，
+不绕过应用认证，不重建账号，不把本次guard通过称为上线。应用实现仍5eaa910，
+本轮没有执行生产数据读写；原T35/T36仍待实际发布及线上验收。
 
 ### 2026-10-22：机构课程关联闭环完成（T36，尚未部署）
 
