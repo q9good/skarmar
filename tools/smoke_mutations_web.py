@@ -1,4 +1,5 @@
 """Extend the synthetic UI creation test with editing and capability probes.
+from browser_navigation import start_plan
 
 Also runs the administrator deletion and member revision browser checks.
 """
@@ -152,20 +153,20 @@ def check_mutations(page, context, browser, base, out, created, login, state):
 
     # Edit the same saved draft, replace and remove targets, and save a summary draft.
     page.get_by_role('button', name='今天', exact=True).click()
-    page.get_by_role('button', name='＋ 新建干预计划', exact=True).click()
+    start_plan(page)
     page.get_by_role('button', name='游戏', exact=True).click()
     page.get_by_role('textbox', name='整次训练安排', exact=True).fill('【编辑自测】待修改计划')
     page.get_by_role('button', name='＋ 主目标', exact=True).click()
     page.get_by_role('button', name=goal_name, exact=True).click()
     page.get_by_role('button', name='保存计划并退出', exact=True).click()
-    expect(page.get_by_role('button', name='填写干预总结', exact=True)).to_be_visible()
+    expect(page.get_by_role('button', name='填写今天的总结', exact=True)).to_be_visible()
     draft = next(item for item in state()['sessions'] if item['status'] == 'draft')
-    page.get_by_role('button', name='填写干预总结', exact=True).click()
+    page.get_by_role('button', name='填写今天的总结', exact=True).click()
     page.get_by_role('button', name='修改本次计划', exact=True).click()
     page.get_by_role('textbox', name='整次训练安排', exact=True).fill('【编辑自测】已经修改的计划')
     page.get_by_role('combobox', name='更换主目标', exact=True).select_option(second['id'])
     page.get_by_role('button', name='保存计划并退出', exact=True).click()
-    expect(page.get_by_role('button', name='填写干预总结', exact=True)).to_be_visible()
+    expect(page.get_by_role('button', name='填写今天的总结', exact=True)).to_be_visible()
     revised = entry('sessions', draft['id'])
     assert revised['targets'][0]['goal_id'] == second['id']
     assert revised['version'] == draft['version'] + 1
@@ -174,33 +175,33 @@ def check_mutations(page, context, browser, base, out, created, login, state):
     goal(second_name)
     expect(page.get_by_text(revised['plan'], exact=True)).to_be_visible()
     page.get_by_role('button', name='今天', exact=True).click()
-    page.get_by_role('button', name='填写干预总结', exact=True).click()
+    page.get_by_role('button', name='填写今天的总结', exact=True).click()
     page.get_by_role('button', name='修改本次计划', exact=True).click()
     page.get_by_role('button', name='移除' + second_name, exact=True).click()
     page.get_by_role('button', name='保存计划并退出', exact=True).click()
-    expect(page.get_by_role('button', name='填写干预总结', exact=True)).to_be_visible()
+    expect(page.get_by_role('button', name='填写今天的总结', exact=True)).to_be_visible()
     assert entry('sessions', draft['id'])['targets'] == []
     goal(second_name)
     expect(page.get_by_text(revised['plan'], exact=True)).to_have_count(0)
     page.get_by_role('button', name='今天', exact=True).click()
-    page.get_by_role('button', name='填写干预总结', exact=True).click()
+    page.get_by_role('button', name='填写今天的总结', exact=True).click()
     page.get_by_role('button', name='修改本次计划', exact=True).click()
     page.get_by_role('button', name='＋ 主目标', exact=True).click()
     page.get_by_role('button', name=second_name, exact=True).click()
     page.get_by_role('button', name='保存计划并退出', exact=True).click()
-    expect(page.get_by_role('button', name='填写干预总结', exact=True)).to_be_visible()
-    page.get_by_role('button', name='填写干预总结', exact=True).click()
+    expect(page.get_by_role('button', name='填写今天的总结', exact=True)).to_be_visible()
+    page.get_by_role('button', name='填写今天的总结', exact=True).click()
     page.get_by_role('textbox', name='主目标实际进度', exact=True).fill('【编辑自测】总结草稿中的观察')
     page.get_by_role('textbox', name='整次训练观察', exact=True).fill('【编辑自测】保存后还可以继续补充')
     submit_while_pending(page, page.get_by_role('button', name='保存总结草稿并退出', exact=True))
-    expect(page.get_by_role('button', name='填写干预总结', exact=True)).to_be_visible()
+    expect(page.get_by_role('button', name='填写今天的总结', exact=True)).to_be_visible()
     saved_draft = entry('sessions', draft['id'])
     assert saved_draft['targets'][0]['goal_id'] == second['id']
     assert saved_draft['targets'][0]['progress'] == '【编辑自测】总结草稿中的观察'
     assert saved_draft['observation'] == '【编辑自测】保存后还可以继续补充'
     assert saved_draft['status'] == 'draft'
     assert len(state()['sessions']) == 2 and len(state()['experiences']) == 2
-    page.get_by_role('button', name='填写干预总结', exact=True).click()
+    page.get_by_role('button', name='填写今天的总结', exact=True).click()
     expect(page.get_by_role('textbox', name='主目标实际进度', exact=True)).to_have_value(saved_draft['targets'][0]['progress'])
     expect(page.get_by_role('textbox', name='整次训练观察', exact=True)).to_have_value(saved_draft['observation'])
     page.get_by_role('button', name='返回', exact=True).click()
@@ -244,7 +245,7 @@ def check_mutations(page, context, browser, base, out, created, login, state):
     checks.append('goal/method archived and restored; experience stopped and restored; related data retained')
 
     page.reload()
-    expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+    expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
     goal(second_name)
     for text in [method_name, principle_text, observation_text, saved_draft['plan']]:
         expect(page.get_by_text(text, exact=True)).to_be_visible()

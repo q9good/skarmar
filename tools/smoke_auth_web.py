@@ -1,4 +1,5 @@
 """Only against the fresh disposable database started by check-host.mjs."""
+from browser_navigation import start_plan
 import os
 from pathlib import Path
 from playwright.sync_api import expect, sync_playwright
@@ -27,7 +28,7 @@ with sync_playwright() as p:
         page.get_by_role('textbox', name='账号', exact=True).fill(username)
         page.get_by_label('密码', exact=True).fill(password)
         page.get_by_role('button', name='登录', exact=True).click()
-        expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+        expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
 
     applicant_password = '7'
     page.get_by_role('button', name='申请注册', exact=True).click()
@@ -88,14 +89,14 @@ with sync_playwright() as p:
         route.fulfill(status=401, content_type='application/json', body='{"error":"测试：上一账号请求已过期"}')
     page.unroute_all(behavior='wait')
     page.wait_for_timeout(100)
-    expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+    expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
     identity = context.request.get(BASE + '/api/auth/me').json()
     scope = f"{identity['space']}:{identity['user']['id']}"
     page.get_by_role('button', name='我的账号', exact=True).click()
     assert page.get_by_role('button', name='创建账号', exact=True).count() == 0
     assert context.request.get(BASE + '/api/auth/users').status == 403
     page.get_by_role('button', name='返回', exact=True).click()
-    page.get_by_role('button', name='＋ 新建干预计划', exact=True).click()
+    start_plan(page)
     page.get_by_role('textbox', name='整次训练安排', exact=True).fill('这个本机草稿属于老师账号')
     expect(page.get_by_text('草稿已保存在本机', exact=False)).to_be_visible()
     page.get_by_role('button', name='我的账号', exact=True).click()
@@ -134,7 +135,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='我的账号', exact=True).click()
     page.get_by_role('button', name='导出 Excel', exact=True).click()
     expect(page.get_by_text('欢迎回来', exact=True)).to_be_visible()
-    assert page.get_by_text('把今天的小进步，', exact=False).count() == 0
+    assert page.get_by_role('button', name='记录上课', exact=True).count() == 0
     assert page.evaluate('(key) => localStorage.getItem(key)', f'skarma:{scope}:training-draft:v2')
     assert not page.evaluate('(password) => JSON.stringify(localStorage).includes(password)', MEMBER_PASSWORD)
     assert not errors, errors

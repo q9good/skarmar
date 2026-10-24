@@ -1,5 +1,6 @@
+import { Pressable, Text, TextInput, ReadabilitySettings } from './readability';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { advanceAuthSession, ApiError, onUnauthorized, request } from './api';
 import { downloadWorkbook } from './download';
 import { ImportPanel } from './import-view';
@@ -103,7 +104,7 @@ function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Iden
   };
   return <ScrollView style={s.page} contentContainerStyle={s.loginContainer} keyboardShouldPersistTaps="handled">
     <View style={s.loginCard}>
-      <View style={s.brand}><Text style={s.star}>✦</Text><Text style={s.brandName}>skarma</Text></View>
+      <View style={s.brand}><Text style={s.star}>✦</Text><Text style={s.brandName}>skarmar</Text></View>
       <Text style={s.eyebrow}>记录小进步，陪伴每一天。</Text>
       <Text style={s.title}>{registering ? '申请注册' : '欢迎回来'}</Text>
       <Text style={s.body}>{registering ? '填写申请后由管理员审批，审批通过前无法登录。' : '登录你的账号，继续今天的安排与观察。'}</Text>
@@ -176,6 +177,7 @@ export function AccountPanel({ back, logout, onImported }: { back: () => void; l
     </View>}
     {Platform.OS === 'web' && auth.identity.user.role === 'admin' &&
       <ImportPanel disabled={busy} onBusyChange={setBusy} onImported={onImported} />}
+    <ReadabilitySettings />
     <View style={s.card}><Text style={s.cardTitle}>修改密码</Text>
       <Input label="当前密码" value={currentPassword} change={setCurrentPassword} secret disabled={busy} />
       <Input label="新密码" value={password} change={setPassword} secret disabled={busy} />
@@ -251,14 +253,14 @@ const s = StyleSheet.create({
   loginCard: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 24, borderWidth: 1, borderColor: '#E0E6DD', padding: 26, gap: 14 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F6F5EF', gap: 16 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 }, star: { fontSize: 34, color: '#34765B' }, brandName: { color: '#243D36', fontSize: 28, fontWeight: '700' },
-  eyebrow: { color: '#6C7B73', fontSize: 13, marginBottom: 15 }, title: { color: '#243D36', fontSize: 25, fontWeight: '700', flexShrink: 1 },
-  body: { fontSize: 14, color: '#243D36', lineHeight: 23 }, hint: { color: '#6C7B73', fontSize: 12, lineHeight: 21 },
+  eyebrow: { color: '#53665A', fontSize: 13, marginBottom: 15 }, title: { color: '#243D36', fontSize: 25, fontWeight: '700', flexShrink: 1 },
+  body: { fontSize: 14, color: '#243D36', lineHeight: 23 }, hint: { color: '#53665A', fontSize: 12, lineHeight: 21 },
   card: { padding: 18, borderRadius: 18, borderWidth: 1, borderColor: '#E0E6DD', backgroundColor: '#FFFFFF', gap: 12 }, cardTitle: { fontSize: 16, fontWeight: '600', color: '#243D36' },
   pending: { borderTopWidth: 1, borderColor: '#E0E6DD', paddingTop: 12, gap: 9 },
-  field: { gap: 7 }, label: { fontSize: 13, color: '#243D36', fontWeight: '500' }, input: { minHeight: 48, borderWidth: 1, borderColor: '#E0E6DD', borderRadius: 10, padding: 12, color: '#243D36', backgroundColor: '#FCFCF9' },
+  field: { gap: 7 }, label: { fontSize: 17, color: '#243D36', fontWeight: '500' }, input: { minHeight: 48, borderWidth: 1, borderColor: '#E0E6DD', borderRadius: 10, padding: 12, color: '#243D36', backgroundColor: '#FCFCF9' },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  button: { backgroundColor: '#34765B', borderRadius: 12, padding: 13, minHeight: 46, alignItems: 'center', justifyContent: 'center' }, secondary: { backgroundColor: '#E9F2E9' }, buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  button: { backgroundColor: '#34765B', borderRadius: 12, padding: 13, minHeight: 46, alignItems: 'center', justifyContent: 'center' }, secondary: { backgroundColor: '#E9F2E9' }, buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   link: { color: '#34765B', fontSize: 12, paddingVertical: 5, alignSelf: 'flex-end' },
   error: { backgroundColor: '#FBECE2', padding: 12, borderRadius: 10, color: '#925231', fontSize: 13, lineHeight: 21 },
-  notice: { backgroundColor: '#E9F2E9', padding: 12, borderRadius: 10, color: '#34765B', fontSize: 13, lineHeight: 21 }, footer: { color: '#97A098', fontSize: 11, textAlign: 'center', marginTop: 12 },
+  notice: { backgroundColor: '#E9F2E9', padding: 12, borderRadius: 10, color: '#34765B', fontSize: 13, lineHeight: 21 }, footer: { color: '#53665A', fontSize: 11, textAlign: 'center', marginTop: 12 },
 });

@@ -1,4 +1,5 @@
 """Create related entities through the real UI on an empty synthetic space."""
+from browser_navigation import start_plan
 import json
 import os
 from pathlib import Path
@@ -25,7 +26,7 @@ with sync_playwright() as p:
         page.get_by_role('textbox', name='账号', exact=True).fill('owner')
         page.get_by_label('密码', exact=True).fill('synthetic-owner-contract-password')
         page.get_by_role('button', name='登录', exact=True).click()
-        expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+        expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
 
     def state():
         response = context.request.get(BASE + '/api/state')
@@ -72,17 +73,17 @@ with sync_playwright() as p:
     print('PASS UI created one goal, one method and one independent experience with exact bindings', flush=True)
 
     page.get_by_role('button', name='今天', exact=True).click()
-    page.get_by_role('button', name='＋ 新建干预计划', exact=True).click()
+    start_plan(page)
     page.get_by_role('button', name='游戏', exact=True).click()
     page.get_by_role('textbox', name='整次训练安排', exact=True).fill(PLAN)
     page.get_by_role('button', name='＋ 主目标', exact=True).click()
     page.get_by_role('button', name=GOAL, exact=True).click()
     page.get_by_role('textbox', name='主目标计划', exact=True).fill('提供选择机会，记录表达和提示程度')
     page.get_by_role('button', name='保存计划并退出', exact=True).click()
-    expect(page.get_by_role('button', name='填写干预总结', exact=True)).to_be_visible()
+    expect(page.get_by_role('button', name='填写今天的总结', exact=True)).to_be_visible()
     draft = state()['sessions'][0]
     assert draft['status'] == 'draft' and draft['targets'][0]['goal_id'] == goal['id']
-    page.get_by_role('button', name='填写干预总结', exact=True).click()
+    page.get_by_role('button', name='填写今天的总结', exact=True).click()
     page.get_by_role('textbox', name='主目标实际进度', exact=True).fill('提供选项后主动表达一次，其余情况仍需要等待')
     page.get_by_role('button', name='继续', exact=True).click()
     page.get_by_role('textbox', name='整次训练观察', exact=True).fill('家人干预的合成观察，用于核对关联')
@@ -136,7 +137,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='家庭干预', exact=True).click()
     expect(page.get_by_text(PLAN, exact=True)).to_be_visible()
     page.reload()
-    expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+    expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
     page.get_by_role('button', name='目标', exact=True).click()
     page.get_by_text(GOAL, exact=True).click()
     for text in [METHOD, PRINCIPLE, OBSERVATION, PLAN]:

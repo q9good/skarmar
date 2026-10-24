@@ -1,4 +1,5 @@
 """Planning balance dashboard against the disposable authenticated host."""
+from browser_navigation import start_plan
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -22,7 +23,7 @@ with sync_playwright() as p:
     page.get_by_role('textbox', name='账号', exact=True).fill('owner')
     page.get_by_label('密码', exact=True).fill('synthetic-owner-contract-password')
     page.get_by_role('button', name='登录', exact=True).click()
-    page.get_by_role('button', name='＋ 新建干预计划', exact=True).click()
+    start_plan(page)
     page.get_by_role('button', name='查看均衡规划提示', exact=True).click()
     expect(page.get_by_role('img', name='训练分布：暂无数据', exact=True)).to_be_visible()
 
@@ -106,7 +107,7 @@ with sync_playwright() as p:
 
     # Adding a neglected direction preserves a dirty draft and cannot duplicate a target.
     page.get_by_role('button', name='今天', exact=True).click()
-    page.get_by_role('button', name='＋ 新建干预计划', exact=True).click()
+    start_plan(page)
     page.get_by_role('textbox', name='整次训练安排', exact=True).fill('【规划验收】已有计划内容需要保留')
     page.get_by_role('button', name='查看均衡规划提示', exact=True).click()
     page.get_by_test_id('planning-goal-' + neglected['id']).get_by_role('button', name='加入当前计划', exact=True).click()
@@ -125,7 +126,7 @@ with sync_playwright() as p:
     page.get_by_role('button', name='保存计划并退出', exact=True).click()
     expect(page.get_by_text('草稿已保存到服务器。干预后从今天的安排填写总结。', exact=True)).to_be_visible()
     page.reload()
-    page.get_by_role('button', name='填写干预总结', exact=True).click()
+    page.get_by_role('button', name='填写今天的总结', exact=True).click()
     page.get_by_role('button', name='修改本次计划', exact=True).click()
     expect(page.get_by_role('textbox', name='整次训练安排', exact=True)).to_have_value('【规划验收】已有计划内容需要保留')
     page.get_by_role('button', name='查看均衡规划提示', exact=True).click()
@@ -142,7 +143,7 @@ with sync_playwright() as p:
                                       'targets': [{'goal_id': goal['id'], 'progress': '', 'role': 'primary'}], 'target_snapshots': [{'goal_id': goal['id'], 'goal_snapshot': goal}]})
     page.route('**/api/state', lambda route: route.fulfill(json=chart_state))
     page.reload()
-    page.get_by_role('button', name='＋ 新建干预计划', exact=True).click()
+    start_plan(page)
     page.get_by_role('button', name='查看均衡规划提示', exact=True).click()
     page.get_by_role('button', name='查看分布：其余 2 个目标', exact=True).click()
     expect(page.locator('[data-testid^="planning-goal-"]')).to_have_count(2)
@@ -153,7 +154,7 @@ with sync_playwright() as p:
     page.unroute_all(behavior='wait')
     page.route('**/api/state', lambda route: route.fulfill(json={'goals': [], 'sessions': [], 'pathways': [], 'experiences': [], 'difficulties': []}))
     page.reload()
-    page.get_by_role('button', name='＋ 新建干预计划', exact=True).click()
+    start_plan(page)
     page.get_by_role('button', name='查看均衡规划提示', exact=True).click()
     expect(page.get_by_text('暂无这个范围的目标，可到“目标”页创建，或切换层级与归档范围。', exact=True)).to_be_visible()
     assert not errors, errors

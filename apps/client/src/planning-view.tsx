@@ -1,5 +1,6 @@
+import { Pressable, Text } from './readability';
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import type { AppState, Goal, Pathway } from './api';
 import { buildPlanning, needsTraining, progressGroup, progressGroups, type PlanningLevel, type PlanningPeriod, type PlanningSource } from './planning';
@@ -146,11 +147,11 @@ export function PlanningOverview({ data, today, plan, openGoal, openPathway, has
 const s = StyleSheet.create({
   card: { backgroundColor: '#FFFFFF', borderRadius: 18, padding: 18, borderWidth: 1, borderColor: '#E0E6DD', gap: 10, minWidth: 0 },
   title: { color: '#243D36', fontWeight: '600', fontSize: 17, lineHeight: 25 }, body: { color: '#243D36', fontSize: 14, lineHeight: 23 },
-  label: { color: '#34765B', fontSize: 13, lineHeight: 21 }, hint: { color: '#6C7B73', fontSize: 12, lineHeight: 20 },
+  label: { color: '#34765B', fontSize: 17, lineHeight: 21 }, hint: { color: '#53665A', fontSize: 12, lineHeight: 20 },
   number: { color: '#243D36', fontSize: 31, fontWeight: '600' }, smallNumber: { color: '#243D36', fontSize: 19, fontWeight: '600' },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, charts: { flexDirection: 'row', flexWrap: 'wrap', gap: 13 }, chart: { flexGrow: 1, flexBasis: 260 },
   action: { borderRadius: 11, backgroundColor: '#F5F6F2', borderWidth: 1, borderColor: '#E0E6DD', paddingHorizontal: 12, paddingVertical: 11, minHeight: 44, justifyContent: 'center', maxWidth: '100%' },
-  selected: { borderColor: '#34765B', backgroundColor: '#E9F2E9' }, actionText: { color: '#34765B', fontSize: 13, lineHeight: 21 },
+  selected: { borderColor: '#34765B', backgroundColor: '#E9F2E9' }, actionText: { color: '#34765B', fontSize: 17, lineHeight: 21 },
   ringCenter: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
   legend: { flexDirection: 'row', alignItems: 'center', gap: 9, minHeight: 44 }, dot: { width: 10, height: 10, borderRadius: 5 },
   track: { height: 8, borderRadius: 4, backgroundColor: '#EDF0EA', overflow: 'hidden' }, fill: { height: '100%', backgroundColor: '#538A76', borderRadius: 4 },

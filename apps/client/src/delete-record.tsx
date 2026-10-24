@@ -1,5 +1,6 @@
+import { Pressable, Text } from './readability';
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { request } from './api';
 import { useAuth } from './auth';
 

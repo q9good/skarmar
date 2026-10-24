@@ -1,5 +1,6 @@
+import { Pressable, Text, TextInput } from './readability';
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { ApiError, request, type AppState, type FollowUp, type Goal, type Pathway, type Lesson } from './api';
 import { uuid } from './draft';
 import { DeleteRecordButton, type DeletedHandler } from './delete-record';
@@ -164,11 +165,11 @@ function PathwayForm({ initial, goals, saved, cancel }: { initial?: Pathway; goa
 
 const s = StyleSheet.create({
   card: { padding: 18, borderRadius: 18, borderWidth: 1, borderColor: '#E0E6DD', backgroundColor: '#FFFFFF', gap: 13 },
-  title: { color: '#243D36', fontWeight: '600', fontSize: 17 }, label: { color: '#243D36', fontWeight: '500', fontSize: 13 },
-  body: { color: '#243D36', fontSize: 14, lineHeight: 23 }, hint: { color: '#6C7B73', fontSize: 12, lineHeight: 21 },
+  title: { color: '#243D36', fontWeight: '600', fontSize: 17 }, label: { color: '#243D36', fontWeight: '500', fontSize: 17 },
+  body: { color: '#243D36', fontSize: 14, lineHeight: 23 }, hint: { color: '#53665A', fontSize: 12, lineHeight: 21 },
   field: { gap: 8 }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   choice: { padding: 10, borderRadius: 10, backgroundColor: '#F6F5EF', borderWidth: 1, borderColor: '#E0E6DD', maxWidth: '100%' }, checked: { borderColor: '#34765B', backgroundColor: '#E9F2E9' },
-  action: { minHeight: 46, padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E9F2E9' }, actionText: { color: '#34765B', fontSize: 14, fontWeight: '600' },
+  action: { minHeight: 46, padding: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E9F2E9' }, actionText: { color: '#34765B', fontSize: 17, fontWeight: '600' },
   input: { minHeight: 72, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#E0E6DD', color: '#243D36', backgroundColor: '#FCFCF9', textAlignVertical: 'top' },
   error: { padding: 12, borderRadius: 10, backgroundColor: '#FBECE2', color: '#925231', lineHeight: 21 },
 });

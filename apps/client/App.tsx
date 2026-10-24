@@ -1,8 +1,7 @@
+import { Pressable, Text, TextInput, ReadabilityProvider } from './src/readability';
+import { DetailOverlay } from './src/overlay';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput,
-  View, useWindowDimensions, StatusBar, Modal, AppState as NativeAppState, Platform,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View, useWindowDimensions, StatusBar, AppState as NativeAppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthBoundary, AccountPanel, useAuth } from './src/auth';
 import { ExperienceBindings, ExperienceCreator, PathwayLibrary, RelatedKnowledge } from './src/knowledge';
@@ -19,7 +18,7 @@ import {
 } from './src/api';
 import { clearDraft, emptyInput, localDate, readDraft, saveDraft, uuid, type Draft } from './src/draft';
 
-const colors = { ink: '#243D36', muted: '#6C7B73', green: '#34765B', light: '#E9F2E9',
+const colors = { ink: '#243D36', muted: '#53665A', green: '#34765B', light: '#E9F2E9',
   cream: '#F6F5EF', white: '#FFFFFF', border: '#E0E6DD', orange: '#AA713B' };
 const levels: Record<Level, string> = { long: '长期', medium: '中期', short: '短期' };
 const progressLabels: Record<GoalProgress, string> = { cultivating: '持续培养中', internalized: '已内化',
@@ -74,7 +73,7 @@ function Field({ label, value, onChange, multiline = false, placeholder = '', di
   return <View style={styles.field}>
     <Text style={styles.label}>{label}</Text>
     <TextInput accessibilityLabel={label} value={value} onChangeText={onChange}
-      editable={!disabled} multiline={multiline} placeholder={placeholder} placeholderTextColor="#93A097"
+      editable={!disabled} multiline={multiline} placeholder={placeholder} placeholderTextColor="#58695E"
       style={[styles.input, multiline && styles.textarea]} />
   </View>;
 }
@@ -88,7 +87,7 @@ function inputOf(session: Session): SessionInput {
 }
 
 export default function App() {
-  return <AuthBoundary><Workspace /></AuthBoundary>;
+  return <ReadabilityProvider><AuthBoundary><Workspace /></AuthBoundary></ReadabilityProvider>;
 }
 
 function Workspace() {
@@ -120,8 +119,8 @@ function Workspace() {
   const [pathwayToOpen, setPathwayToOpen] = useState<Pathway | undefined>();
   const [conflict, setConflict] = useState<Session | null>(null);
   const [today, setToday] = useState(localDate);
-  const [reviewDismissed, setReviewDismissed] = useState<string[]>([]);
-  const [reviewReady, setReviewReady] = useState(false);
+  const [showDirections, setShowDirections] = useState(false);
+  const [showInterventionChoice, setShowInterventionChoice] = useState(false);
   const [syncError, setSyncError] = useState('');
   const [lastSynced, setLastSynced] = useState('');
   const scroll = useRef<ScrollView>(null);
@@ -189,14 +188,6 @@ function Workspace() {
       if (Platform.OS === 'web') { window.removeEventListener('focus', sync); document.removeEventListener('visibilitychange', sync); }
     };
   }, [refresh]);
-  useEffect(() => {
-    let active = true; setReviewReady(false);
-    AsyncStorage.getItem(`skarma:${scope}:review-reminders:${today}`).then(raw => {
-      let values: unknown = []; try { values = raw ? JSON.parse(raw) : []; } catch {}
-      if (active) { setReviewDismissed(Array.isArray(values) ? values.filter(v => typeof v === 'string') : []); setReviewReady(true); }
-    }).catch(() => { if (active) { setReviewDismissed([]); setReviewReady(true); } });
-    return () => { active = false; };
-  }, [scope, today]);
 
   useEffect(() => {
     let active = true;
@@ -244,15 +235,17 @@ function Workspace() {
     ? JSON.stringify(draft.input) !== JSON.stringify(emptyInput())
     : !data.sessions.some(s => s.id === draft.id && s.version === draft.version && JSON.stringify(inputOf(s)) === JSON.stringify(draft.input))));
 
-  const startNew = () => {
+  const startNewAt = (nextStage: 'plan' | 'summary') => {
     if (!storageReady) { setError('无法读取已有本机草稿，请先恢复存储访问后继续。'); return; }
     if (dirty()) { setEditing(true); setError('请先保存当前草稿，再创建另一条训练。'); return; }
     try {
-      setDraft({ id: uuid(), version: null, input: emptyInput(), stage: 'plan' });
-      setStage('plan'); setShowPlanning(false);
+      setDraft({ id: uuid(), version: null, input: emptyInput(), stage: nextStage });
+      setStage(nextStage); setShowPlanning(false);
       setEditing(true); setEditingLesson(false); setDetail(null); setConflict(null); setError(''); setMessage('');
     } catch (e) { setError((e as Error).message); }
   };
+
+  const startNew = () => startNewAt('plan');
 
   const planGoal = (goal: Goal) => {
     if (!storageReady) { setError('无法读取已有本机草稿，请先恢复存储访问后继续。'); return; }
@@ -392,13 +385,9 @@ function Workspace() {
   const remoteLesson = lessonDraft?.expectedVersion !== null ? data.lessons.find(item => item.id === lessonDraft?.id) : undefined;
   const currentLessonDifficulty = data.difficulties.find(item=>item.source_lesson_id===lessonDraft?.id&&!item.source_deleted);
   const lessonStale = Boolean(remoteLesson && (remoteLesson.version !== lessonDraft?.expectedVersion || (lessonDraft?.input.links?.track_problem && (currentLessonDifficulty?.version ?? null) !== (lessonDraft?.difficultyVersion ?? null))));
-  const reminders = dueGoals.filter(goal => !reviewDismissed.includes(`${goal.id}:${goal.next_review_date}`));
-  const dismissReminders = () => {
-    const next = [...new Set([...reviewDismissed, ...reminders.map(goal => `${goal.id}:${goal.next_review_date}`)])];
-    setReviewDismissed(next);
-    void AsyncStorage.setItem(`skarma:${scope}:review-reminders:${today}`, JSON.stringify(next)).catch(() => undefined);
-  };
-  const pageTitle = { today: '今天', goals: '目标', pathways: '方法', history: '记录', followups: '困难与经验' }[tab];
+  const longDirections = data.goals.filter(goal => goal.level === 'long' && goal.status !== 'archived');
+  const pendingToday = todaySessions.filter(session => session.status === 'draft');
+  const pageTitle = { today: '今天', goals: '目标', pathways: '方法', history: '记录', followups: '跟进' }[tab];
   const coverage = buildPlanning(data, { today, days: 30, level: 'short', includeArchived: false });
   const acceptOption = (saved: LessonOption) => setData(current => ({ ...current,
     lesson_options: [...(current.lesson_options ?? []).filter(item => item.kind !== saved.kind || item.value !== saved.value), saved] }));
@@ -416,11 +405,11 @@ function Workspace() {
     <StatusBar barStyle="dark-content" />
     <View style={[styles.shell, width > 700 && { maxWidth: 960 }]}>
       <View style={styles.header}>
-        <View style={styles.brand}><Text style={styles.star}>✦</Text><Text style={styles.brandName}>skarma</Text></View>
+        <View style={styles.brand}><Text style={styles.star}>✦</Text><Text style={styles.brandName}>skarmar</Text></View>
         <Pressable accessibilityRole="button" accessibilityLabel="我的账号" style={{ maxWidth: '55%', flexShrink: 1 }} disabled={busy || auth.identity.demo} onPress={() => setShowAccount(true)}><Text numberOfLines={1} style={styles.prototype}>{auth.identity.demo ? '体验版 · 示例空间' : `${auth.identity.user.display_name} · 账号`}</Text></Pressable>
       </View>
       <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {syncError ? <Hint>{syncError}</Hint> : lastSynced ? <Hint>上次同步 {lastSynced} · 页面可见时每 20 秒自动刷新</Hint> : null}
+        {syncError ? <Hint>{syncError}</Hint> : null}
         {error ? <View accessibilityRole="alert" style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}
         {message ? <View accessibilityRole="alert" style={styles.notice}><Text style={styles.noticeText}>{message}</Text></View> : null}
         {showAccount ? <AccountPanel back={() => setShowAccount(false)} logout={async () => { await Promise.all([persistence.current, lessonPersistence.current]); await auth.logout(); }} onImported={refresh} /> : loading ? <ActivityIndicator color={colors.green} style={{ marginVertical: 40 }} /> :
@@ -521,40 +510,38 @@ function Workspace() {
             {data.sessions.filter(s => s.targets.some(t => t.goal_id === selectedGoal.id)).map(s => <SessionCard key={s.id} session={s} onPress={() => openSession(s)} />)}
             {!data.sessions.some(s => s.targets.some(t => t.goal_id === selectedGoal.id)) && <Hint>开始记录后，这里会呈现相关训练与逐目标结果。</Hint>}
           </> : <>
-            <View style={styles.sectionHeader}><Text style={styles.title}>{pageTitle}</Text>
+            <View style={styles.sectionHeader}><Text style={styles.title}>{pageTitle}{tab === 'today' ? ` · ${today.slice(5).replace('-', '/')}` : ''}</Text>
               <Button title="刷新" secondary disabled={busy} onPress={() => void safely(async () => { await refresh(); })} /></View>
             {tab === 'today' && <>
-              <Text style={styles.subtitle}>长期关注</Text>
-              {data.goals.filter(g => g.level === 'long').map(g => <GoalCard key={g.id} goal={g} data={data} onPress={() => setSelectedGoal(g)} />)}
-              <View style={styles.hero}>
-                <Text style={styles.eyebrow}>{today.replaceAll('-', '.')} · 每一步都值得记录</Text>
-                <Text style={styles.heroTitle}>把今天的小进步，{width < 500 ? '\n' : ''}留下来。</Text>
-                <Text style={styles.heroText}>机构课程直接记录，家人干预先安排计划。{width < 500 ? '\n' : ' '}让每一次观察都能成为下一步的依据。</Text>
-                {todaySessions.some(item => item.status === 'draft') ? <>
-                  <Button title="填写干预总结" onPress={() => openSession(todaySessions.find(item => item.status === 'draft')!)} disabled={busy} />
-                  <Button title="＋ 另建干预计划" secondary onPress={startNew} disabled={busy} />
-                </> : <Button title="＋ 新建干预计划" onPress={startNew} disabled={busy} />}
-                <Button title="＋ 记录今天上课" secondary onPress={startLesson} disabled={busy} />
-
+              <Pressable accessibilityRole="button" accessibilityLabel="查看长期关注" onPress={() => setShowDirections(true)}
+                style={{ backgroundColor: colors.light, borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text numberOfLines={1} style={{ color: colors.green, fontSize: 14, flex: 1 }}>{longDirections.length
+                  ? `长期关注 · ${longDirections.slice(0, 3).map(goal => goal.title).join(' · ')}`
+                  : '先写下想长期关注的方向'}</Text>
+                <Text style={{ color: colors.green, fontSize: 14 }}>{longDirections.length > 3 ? `另有 ${longDirections.length - 3} 项 ▾` : '▾'}</Text>
+              </Pressable>
+              <View style={{ gap: 10 }} testID="today-primary-actions">
+                <Button title="记录上课" onPress={startLesson} disabled={busy} />
+                <Button title={pendingToday.length ? '填写今天的总结' : '记录一次家庭干预'} secondary disabled={busy}
+                  onPress={() => pendingToday.length === 1 ? openSession(pendingToday[0]) : setShowInterventionChoice(true)} />
               </View>
-              {draft && draft.input.business_date === today && (dirty() || !draft.version) ? <Card><Text style={styles.cardTitle}>继续你的草稿</Text><Hint>{draft.input.business_date} · {draft.version ? '已有计划，可继续回填' : '本机尚未提交'}</Hint>
+              {pendingToday.length > 0 && <Button title="另建干预计划" secondary disabled={busy} onPress={startNew} />}
+              {(dueGoals.length > 0 || due.length > 0) && <Card>
+                <Text style={styles.cardTitle}>给我的待办</Text>
+                <Hint>待复盘目标 {dueGoals.length} 项 · 到期困难 {due.length} 项</Hint>
+                {dueGoals.map(goal => <Button key={goal.id} title={`复盘：${goal.title}`} secondary onPress={() => setSelectedGoal(goal)} />)}
+                {due.length > 0 && <Button title="查看到期困难" secondary onPress={() => setTab('followups')} />}
+              </Card>}
+              {draft && (dirty() || !draft.version) ? <Card><Text style={styles.cardTitle}>继续你的草稿</Text><Hint>{draft.input.business_date} · {draft.version ? '已有计划，可继续回填' : '本机尚未提交'}</Hint>
                 <Button title="继续填写" secondary onPress={() => setEditing(true)} /></Card> : null}
-              {lessonDraft && lessonDraft.input.business_date === today && lessonDirty() ? <Card><Text style={styles.cardTitle}>继续填写上课记录</Text>
+              {lessonDraft && lessonDirty() ? <Card><Text style={styles.cardTitle}>继续填写上课记录</Text>
                 <Hint>草稿仅保存在这台设备，正式保存后其他设备才可查看。</Hint>
                 <Button title="继续填写" secondary onPress={() => { setEditingLesson(true); setEditing(false); }} /></Card> : null}
-              <View style={styles.stats}>
-                <Stat number={todaySessions.length} label="今天的干预" />
-                <Stat number={todaySessions.filter(s => s.status === 'completed').length} label="已完成记录" />
-                <Stat number={due.length} label="到期困难" />
-              </View>
               <Text style={styles.subtitle}>今天的安排</Text>
               {todayLessons.map(item => <LessonCard key={item.id} lesson={item} onPress={() => openLesson(item)} />)}
               {todaySessions.length ? todaySessions.map(s => <SessionCard key={s.id} session={s} onPress={() => openSession(s)} />) :
-                !todayLessons.length ? <Card><Text style={styles.cardTitle}>从今天的一堂课开始</Text><Hint>直接记下课程和老师，也可以另建训练计划。</Hint></Card> : null}
-              {due.length > 0 && <Card><Text style={styles.cardTitle}>有 {due.length} 条困难到了回看时间</Text>
-                <Button title="查看跟进" secondary onPress={() => setTab('followups')} /></Card>}
-              {dueGoals.length > 0 && <><Text style={styles.subtitle}>待复盘目标 · {dueGoals.length}</Text>
-                {dueGoals.map(g => <GoalCard key={g.id} goal={g} data={data} onPress={() => setSelectedGoal(g)} />)}</>}
+                !todayLessons.length ? <Card><Text style={styles.cardTitle}>今天还没有记录</Text><Hint>先记课程和老师，或安排一次家庭干预。</Hint></Card> : null}
+
             </>}
             {tab === 'goals' && <>
               <Hint>目标记录想达到什么，方法记录具体怎样做。长期方向持续关注，中短期目标进入家庭干预。</Hint>
@@ -615,19 +602,32 @@ function Workspace() {
                 update={body => updateFollowUp('experiences', item.id, body)} />) : <Hint>已保存不等于已验证。复用前，请补充适用情况和验证依据。</Hint>}
             </>}
           </>}
-        <Text style={styles.footer}>Every star shines at its own pace.</Text>
+        {lastSynced ? <Text style={styles.footer}>上次同步 {lastSynced} · 页面可见时自动刷新</Text> : null}
       </ScrollView>
-      <Modal visible={tab === 'today' && !loading && reviewReady && reminders.length > 0 && !editing && !editingLesson && !selectedGoal && !detail && !showAccount && !showGoalForm && !showExperienceForm}
-        transparent animationType="fade" onRequestClose={dismissReminders}>
-        <View style={{ flex: 1, backgroundColor: '#0006', justifyContent: 'center', padding: 24 }}>
-          <View accessibilityViewIsModal style={[styles.card, { maxHeight: '80%' }]}>
-            <Text accessibilityRole="header" style={styles.cardTitle}>目标复盘提醒</Text>
-            <Hint>今天或此前有 {reminders.length} 个目标到了复盘时间。</Hint>
-            <ScrollView>{reminders.map(goal => <View key={goal.id} style={{ marginBottom: 10 }}><Button title={`复盘：${goal.title}`} secondary onPress={() => { dismissReminders(); setSelectedGoal(goal); }} /></View>)}</ScrollView>
-            <Button title="今天不再弹出，稍后从列表查看" secondary onPress={dismissReminders} />
-          </View>
-        </View>
-      </Modal>
+      {showDirections && <DetailOverlay title="长期关注" close={() => setShowDirections(false)}>
+        {longDirections.length ? longDirections.map(goal => <Card key={goal.id}>
+          <Text accessibilityRole="header" style={styles.cardTitle}>{goal.title}</Text>
+          <Text style={styles.body}>{goal.criteria || '还没有填写关注说明，可在目标页补充。'}</Text>
+          <Text style={styles.label}>最近观察</Text>
+          <Text style={styles.body}>{goal.review_notes || '还没有此方向的直接观察记录。'}</Text>
+          <RelatedKnowledge data={data} goalId={goal.id}
+            openLesson={lesson => { setShowDirections(false); openLesson(lesson); }}
+            openPathway={pathway => { setShowDirections(false); setPathwayToOpen(pathway); setTab('pathways'); }} />
+          <Button title={`查看目标：${goal.title}`} secondary onPress={() => { setShowDirections(false); setSelectedGoal(goal); }} />
+        </Card>) : <>
+          <Text>写下希望长期支持的方向，相关经验和困难会在这里一起查看。</Text>
+          <Button title="新建长期目标" onPress={() => { setShowDirections(false); setTab('goals'); setShowGoalForm(true); }} />
+        </>}
+      </DetailOverlay>}
+      {showInterventionChoice && <DetailOverlay title="家庭干预" close={() => setShowInterventionChoice(false)}>
+        {pendingToday.length > 0 && <>
+          <Text>选择今天待总结的计划</Text>
+          {pendingToday.map(session => <Button key={session.id} title={`${session.time_slot} · ${session.plan || '未填写安排'}`} secondary
+            onPress={() => { setShowInterventionChoice(false); openSession(session); }} />)}
+        </>}
+        <Button title="准备去做：新建计划" onPress={() => { setShowInterventionChoice(false); startNew(); }} />
+        <Button title="已经做完了：填写总结" secondary onPress={() => { setShowInterventionChoice(false); startNewAt('summary'); }} />
+      </DetailOverlay>}
       <View style={styles.navigation}>
         {tabs.map(([key, icon, label]) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={label}
           accessibilityState={{ selected: tab === key && !editing }} style={styles.navItem} disabled={busy}
@@ -638,10 +638,6 @@ function Workspace() {
       </View>
     </View>
   </View>;
-}
-
-function Stat({ number, label }: { number: number; label: string }) {
-  return <View style={styles.stat}><Text style={styles.statNumber}>{number}</Text><Text style={styles.hint}>{label}</Text></View>;
 }
 
 function LessonEditor({ value, change, disabled, data, addOption, openGoal, openPathway }: {
@@ -1069,18 +1065,14 @@ function FollowUpCard({ item, kind, busy, source, update, goals, pathways, remov
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.cream, alignItems: 'center' },
   shell: { flex: 1, width: '100%', backgroundColor: colors.cream },
-  header: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { paddingHorizontal: 22, paddingTop: 10, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 }, star: { color: colors.green, fontSize: 30 },
-  brandName: { color: colors.ink, fontSize: 26, fontWeight: '700', letterSpacing: -0.7 },
+  brandName: { color: colors.ink, fontSize: 23, fontWeight: '700', letterSpacing: -0.7 },
   prototype: { fontSize: 11, color: colors.muted, backgroundColor: '#ECEEE7', padding: 7, borderRadius: 20 },
   content: { paddingHorizontal: 20, paddingBottom: 28, gap: 13 },
   title: { color: colors.ink, fontSize: 25, fontWeight: '700', flexShrink: 1 },
   subtitle: { color: colors.ink, fontSize: 18, fontWeight: '600', marginTop: 12, marginBottom: 2 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
-  hero: { padding: 25, borderRadius: 24, backgroundColor: '#DCEADD', gap: 15, marginTop: 3 },
-  eyebrow: { fontSize: 12, color: colors.green, letterSpacing: 0.3 },
-  heroTitle: { fontSize: 30, fontWeight: '700', lineHeight: 41, color: colors.ink },
-  heroText: { color: '#536A5C', lineHeight: 23, fontSize: 14 },
   card: { backgroundColor: colors.white, borderRadius: 18, padding: 18, borderWidth: 1, borderColor: colors.border, gap: 9 },
   cardTitle: { fontSize: 16, fontWeight: '600', color: colors.ink, lineHeight: 24, flexShrink: 1 },
   body: { color: colors.ink, fontSize: 14, lineHeight: 23 },
@@ -1088,12 +1080,12 @@ const styles = StyleSheet.create({
   badge: { color: colors.green, fontSize: 12, lineHeight: 20 },
   button: { backgroundColor: colors.green, paddingHorizontal: 17, paddingVertical: 13, borderRadius: 12, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
   secondaryButton: { backgroundColor: colors.light },
-  buttonText: { color: colors.white, fontSize: 14, fontWeight: '600' },
+  buttonText: { color: colors.white, fontSize: 17, fontWeight: '600' },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 3 },
   chip: { paddingHorizontal: 13, paddingVertical: 11, backgroundColor: '#F5F6F2', borderWidth: 1, borderColor: colors.border, borderRadius: 11, minHeight: 42 },
   selectedChip: { borderColor: colors.green, backgroundColor: colors.light },
   chipText: { color: colors.muted, fontSize: 13 },
-  label: { color: colors.ink, fontSize: 13, fontWeight: '500', marginTop: 10, marginBottom: 4 },
+  label: { color: colors.ink, fontSize: 17, fontWeight: '500', marginTop: 10, marginBottom: 4 },
   field: { gap: 3 },
   input: { borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 12, borderRadius: 10, color: colors.ink, backgroundColor: '#FCFCF9', fontSize: 14, minHeight: 45 },
   textarea: { minHeight: 90, textAlignVertical: 'top', lineHeight: 23 },
@@ -1101,13 +1093,10 @@ const styles = StyleSheet.create({
   context: { color: colors.green, backgroundColor: colors.light, padding: 10, borderRadius: 8, fontSize: 12, lineHeight: 20 },
   candidates: { padding: 12, backgroundColor: '#F8F9F5', borderRadius: 12, gap: 9 },
   link: { color: colors.green, fontSize: 12, padding: 8 },
-  stats: { flexDirection: 'row', gap: 10 },
-  stat: { flex: 1, backgroundColor: colors.white, padding: 15, borderRadius: 16, alignItems: 'center', gap: 5 },
-  statNumber: { fontSize: 27, color: colors.ink, fontWeight: '600' },
   navigation: { flexDirection: 'row', backgroundColor: colors.white, borderTopWidth: 1, borderColor: colors.border, paddingBottom: 12, paddingTop: 10 },
   navItem: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 4 },
-  navIcon: { fontSize: 22, color: '#89968C' }, navLabel: { fontSize: 11, color: '#89968C' },
+  navIcon: { fontSize: 22, color: '#53665A' }, navLabel: { fontSize: 11, color: '#53665A' },
   notice: { backgroundColor: colors.light, padding: 14, borderRadius: 12 }, noticeText: { color: colors.green, fontSize: 13, lineHeight: 21 },
   error: { backgroundColor: '#FBECE2', padding: 14, borderRadius: 12 }, errorText: { color: '#925231', fontSize: 13, lineHeight: 21 },
-  footer: { textAlign: 'center', color: '#97A098', fontSize: 11, marginTop: 20 },
+  footer: { textAlign: 'center', color: '#53665A', fontSize: 11, marginTop: 20 },
 });

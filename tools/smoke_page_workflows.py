@@ -1,4 +1,5 @@
 """Six-page workflow regression. Only synthetic data on a disposable local host."""
+from browser_navigation import start_plan, date_digits
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -24,7 +25,7 @@ with sync_playwright() as p:
         page.get_by_role('textbox', name='账号', exact=True).fill('owner')
         page.get_by_label('密码', exact=True).fill('synthetic-owner-contract-password')
         page.get_by_role('button', name='登录', exact=True).click()
-        expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+        expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
         page.get_by_role('button', name='目标', exact=True).click()
 
     def state():
@@ -54,9 +55,9 @@ with sync_playwright() as p:
     expect(b.get_by_text(goal['title'], exact=True)).to_be_visible()
     a.get_by_text(goal['title'], exact=True).click()
     a.get_by_role('button', name='修改／复盘目标', exact=True).click()
-    expect(a.get_by_role('textbox', name='本次复盘日期（可选）', exact=True)).to_have_value(str(today))
-    expect(a.get_by_role('textbox', name='下次复盘日期（可选）', exact=True)).to_have_value(str(today + timedelta(days=14)))
-    assert a.locator('input[type=date]').count() == 5
+    expect(date_digits(a, '本次复盘日期（可选）')).to_have_value(str(today))
+    expect(date_digits(a, '下次复盘日期（可选）')).to_have_value(str(today + timedelta(days=14)))
+    assert a.locator('input[type=date]').count() == 3, 'two fields switched to digits; no duplicate inputs'
     a.get_by_role('textbox', name='进度与复盘记录', exact=True).fill(prefix + '我的未提交观察')
     remote = write('PUT', '/goals/' + goal['id'], {**goal, 'expected_version': goal['version'], 'criteria': prefix + '另一位家人的标准', 'change_note': '并发测试'})
     focus(a)
@@ -64,19 +65,19 @@ with sync_playwright() as p:
     expect(a.get_by_role('textbox', name='进度与复盘记录', exact=True)).to_have_value(prefix + '我的未提交观察')
     expect(a.get_by_role('button', name='保存目标复盘', exact=True)).to_be_disabled()
     a.get_by_role('button', name='备份我的填写并采用最新目标', exact=True).click()
-    a.get_by_role('textbox', name='本次复盘日期（可选）', exact=True).fill(str(today))
-    a.get_by_role('textbox', name='下次复盘日期（可选）', exact=True).fill(str(today))
+    date_digits(a, '本次复盘日期（可选）').fill(str(today))
+    date_digits(a, '下次复盘日期（可选）').fill(str(today))
     a.get_by_role('button', name='保存目标复盘', exact=True).click()
     expect(a.get_by_text('目标复盘已保存，修改历史已保留。', exact=True)).to_be_visible()
     a.get_by_role('button', name='今天', exact=True).click()
-    expect(a.get_by_text('目标复盘提醒', exact=True)).to_be_visible()
-    a.get_by_role('button', name='今天不再弹出，稍后从列表查看', exact=True).click()
+    expect(a.get_by_text('给我的待办', exact=True)).to_be_visible()
+    assert a.get_by_role('dialog').count() == 0
     print('PASS goal create/review/date controls, two-browser refresh, dirty conflict preservation and due reminder', flush=True)
 
     # Plan/summary separation, primary selection, one-goal completion and linked follow-ups.
     method = write('POST', '/pathways', {'id': str(uuid4()), 'title': prefix + '视觉提示', 'description': '支持沟通', 'steps': '展示选项', 'goal_ids': [goal['id']]})
     focus(a)
-    a.get_by_role('button', name='＋ 另建干预计划', exact=True).click()
+    start_plan(a)
     a.get_by_role('button', name='游戏', exact=True).click()
     a.get_by_role('textbox', name='整次训练安排', exact=True).fill(prefix + '家人安排')
     a.get_by_role('button', name='＋ 主目标', exact=True).click()

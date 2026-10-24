@@ -1,4 +1,5 @@
 """Run against a disposable demo DB served on port 3001. Requires Playwright + Chromium."""
+from browser_navigation import start_plan, date_digits
 
 import json
 import os
@@ -37,12 +38,12 @@ with sync_playwright() as playwright:
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     page.goto(BASE)
-    expect(page.get_by_text("把今天的小进步，", exact=False)).to_be_visible()
+    expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
     assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
     page.screenshot(path=str(OUTPUT / "today.png"), full_page=True)
 
     # Daily classes can be recorded without creating a training plan.
-    page.get_by_role("button", name="＋ 记录今天上课", exact=True).click()
+    page.get_by_role("button", name="记录上课", exact=True).click()
     expect(page.get_by_role("button", name="保存上课记录", exact=True)).to_be_disabled()
     page.get_by_role("combobox", name="课程名称（必填）", exact=True).select_option("__new__")
     page.get_by_role("textbox", name="新增课程名称", exact=True).fill("【浏览器验收】音乐课")
@@ -71,7 +72,7 @@ with sync_playwright() as playwright:
     assert state()["lessons"][0]["problems"] == "暂时跟不上节奏"
     page.get_by_role("button", name="今天", exact=True).click()
 
-    page.get_by_role("button", name="＋ 新建干预计划", exact=True).click()
+    start_plan(page)
     page.get_by_role("button", name="游戏", exact=True).click()
     page.get_by_role("textbox", name="整次训练安排", exact=True).fill("【浏览器验收】一起完成轮流游戏")
     page.get_by_role("button", name="＋ 主目标", exact=True).click()
@@ -87,7 +88,7 @@ with sync_playwright() as playwright:
     assert len(state()["sessions"]) == 1
 
     page.reload()
-    page.get_by_role("button", name="填写干预总结", exact=True).click()
+    page.get_by_role("button", name="填写今天的总结", exact=True).click()
     page.get_by_role("button", name="修改本次计划", exact=True).click()
     expect(page.get_by_role("textbox", name="整次训练安排", exact=True)).to_have_value(planned["plan"])
     page.get_by_role("button", name="转到干预总结", exact=True).click()
@@ -136,7 +137,7 @@ with sync_playwright() as playwright:
     page.screenshot(path=str(OUTPUT / 'difficulty-binding-copy.png'))
     page.get_by_role("button", name="跟进中", exact=True).click()
     page.get_by_role("textbox", name="跟进结论", exact=True).fill("【浏览器验收】继续核对现场条件")
-    page.get_by_role("textbox", name="下次回看日期（可选）", exact=True).fill(planned["business_date"])
+    date_digits(page, '下次回看日期（可选）').fill(planned["business_date"])
     page.get_by_role("button", name="保存跟进", exact=True).click()
     expect(page.get_by_text("跟进已保存。", exact=True)).to_be_visible()
     page.get_by_role("button", name="更新跟进", exact=True).click()
@@ -158,7 +159,7 @@ with sync_playwright() as playwright:
     page.get_by_role("button", name="修改／复盘目标", exact=True).click()
     page.get_by_role("textbox", name="达成标准", exact=True).fill("【浏览器验收】修改后的观察标准")
     page.get_by_role("button", name="已完成", exact=True).click()
-    page.get_by_role("textbox", name="下次复盘日期（可选）", exact=True).fill(planned["business_date"])
+    date_digits(page, '下次复盘日期（可选）').fill(planned["business_date"])
     page.get_by_role("textbox", name="本次修改说明（可选）", exact=True).fill("【浏览器验收】本次复盘")
     page.get_by_role("button", name="保存目标复盘", exact=True).click()
     expect(page.get_by_text("目标复盘已保存，修改历史已保留。", exact=True)).to_be_visible()
@@ -185,11 +186,11 @@ with sync_playwright() as playwright:
     assert page.evaluate("key => localStorage.getItem(key)", f"skarma:{SCOPE}:goal-conflict-backup:{secondary_id}")
 
     page.get_by_role("button", name="今天", exact=True).click()
-    expect(page.get_by_text("目标复盘提醒", exact=True)).to_be_visible()
-    page.get_by_role("button", name="今天不再弹出，稍后从列表查看", exact=True).click()
-    expect(page.get_by_text("待复盘目标 · 1", exact=True)).to_be_visible()
+    expect(page.get_by_text('给我的待办', exact=True)).to_be_visible()
+    assert page.get_by_role('dialog').count() == 0
+    expect(page.get_by_text("待复盘目标 1 项", exact=False)).to_be_visible()
     page.screenshot(path=str(OUTPUT / "goal-review.png"), full_page=True)
-    page.get_by_role("button", name="＋ 新建干预计划", exact=True).click()
+    start_plan(page)
     page.get_by_role("button", name="＋ 主目标", exact=True).click()
     expect(page.get_by_role("button", name=secondary["title"], exact=True)).to_have_count(0)
     page.get_by_role("button", name="收起选择", exact=True).click()

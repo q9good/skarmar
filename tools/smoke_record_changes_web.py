@@ -17,7 +17,7 @@ def check_record_changes(page, context, browser, base, out, ids, second, draft, 
     member.get_by_role('textbox', name='账号', exact=True).fill('family-member')
     member.get_by_label('密码', exact=True).fill('synthetic-family-member-password')
     member.get_by_role('button', name='登录', exact=True).click()
-    expect(member.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+    expect(member.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
 
     def item(kind, record_id):
         return next(row for row in state()[kind] if row['id'] == record_id)
@@ -122,7 +122,7 @@ def check_record_changes(page, context, browser, base, out, ids, second, draft, 
     member.get_by_role('button', name='刷新', exact=True).click()
     expect(member.get_by_role('button', name='查看方法：' + method['title'], exact=True)).to_have_count(0)
     member.reload()
-    expect(member.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+    expect(member.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
     member.get_by_role('button', name='方法', exact=True).click()
     expect(member.get_by_role('button', name='查看方法：' + method['title'], exact=True)).to_have_count(0)
 
@@ -184,7 +184,7 @@ def check_record_changes(page, context, browser, base, out, ids, second, draft, 
     page.get_by_role('button', name='确认删除', exact=True).click()
     expect(page.get_by_text(second['title'], exact=True)).to_have_count(0)
     page.reload()
-    expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+    expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
     final = state()
     assert all(not final[kind] for kind in ['goals', 'pathways', 'sessions', 'experiences'])
     assert len(final['deleted']) == 7

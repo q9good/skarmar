@@ -1,5 +1,6 @@
+import { Pressable, Text, TextInput } from './readability';
 import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 export type SelectProps = { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; disabled?: boolean };
 export type DateProps = { label: string; value: string; onChange: (value: string) => void; disabled?: boolean };
 export function Select({ label, value, options, onChange, disabled }: SelectProps) {

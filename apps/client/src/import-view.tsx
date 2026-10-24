@@ -1,5 +1,6 @@
+import { Pressable, Text } from './readability';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { request, uploadFile } from './api';
 import { pickImportFile } from './import-file';
 
@@ -157,10 +158,10 @@ const s = StyleSheet.create({
   sheet: { borderWidth: 1, borderColor: '#E0E6DD', borderRadius: 10, padding: 12, gap: 7 },
   sample: { backgroundColor: '#F8F9F5', borderRadius: 8, padding: 10, gap: 5 },
   title: { fontSize: 16, fontWeight: '600', color: '#243D36' }, sheetTitle: { fontSize: 14, fontWeight: '600', color: '#243D36' },
-  body: { fontSize: 14, color: '#243D36', lineHeight: 23 }, hint: { color: '#6C7B73', fontSize: 12, lineHeight: 21 },
+  body: { fontSize: 14, color: '#243D36', lineHeight: 23 }, hint: { color: '#53665A', fontSize: 12, lineHeight: 21 },
   mapping: { fontSize: 12, color: '#475C51', lineHeight: 19 }, warning: { fontSize: 12, color: '#925231', lineHeight: 20 },
   button: { backgroundColor: '#34765B', borderRadius: 12, padding: 13, minHeight: 46, alignItems: 'center', justifyContent: 'center' },
-  secondary: { backgroundColor: '#E9F2E9' }, disabled: { opacity: 0.5 }, buttonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
+  secondary: { backgroundColor: '#E9F2E9' }, disabled: { opacity: 0.5 }, buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   secondaryText: { color: '#34765B' },
   error: { backgroundColor: '#FBECE2', padding: 12, borderRadius: 10, color: '#925231', fontSize: 13, lineHeight: 21 },
   notice: { backgroundColor: '#E9F2E9', padding: 12, borderRadius: 10, color: '#34765B', fontSize: 13, lineHeight: 21 },

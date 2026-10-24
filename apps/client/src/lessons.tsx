@@ -1,5 +1,6 @@
+import { Pressable, Text, TextInput } from './readability';
 import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { request, type Lesson, type LessonOption, type NewLessonOption } from './api';
 import { DateField, Select } from './controls';
 import { lessonCounts, previousMonth, validDate } from './workflow';
@@ -27,7 +28,7 @@ export function LessonChoice({ label, kind, value, values, change, add, disabled
         catch (e) { setError(e instanceof Error ? e.message : '新增选项失败，请重试'); }
         finally { setSaving(false); }
       })()} style={{ padding: 12, backgroundColor: '#E9F2E9', borderRadius: 10 }}><Text>{saving ? '正在保存…' : '保存并使用新选项'}</Text></Pressable>
-      <Text style={{ color: '#6C7B73', fontSize: 12 }}>选项保存后，其他家人刷新即可选择；历史课程名称保持原样。</Text>
+      <Text style={{ color: '#53665A', fontSize: 12 }}>选项保存后，其他家人刷新即可选择；历史课程名称保持原样。</Text>
     </>}
   </View>;
 }
@@ -78,7 +79,7 @@ export function LessonStatistics({ lessons, today }: { lessons: Lesson[]; today:
   const rows = valid ? lessonCounts(lessons, range.start, range.end) : [];
   return <View testID="lesson-statistics" style={{ padding: 18, borderWidth: 1, borderColor: '#E0E6DD', borderRadius: 18, backgroundColor: 'white', gap: 10 }}>
     <Text style={{ fontSize: 17, fontWeight: '600', color: '#243D36' }}>机构课时统计</Text>
-    <Text style={{ fontSize: 12, color: '#6C7B73' }}>默认上一个自然月，起止日期均计入；每条上课记录计一节课。</Text>
+    <Text style={{ fontSize: 12, color: '#53665A' }}>默认上一个自然月，起止日期均计入；每条上课记录计一节课。</Text>
     <DateField label="统计开始日期" value={range.start} onChange={start => setRange({ ...range, start })} />
     <DateField label="统计结束日期" value={range.end} onChange={end => setRange({ ...range, end })} />
     <Pressable accessibilityRole="button" onPress={() => setRange(previousMonth(today))} style={{ padding: 12, backgroundColor: '#E9F2E9', borderRadius: 10 }}><Text>恢复上个自然月</Text></Pressable>

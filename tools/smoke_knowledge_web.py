@@ -19,7 +19,7 @@ with sync_playwright() as p:
     page.get_by_role('textbox', name='账号', exact=True).fill('owner')
     page.get_by_label('密码', exact=True).fill('synthetic-owner-contract-password')
     page.get_by_role('button', name='登录', exact=True).click()
-    expect(page.get_by_text('把今天的小进步，', exact=False)).to_be_visible()
+    expect(page.get_by_role('button', name='记录上课', exact=True)).to_be_visible()
 
     def state():
         response = context.request.get(BASE + '/api/state')
