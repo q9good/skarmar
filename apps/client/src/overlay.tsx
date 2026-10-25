@@ -1,5 +1,5 @@
 import {SessionRenewalContext} from './session-renewal';
-import React, { useContext, useEffect, useId, useRef, useState } from 'react';
+import React, { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, View } from 'react-native';
 import { Pressable, Text } from './readability';
 
@@ -41,6 +41,7 @@ export function DetailOverlay({ title, close, children, footer }: { title: strin
   const id = useId();
   const frame = useRef<View>(null);
   const [front, setFront] = useState(true);
+  const [historyReady,setHistoryReady]=useState(Platform.OS!=='web');
   const closeRef = useRef(close);
   closeRef.current = close;
   useEffect(() => {
@@ -48,18 +49,22 @@ export function DetailOverlay({ title, close, children, footer }: { title: strin
     const dialog = (frame.current as unknown as HTMLElement|null)?.closest('[role="dialog"]');
     dialog?.setAttribute('aria-hidden', String(!front));
   }, [front]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (Platform.OS !== 'web') return;
     if (!installed) { window.addEventListener('popstate', pop); installed = true; }
     const layer: Layer = { marker: `skarmar:${id}`, pushed: false, close: () => closeRef.current(), visibility: setFront };
     layers.push(layer);
     updateVisibility();
     let cancelled = false;
-    void prune().then(() => {
-      if (cancelled) return;
+    const activate=()=>{
+      if(cancelled)return;
       window.history.pushState({ ...window.history.state, skarmarOverlay: layer.marker }, '');
       layer.pushed = true;
-    });
+      setHistoryReady(true);
+    };
+    const current=marker(),known=Boolean(current&&layers.some(item=>item.pushed&&item.marker===current));
+    if(!draining&&(!current||known))activate();
+    else void prune().then(activate);
     return () => {
       cancelled = true;
       const index = layers.indexOf(layer); if (index >= 0) layers.splice(index, 1);
@@ -67,7 +72,7 @@ export function DetailOverlay({ title, close, children, footer }: { title: strin
       if (layer.pushed) void prune();
     };
   }, [id]);
-  return <Modal visible transparent accessibilityLabel={title} animationType="none" onRequestClose={() => closeRef.current()}>
+  return <Modal visible={historyReady} transparent accessibilityLabel={title} animationType="none" onRequestClose={() => closeRef.current()}>
     <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={{flex:1}}><View ref={frame} aria-hidden={!front} pointerEvents={front ? 'auto' : 'none'} style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0008', padding: 12,...(viewport?{height:viewport,maxHeight:viewport,flexGrow:0,flexShrink:0,flexBasis:'auto'}:{}) }}>
       <View accessibilityViewIsModal
         style={{ width: '100%', maxWidth: 700, height:footer?(viewport?Math.floor(viewport*.92):'92%'):undefined,maxHeight: '92%', backgroundColor: '#F6F5EF', borderRadius: 16, padding: 16, gap: 12 }}>

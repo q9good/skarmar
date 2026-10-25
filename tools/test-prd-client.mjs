@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { acceptSaved, decodeDrafts, emptySnapshot, mergeSnapshot, newGoal, newMethod } from '../apps/client/src/foundation.ts';
+import {sessionExpiresSoon,TRUSTED_RENEWAL_NOTICE_SECONDS} from '../apps/client/src/session-renewal.ts';
+test('trusted renewal prompt starts at fourteen days while standard sessions retain the one-day window',()=>{
+ const now=1000,day=86400;
+ assert.equal(sessionExpiresSoon({expires_at:now+TRUSTED_RENEWAL_NOTICE_SECONDS+1,trusted_device:true},now),false);
+ assert.equal(sessionExpiresSoon({expires_at:now+TRUSTED_RENEWAL_NOTICE_SECONDS,trusted_device:true},now),true);
+ assert.equal(sessionExpiresSoon({expires_at:now+day+1,trusted_device:false},now),false);
+ assert.equal(sessionExpiresSoon({expires_at:now+day,trusted_device:false},now),true);
+});
 test('late reads and retried older responses do not roll an observed version back',()=>{
   const initial={...emptySnapshot,goals:[{id:'g',version:1,input:{...newGoal(),title:'before'}}]};
   const latest=acceptSaved(initial,{kind:'goal',value:{id:'g',version:3,input:{...newGoal(),title:'latest'}}});
@@ -166,6 +174,21 @@ test('explicit duplicate-catalog resolution rebinds only provably unsent lessons
 test('ambiguous dependent lessons cannot be rebound, and malformed persisted receipts fail closed',async()=>{
  const f=outboxFixture({send:async()=>{throw Object.assign(new Error('invalid'),{status:422});}});await f.queue.load();await f.queue.enqueue(queuedCatalog('offline-course','course'));await f.queue.enqueue(queuedLesson('uncertain','offline-course'),true);await f.queue.flush();await assert.rejects(()=>f.queue.resolveCatalog('offline-course','c'),/曾尝试上传/);
  const malformed={schema:'skarmar.lesson-queue.v1',entries:{q:{write:queuedLesson(),status:'confirmed',reason:'',receipt:{id:'q',version:1,status:'recorded'}}}};assert.throws(()=>decodeOutbox(JSON.stringify(malformed)));
+});
+test('cancelling untouched lessons retains shared catalog dependencies then removes only final orphans',async()=>{
+ const f=outboxFixture();await f.queue.load();f.offline();
+ await f.queue.enqueue(queuedCatalog('offline-course','course'));await f.queue.enqueue(queuedCatalog('offline-teacher','teacher'));
+ await f.queue.enqueue(queuedLesson('first','offline-course','offline-teacher'));await f.queue.enqueue(queuedLesson('second','offline-course','offline-teacher'));
+ assert.deepEqual(await f.queue.cancel('first'),['first']);let entries=decodeOutbox(f.raw()).entries;
+ assert.deepEqual(Object.keys(entries).sort(),['offline-course','offline-teacher','second']);
+ const removed=await f.queue.cancel('second');assert.deepEqual(new Set(removed),new Set(['second','offline-course','offline-teacher']));
+ entries=decodeOutbox(f.raw()).entries;assert.deepEqual(entries,{});assert.equal(f.sent.length,0);
+});
+test('catalog dependencies and uncertain or blocked writes cannot be discarded as local cancellations',async()=>{
+ const f=outboxFixture();await f.queue.load();f.offline();await f.queue.enqueue(queuedCatalog('offline-course','course'));await f.queue.enqueue(queuedLesson('dependent','offline-course'));
+ const before=f.raw();await assert.rejects(()=>f.queue.cancel('offline-course'),/正被待上传课记使用/);assert.equal(f.raw(),before);
+ await f.queue.enqueue(queuedLesson('uncertain'),true);const ambiguous=f.raw();await assert.rejects(()=>f.queue.cancel('uncertain'),/必须先核对/);assert.equal(f.raw(),ambiguous);
+ const blocked=outboxFixture({identity:async()=>({user:{id:'other',active:true},space:'home',demo:false})});await blocked.queue.load();await blocked.queue.enqueue(queuedLesson());await blocked.queue.flush();assert.equal(blocked.queue.value.entries.q.status,'blocked');await assert.rejects(()=>blocked.queue.cancel('q'),/必须先核对/);
 });
 
 import {buildBrief} from '../apps/client/src/prd-brief.ts';

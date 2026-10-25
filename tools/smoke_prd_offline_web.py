@@ -32,6 +32,11 @@ with sync_playwright() as p:
    click(prefix+'（必填）：请选择'+label);page.get_by_role('dialog',name='选择'+label,exact=True).get_by_role('button',name=name,exact=True).click()
  def submit():click('提交记录');expect(page.get_by_role('dialog')).to_have_count(0)
  login();owner=call('GET','/auth/me');member=call('POST','/auth/users',{'username':'family','display_name':'测试家人','password':'s','role':'member'})
+ # Cancelling an untouched lesson is local-only and removes its two orphaned new options.
+ ctx.set_offline(True);click('记录上课');create_options();click('补充观察');page.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('取消前的本机观察');submit()
+ button(re.compile('^取消待上传：课记：')).click();expect(page.get_by_role('dialog',name='取消待上传内容',exact=True)).to_be_visible();click('确认取消待上传内容')
+ expect(page.get_by_text('已取消本机待上传课记，并清理 2 个不再使用的新增选项。',exact=True)).to_be_visible();assert readqueue()['entries']=={};assert not state()['lessons'] and not state()['catalog'];click('关闭取消提示')
+ print('PASS untouched queued lesson cancellation removes orphan catalogs without server writes',flush=True)
  ctx.set_offline(True);click('记录上课');create_options();click('补充观察');page.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('离线观察：轮流游戏');submit()
  expect(page.get_by_text('待上传课记与选项：3',exact=True)).to_be_visible();pending=readqueue();lesson_id=next(i for i,e in pending['entries'].items() if e['write']['kind']=='lesson');operation=pending['entries'][lesson_id]['write']['value']['operation_id']
  click('记录');click('课时核对');click('下个月');expect(page.get_by_text('这个月还没有上课记录。',exact=True)).to_be_visible()
@@ -50,6 +55,7 @@ with sync_playwright() as p:
   response=route.fetch();assert response.ok;route.abort('failed')
  page.route('**/api/prd/queue',lose,times=1);submit();expect(page.get_by_text(re.compile('^待上传课记与选项：'))).to_be_visible();wait_count(3)
  page.wait_for_function("Object.values(JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.endsWith('lesson-queue:v1')))).entries).some(e=>e.status==='uncertain'&&e.reason.includes('连接'))")
+ expect(button(re.compile('^取消待上传'))).to_have_count(0)
  click('检查连接并继续上传');expect(page.get_by_text(re.compile('^待上传课记与选项：'))).to_have_count(0,timeout=20000);assert len(state()['lessons'])==3
  print('PASS response loss retrieves confirmed receipt without new lesson',flush=True)
  # Inactive option detected at reconnect pauses, retaining exact input. Re-enable then explicitly resume.
@@ -62,7 +68,7 @@ with sync_playwright() as p:
  # Replace cookie from outside this page, emulating another browser tab changing account.
  ctx.set_offline(True);new_lesson();submit()
  call('POST','/auth/logout');call('POST','/auth/login',{'username':'family','password':'s'});ctx.set_offline(False);expect(page.get_by_text('当前账号或空间已变化，请登录原账号后核对并继续。',exact=True)).to_be_visible();assert len(state()['lessons'])==4
- page.reload();expect(button('记录上课')).to_be_enabled();expect(page.get_by_text(re.compile('^待上传课记与选项：'))).to_have_count(0);assert len(state()['lessons'])==4
+ page.reload();expect(button('记录上课')).to_be_enabled();expect(page.get_by_text(re.compile('^待上传课记与选项：'))).to_have_count(0);expect(button(re.compile('^取消待上传'))).to_have_count(0);assert len(state()['lessons'])==4
  call('POST','/auth/logout');call('POST','/auth/login',{'username':'owner','password':'synthetic-prd-ui-password'});page.reload();expect(button('记录上课')).to_be_enabled();expect(button(re.compile('^核对后继续上传：'))).to_be_visible();button(re.compile('^核对后继续上传：')).click();expect(page.get_by_text(re.compile('^待上传课记与选项：'))).to_have_count(0,timeout=20000);assert len(state()['lessons'])==5
  print('PASS cross-tab account change cannot replay another actor queue; original actor explicitly resumes',flush=True)
  # Two tabs add separate offline records into one locked durable queue.

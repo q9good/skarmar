@@ -79,8 +79,17 @@ python tools/smoke_web.py
 数据库文件；不要复用或删除实际使用的数据库来满足验收前提。
 worktree 使用不同端口时，同时设置服务器的 `SKARMA_PORT=3002` 与验收脚本的
 `SKARMA_TEST_URL=http://127.0.0.1:3002`。
-浏览器脚本依赖 Python Playwright 与 Chromium；当前云镜像已提供这两项。其他环境需
-安装 Playwright，并通过 CHROMIUM_EXECUTABLE 指定 Chromium 的可执行文件位置。
+浏览器脚本依赖 Python Playwright、Chromium 与 openpyxl。其他环境先执行：
+
+```bash
+python3 -m pip install -r tools/browser-test-requirements.txt
+python3 -m playwright install chromium
+npm run test:prd-web
+```
+
+Playwright 默认使用它管理的 Chromium；如需改用已有浏览器，再通过 CHROMIUM_EXECUTABLE
+指定可执行文件。tools/browser-test-requirements.txt 仅用于浏览器／工作簿测试，不是应用
+运行依赖，也不与腾讯核验的 tools/tencent-requirements.txt 混用。
 
 配置了出站 HTTP 代理的开发环境，Python 的回环测试需要在 `no_proxy`／`NO_PROXY` 中包含
 `127.0.0.1,localhost`，并保留原有条目。仅为本机验证设置这些例外；远端服务继续使用环境代理。

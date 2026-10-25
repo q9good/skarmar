@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {mkdtemp,mkdir,readFile,rm,stat} from 'node:fs/promises';
 import {resolve} from 'node:path';
-const root=resolve(import.meta.dirname,'..');await mkdir(resolve(root,'.local'),{recursive:true});const scratch=await mkdtemp(resolve(root,'.local/maintenance-contract-')),db=resolve(scratch,'source.sqlite'),binary=resolve(root,'target/debug/skarma-api');
+const root=resolve(import.meta.dirname,'..'),python=process.env.PYTHON3||'python3';await mkdir(resolve(root,'.local'),{recursive:true});const scratch=await mkdtemp(resolve(root,'.local/maintenance-contract-')),db=resolve(scratch,'source.sqlite'),binary=resolve(root,'target/debug/skarma-api');
 const base={...process.env,SKARMA_STORAGE:'sqlite',SKARMA_DATABASE:db,SKARMA_MODEL:'prd_v1',SKARMA_DEMO:'0',SKARMA_AUTH:'required'};
 const run=(args,input,env=base)=>execFileSync(binary,args,{cwd:root,env,input,stdio:['pipe','pipe','pipe']});
-const sql=(query,path=db)=>execFileSync('python',['-c','import sqlite3,sys\nc=sqlite3.connect(sys.argv[1]);r=c.execute(sys.argv[2]);print(r.fetchall());c.commit()',path,query],{encoding:'utf8'}).trim();
+const sql=(query,path=db)=>execFileSync(python,['-c','import sqlite3,sys\nc=sqlite3.connect(sys.argv[1]);r=c.execute(sys.argv[2]);print(r.fetchall());c.commit()',path,query],{encoding:'utf8'}).trim();
 try{
  assert.throws(()=>run(['data-transfer-stdin','--offline','--username','owner'],'{"kind":"history","value":{"page":0}}',{...base,SKARMA_DATABASE:resolve(scratch,'must-not-exist.sqlite')}));
  await assert.rejects(stat(resolve(scratch,'must-not-exist.sqlite')));

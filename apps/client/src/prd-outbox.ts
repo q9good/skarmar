@@ -84,6 +84,26 @@ export class LessonOutbox {
     const next=decodeOutbox(await this.io.read()),e=next.entries[id];
     if(e?.status==='blocked'){e.status=e.attempted?'uncertain':'queued';e.reason='';await this.save(next);}
   });return this.flush();}
+  async cancel(id:string):Promise<string[]> {
+    if(!this.ready)throw new Error('本机队列尚未读入，请保留填写。');
+    return this.io.lock(async()=>{
+      const next=decodeOutbox(await this.io.read()),entry=next.entries[id];
+      if(!entry||entry.status!=='queued'||entry.attempted!==false)throw new Error('只有从未尝试上传的待上传内容可以取消；响应未知或已暂停的内容必须先核对。');
+      const lessonUses=(candidate:QueueEntry,catalogId:string)=>candidate.write.kind==='lesson'&&candidate.write.value.action.kind==='observation'&&(candidate.write.value.action.value.course_id===catalogId||candidate.write.value.action.value.teacher_id===catalogId);
+      if(entry.write.kind==='catalog'&&Object.values(next.entries).some(candidate=>candidate!==entry&&lessonUses(candidate,id)))throw new Error('这个选项正被待上传课记使用；请取消相应课记，系统会处理不再使用的选项。');
+      const removed=[id];delete next.entries[id];
+      if(entry.write.kind==='lesson'&&entry.write.value.action.kind==='observation'){
+        const dependencies=[entry.write.value.action.value.course_id,entry.write.value.action.value.teacher_id];
+        for(const dependency of new Set(dependencies)){
+          const candidate=next.entries[dependency];
+          if(candidate?.write.kind==='catalog'&&candidate.status==='queued'&&candidate.attempted===false&&!Object.values(next.entries).some(value=>lessonUses(value,dependency))){
+            delete next.entries[dependency];removed.push(dependency);
+          }
+        }
+      }
+      decodeOutbox(JSON.stringify(next));await this.save(next);return removed;
+    });
+  }
   // May only remove confirmed receipts. An ambiguous request must remain immutable.
   async forget(id:string){await this.io.lock(async()=>{
     const next=decodeOutbox(await this.io.read());if(next.entries[id]?.status!=='confirmed')return;
