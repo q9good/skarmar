@@ -82,6 +82,10 @@ pub struct MethodInput {
     pub description: String,
     #[serde(default)]
     pub steps: String,
+    #[serde(default)]
+    pub observe: String,
+    #[serde(default)]
+    pub scope: String,
     pub goal_ids: Vec<String>,
     #[serde(default)]
     pub guidance: String,
@@ -148,11 +152,18 @@ pub enum Mutation {
     Method(MethodInput),
     Catalog(CatalogInput),
 }
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum MethodCreateMode {
+    Full,
+    Quick,
+}
 #[derive(Clone, Debug)]
 pub struct Write {
     /// Deserialization-only field presence. None denotes a fully specified Rust command.
     pub provided_fields: Option<std::collections::BTreeSet<String>>,
     pub method_change: Option<String>,
+    pub method_create_mode: Option<MethodCreateMode>,
     pub operation_id: String,
     pub id: String,
     pub expected_version: Option<u64>,
@@ -166,6 +177,8 @@ impl<'de> Deserialize<'de> for Write {
         struct Wire {
             #[serde(default)]
             method_change: Option<String>,
+            #[serde(default)]
+            method_create_mode: Option<String>,
             operation_id: String,
             id: String,
             expected_version: Option<u64>,
@@ -179,9 +192,18 @@ impl<'de> Deserialize<'de> for Write {
             .and_then(serde_json::Value::as_object)
             .map(|v| v.keys().cloned().collect());
         let wire: Wire = serde_json::from_value(raw).map_err(serde::de::Error::custom)?;
+        let method_create_mode = match wire.method_create_mode.as_deref() {
+            None => None,
+            Some("full") => Some(MethodCreateMode::Full),
+            Some("quick") => Some(MethodCreateMode::Quick),
+            Some(_) => {
+                return Err(serde::de::Error::custom("方法创建模式须为 full 或 quick"));
+            }
+        };
         Ok(Self {
             provided_fields: fields,
             method_change: wire.method_change,
+            method_create_mode,
             operation_id: wire.operation_id,
             id: wire.id,
             expected_version: wire.expected_version,
@@ -196,6 +218,8 @@ impl Serialize for Write {
         struct Wire<'a> {
             #[serde(skip_serializing_if = "Option::is_none")]
             method_change: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            method_create_mode: Option<&'a MethodCreateMode>,
             operation_id: &'a str,
             id: &'a str,
             expected_version: Option<u64>,
@@ -217,6 +241,7 @@ impl Serialize for Write {
         }
         Wire {
             method_change: self.method_change.as_deref(),
+            method_create_mode: self.method_create_mode.as_ref(),
             operation_id: &self.operation_id,
             id: &self.id,
             expected_version: self.expected_version,
@@ -234,6 +259,8 @@ impl Write {
         struct Legacy<'a> {
             #[serde(skip_serializing_if = "Option::is_none")]
             method_change: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            method_create_mode: Option<&'a MethodCreateMode>,
             operation_id: &'a str,
             id: &'a str,
             expected_version: Option<u64>,
@@ -242,6 +269,7 @@ impl Write {
         }
         serde_json::to_string(&Legacy {
             method_change: self.method_change.as_deref(),
+            method_create_mode: self.method_create_mode.as_ref(),
             operation_id: &self.operation_id,
             id: &self.id,
             expected_version: self.expected_version,

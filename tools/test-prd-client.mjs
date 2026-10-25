@@ -79,7 +79,7 @@ test('swapping the main target retains each target note and summary never assume
  assert.throws(()=>decodeSessionDrafts(JSON.stringify({s:{...d,pending:{...request,operation_id:'other'}}})));
  assert.throws(()=>decodeSessionDrafts(JSON.stringify({s:{...d,request:{...request,input:{...input,summary:{targets:[]}}}}})));
  assert.deepEqual(decodeSessionDrafts(null),{});
- const quick={request:{id:'new-method',operation_id:'new-op',expected_version:null,change_note:'',mutation:{kind:'method',value:{...newMethod(),title:'quick',goal_ids:['a']}}},stage:'plan',kind:'method'};
+ const quick={request:{id:'new-method',operation_id:'new-op',expected_version:null,change_note:'',method_create_mode:'quick',mutation:{kind:'method',value:{...newMethod(),title:'quick',goal_ids:['a']}}},stage:'plan',kind:'method'};
  assert.deepEqual(decodeSessionDrafts(JSON.stringify({s:{...d,quick}})).s.quick,quick);
  assert.throws(()=>decodeSessionDrafts(JSON.stringify({s:{...d,quick:{...quick,stage:'summary'}}})));
 
@@ -298,6 +298,10 @@ test('guidance retains persistent questions, short placeholders and full non-val
  assert.equal(guidanceFor('成人回应／可选 1').fullExample,'例如：先回应他的手势，再示范小步骤');
  assert.equal(guidanceFor('原因猜测／可选 1').question,'有什么尚未确定的猜测？');
  assert.equal(guidanceFor('本次条件／可选 1').question,'在什么场景和帮助条件下观察？');
+ assert.deepEqual(guidanceFor('具体做法／必填'),{question:'大人具体怎样帮助？',shortExample:'例如：先跟着他的玩法',fullExample:'例如：先跟着他的玩法'});
+ assert.equal(guidanceFor('观察意图／可选').fullExample,'例如：愿意再试一次');
+ assert.equal(guidanceFor('适用条件／可选').question,'什么时候适合使用？');
+ assert.deepEqual(guidanceFor('新方法名称','例如：示范后少提醒'),{question:'怎样称呼这个做法？',shortExample:'例如：示范后少提醒',fullExample:'例如：示范后少提醒'});
 });
 test('method usage counts actual sources and immutable versions, excluding planned deleted and future records',()=>{
  const snap=(v)=>({id:'m',version:v,input:{title:'历史方法'+v}});

@@ -23,7 +23,7 @@ with sync_playwright() as p:
   return response.json()
  def entity(context,kind,value):
   identifier=str(uuid4())
-  return call(context,'PUT','/prd/records/'+identifier,{'id':identifier,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}})['value']
+  body={'id':identifier,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});return call(context,'PUT','/prd/records/'+identifier,body)['value']
  def first_screen():
   lesson=button(owner,'记录上课');family=owner.get_by_role('button',name=re.compile(r'^(记录一次家庭干预|填写今天的总结)$'))
   for item in [lesson,family]:

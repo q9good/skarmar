@@ -302,7 +302,7 @@ fn embedded_summary_feedback_is_atomic_unique_and_independent_revisions_are_prot
 fn review_context_only_counts_explicit_signal_scope() {
     let (mut db, u, g) = fixture();
     let mid = id();
-    store::write_foundation(&mut db,&u,serde_json::from_value(json!({"id":mid,"operation_id":id(),"expected_version":null,"change_note":"","mutation":{"kind":"method","value":{"title":"测试方法","goal_ids":[g]}}})).unwrap()).unwrap();
+    store::write_foundation(&mut db,&u,serde_json::from_value(json!({"id":mid,"operation_id":id(),"expected_version":null,"change_note":"","method_create_mode":"quick","mutation":{"kind":"method","value":{"title":"测试方法","goal_ids":[g]}}})).unwrap()).unwrap();
     let sid = id();
     store::write_foundation_session(&mut db,&u,serde_json::from_value(json!({"id":sid,"operation_id":id(),"expected_version":null,"action":"complete","input":{"business_date":skarma_core::foundation::sessions::today(),"time_slot":"晚上","summary":{"targets":[{"goal_id":g,"performed":true,"observation":"测试真实观察"}],"confirmation":"used","methods":[{"id":mid,"version":1}],"signals":[{"kind":"主动开始","method_ids":[mid]},{"kind":"求助","goal_ids":[g]},{"kind":"投入愉快"}]}}})).unwrap()).unwrap();
     let goal = call(
@@ -479,7 +479,11 @@ fn method_adjustment_keeps_the_exact_knowledge_version_without_copying_recursive
     let k = knowledge(&mut db, &u, &g, "experience");
     let mid = id();
     let make = |version: Option<u64>, basis_version: u64, note: &str| {
-        serde_json::from_value(json!({"id":mid,"operation_id":id(),"expected_version":version,"change_note":note,"mutation":{"kind":"method","value":{"title":"测试根据心得调整","goal_ids":[g],"basis":[{"id":k["input"]["id"],"version":basis_version}]}}})).unwrap()
+        let mut request = json!({"id":mid,"operation_id":id(),"expected_version":version,"change_note":note,"mutation":{"kind":"method","value":{"title":"测试根据心得调整","goal_ids":[g],"basis":[{"id":k["input"]["id"],"version":basis_version}]}}});
+        if version.is_none() {
+            request["method_create_mode"] = json!("quick");
+        }
+        serde_json::from_value(request).unwrap()
     };
     let initial = store::write_foundation(&mut db, &u, make(None, 1, "")).unwrap();
     assert_eq!(

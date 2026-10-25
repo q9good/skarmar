@@ -239,6 +239,9 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
     {
         return Err(ApiError::invalid("请明确是调整实际做法还是更正文案"));
     }
+    if request.method_create_mode.is_some() && !matches!(request.mutation, Mutation::Method(_)) {
+        return Err(ApiError::invalid("创建模式只适用于方法"));
+    }
     match (&previous, request.expected_version) {
         (None, None) => {}
         (Some(old), Some(expected)) if old.version() == expected => {}
@@ -337,6 +340,23 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
                     _ => Some(MethodState::Active),
                 };
             }
+            if previous.is_some() && request.method_create_mode.is_some() {
+                return Err(ApiError::invalid("创建模式不能用于修改已有方法"));
+            }
+            if previous.is_none() {
+                match request.method_create_mode.as_ref() {
+                    Some(MethodCreateMode::Full) if input.steps.trim().is_empty() => {
+                        return Err(ApiError::invalid("普通新建方法须填写具体做法"));
+                    }
+                    Some(MethodCreateMode::Full | MethodCreateMode::Quick) => {}
+                    None if request.provided_fields.is_some() => {
+                        return Err(ApiError::invalid(
+                            "新建方法须明确选择普通创建或上下文快捷创建",
+                        ));
+                    }
+                    None => {} // Trusted, fully specified Rust conversion/import command.
+                }
+            }
             if input.goal_ids.is_empty() || input.goal_ids.len() > 100 {
                 return Err(ApiError::invalid("请选择1至100个明确关联的目标"));
             }
@@ -376,7 +396,8 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
                 && (request.method_change.as_deref() == Some("adjustment")
                     || request.method_change.is_none()
                         && (old.input.description != input.description
-                            || old.input.steps != input.steps))
+                            || old.input.steps != input.steps
+                            || old.input.scope != input.scope))
             {
                 event = "practice_adjusted";
             }

@@ -696,7 +696,8 @@ fn apply_decision(db: &dyn Sql, actor: &User, r: &ReviewWrite) -> Result<()> {
                     None
                 };
                 if r.decision == "adjust" && !r.change_text.trim().is_empty() {
-                    m.input.description = r.change_text.clone();
+                    m.input.steps = r.change_text.clone();
+                    m.input.description.clear();
                 }
                 Mutation::Method(m.input)
             }
@@ -711,6 +712,7 @@ fn apply_decision(db: &dyn Sql, actor: &User, r: &ReviewWrite) -> Result<()> {
                     method_change: (r.decision == "adjust"
                         && matches!(&mutation, Mutation::Method(_)))
                     .then(|| "adjustment".into()),
+                    method_create_mode: None,
                     id: r.object_id.clone(),
                     operation_id: uuid::Uuid::new_v4().to_string(),
                     expected_version: Some(version),
@@ -856,7 +858,7 @@ pub fn context(db: &dyn Sql, kind: &str, id: &str, page: u32) -> Result<Value> {
             vec![]
         };
         let changes = super::review_changes::session(&session, &goal_scope, &method_scope);
-        evidence.push(value!({"changes":changes,"source":{"kind":"session","id":session.id,"version":session.version},"business_date":session.input.business_date,"observation":summary.targets.iter().filter(|t|t.performed).map(|t|t.observation.clone()).collect::<Vec<_>>().join("；"),"adult":session.actual_methods.iter().map(|m|m.input.description.clone()).collect::<Vec<_>>().join("；"),"conditions":summary.context,"signals":signals,"first_try_ids":summary.first_try_ids}));
+        evidence.push(value!({"changes":changes,"source":{"kind":"session","id":session.id,"version":session.version},"business_date":session.input.business_date,"observation":summary.targets.iter().filter(|t|t.performed).map(|t|t.observation.clone()).collect::<Vec<_>>().join("；"),"adult":session.actual_methods.iter().map(|m|if m.input.description.is_empty(){m.input.steps.clone()}else{m.input.description.clone()}).collect::<Vec<_>>().join("；"),"conditions":summary.context,"signals":signals,"first_try_ids":summary.first_try_ids}));
     }
     for l in super::lessons::list_lessons(db)? {
         if l.status != "recorded" || l.observation.business_date > today {

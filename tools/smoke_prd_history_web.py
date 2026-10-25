@@ -12,7 +12,7 @@ with sync_playwright() as p:
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  def entity(kind,value):
-  id=str(uuid4());r={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};return call('PUT','/prd/records/'+id,r)['value']
+  id=str(uuid4());r={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};r.update({'method_create_mode':'quick'} if kind=='method' else {});return call('PUT','/prd/records/'+id,r)['value']
  page.goto(BASE);page.get_by_role('textbox',name='账号',exact=True).fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(button('记录上课')).to_be_enabled()
  today=page.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())")
  parent=entity('goal',{'title':'旧中期','level':'medium'});other=entity('goal',{'title':'新中期','level':'medium'});child=entity('goal',{'title':'轮流游戏','level':'short','parent_id':parent['id']});method=entity('method',{'title':'示范后等待','goal_ids':[child['id']]})

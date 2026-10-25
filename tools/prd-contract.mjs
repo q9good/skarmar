@@ -54,7 +54,7 @@ export async function prdContract(label, send) {
   const revisions = (await call('GET','/prd/records/' + id + '/history',undefined,cookie)).data;
   assert.equal(revisions.length,2); assert(revisions.every(r => r.actor_id === member.id));
   const methodId=randomUUID();
-  await call('PUT','/prd/records/' + methodId,command(methodId,{ kind:'method',value:{ title:'测试方法',goal_ids:[id] } }),cookie);
+  await call('PUT','/prd/records/' + methodId,{...command(methodId,{ kind:'method',value:{ title:'测试方法',goal_ids:[id] } }),method_create_mode:'quick'},cookie);
   const method = (await state()).methods[0];
   assert.deepEqual(method.input.goal_ids,[id]);assert.equal(method.input.description,'');
   await call('PUT','/prd/records/' + methodId,command(methodId,{ kind:'method',value:{ ...method.input, description:'测试第二版做法' } },1),cookie);

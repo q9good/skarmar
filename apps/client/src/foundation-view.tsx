@@ -113,14 +113,17 @@ function GoalFields({ value, change, data, id, disabled, existing, catalogSaved 
     </>}
   </>;
 }
+const methodSteps=(value:MethodInput)=>value.description||value.steps;
+const methodScope=(value:MethodInput)=>value.scope||(value.description?value.steps:'');
 function MethodFields({ value, change, data, disabled }: { value: MethodInput; change: (patch: Partial<MethodInput>) => void; data: Snapshot; disabled: boolean }) {
   return <>
-    <Field label="方法名称" hint="准备用什么做法支持孩子？" value={value.title} change={title => change({ title })} placeholder="例如：先示范，再留出等待时间" disabled={disabled} />
+    <Field label="方法名称" hint="怎样称呼这个做法？" value={value.title} change={title => change({ title })} placeholder="例如：示范后少提醒" disabled={disabled} />
     <Text style={s.label}>关联目标</Text>
     {data.goals.length?<RelationPicker label="方法适用目标" options={data.goals.map(g=>({id:g.id,label:g.input.title}))} selected={value.goal_ids} disabled={disabled} toggle={id=>change({goal_ids:value.goal_ids.includes(id)?value.goal_ids.filter(v=>v!==id):[...value.goal_ids,id]})}/>:<Text>先在目标页写下一个近期本领，再关联方法。</Text>}
 
-    <Field label="具体做法（可后补）" value={value.description} change={description => change({ description })} placeholder="例如：先跟随孩子的玩法，再增加一个小步骤" multiline disabled={disabled} />
-    <Field label="适用条件与步骤（可选）" value={value.steps} change={steps => change({ steps })} placeholder="例如：在熟悉的游戏中，孩子愿意继续时尝试" multiline disabled={disabled} />
+    <Field label="具体做法／必填" value={methodSteps(value)} change={steps => change({ steps, description:'' })} multiline disabled={disabled} />
+    <Field label="观察意图／可选" value={value.observe??''} change={observe=>change({observe})} multiline disabled={disabled} />
+    <Field label="适用条件／可选" value={methodScope(value)} change={scope=>change({scope})} multiline disabled={disabled} />
     <Field label="指导来源（可选）" value={value.guidance} change={guidance => change({ guidance })} placeholder="例如：老师示范，家里试过几次" disabled={disabled} />
     <Select label="方法状态" value={value.state ?? 'active'} disabled={disabled} options={[{ value: 'active', label: '使用中' }, { value: 'paused', label: '暂停' }, { value: 'retired', label: '停用' }]}
       onChange={state => change({ state: state as MethodInput['state'],resume_on:state==='paused'?value.resume_on??null:null })} />
@@ -140,7 +143,7 @@ function ReadOnlyValues({ mutation, data }: { mutation: Mutation; data: Snapshot
     ['上级目标', data.goals.find(g => g.id === mutation.value.parent_id)?.input.title ?? '未关联'],
     ['开始关注', mutation.value.attention_start ?? '未设置'],
   ] : mutation.kind === 'method' ? [
-    ['名称', mutation.value.title], ['具体做法', mutation.value.description], ['适用条件与步骤', mutation.value.steps],
+    ['名称', mutation.value.title], ['具体做法', methodSteps(mutation.value)], ['观察意图', mutation.value.observe??''], ['适用条件', methodScope(mutation.value)],
     ['指导来源', mutation.value.guidance], ['关联目标', mutation.value.goal_ids.map(id => data.goals.find(g => g.id === id)?.input.title ?? '待核对目标').join('、')],
     ['方法状态', ({active:'使用中',paused:'暂停',retired:'停用'}[mutation.value.state ?? 'active'])],
     ['手动置顶', mutation.value.pinned ? '是' : '否'], ['需要注意', mutation.value.needs_attention ? '是' : '否'],
@@ -227,13 +230,14 @@ export function FoundationWorkspace() {
   const begin = (mutation: Mutation, saved?: Saved) => {
     if (!ready) return;
     const id = saved?.value.id ?? uuid();
-    if (!draftsRef.current[id]) void persist({ ...draftsRef.current, [id]: { id, operation_id: uuid(), expected_version: saved?.value.version ?? null, change_note: '', mutation } });
+    if (!draftsRef.current[id]) void persist({ ...draftsRef.current, [id]: { id, operation_id: uuid(), expected_version: saved?.value.version ?? null, change_note: '', mutation, ...(mutation.kind==='method'&&!saved?{method_create_mode:'full' as const}:{}) } });
     setEditor(id); setError(''); setNotice('');
   };
   const draft = editor ? drafts[editor] : undefined;
   const latest = draft ? findSaved(data, draft.id) : undefined;
   const conflict = Boolean(draft && latest && draft.expected_version !== latest.value.version);
   const candidate=useStableOptions(data,editor,draft?.mutation.kind==='method'?draft.mutation.value.goal_ids:draft?.mutation.kind==='goal'&&draft.mutation.value.domain?[draft.mutation.value.domain.id]:[]);
+  const methodStepsMissing=Boolean(draft?.mutation.kind==='method'&&!draft.pending&&draft.expected_version===null&&(draft.method_create_mode??'full')==='full'&&!draft.mutation.value.steps.trim());
   const patch = (value: Record<string, unknown>) => {
     if (!draft || draft.pending || busy) return;
     void persist({ ...draftsRef.current, [draft.id]: { ...draft, operation_id: uuid(), mutation: { ...draft.mutation, value: { ...draft.mutation.value, ...value } } as Mutation } });
@@ -241,7 +245,8 @@ export function FoundationWorkspace() {
   const submit = async () => {
     if (!draft || (conflict && !draft.pending) || submitting.current) return;
     submitting.current = true; setBusy(true); setError('');
-    const { pending: _pending, conflict_backup: _backup, ...body } = draft;
+    const { pending: _pending, conflict_backup: _backup, ...rawBody } = draft;
+    const body:Write=draft.expected_version===null&&draft.mutation.kind==='method'&&!rawBody.method_create_mode?{...rawBody,method_create_mode:'full'}:rawBody;
     const payload = draft.pending ?? body;
     const assertSession=authSessionGuard();
     let sent = false;
@@ -270,7 +275,7 @@ export function FoundationWorkspace() {
   const today=localDate();
   const goals = data.goals.filter(g => (goalLevel==='all'||g.input.level===goalLevel)&&(showHidden || !g.input.archived)&&[g.input.title,g.input.meaning,g.input.criteria,g.input.support??'',g.input.domain?.name??'',g.input.due??''].some(v=>v.includes(goalSearch)));
   const longDirections = data.goals.filter(g => g.input.level === 'long' && !g.input.archived);
-  const methods = [...data.methods].filter(m => (showHidden || m.input.state === 'active')&&[m.input.title,m.input.description,m.input.steps].some(v=>v.includes(methodSearch))).sort((a,b)=>(methodOrder.findIndex(r=>r.id===a.id)<0?999:methodOrder.findIndex(r=>r.id===a.id))-(methodOrder.findIndex(r=>r.id===b.id)<0?999:methodOrder.findIndex(r=>r.id===b.id)));
+  const methods = [...data.methods].filter(m => (showHidden || m.input.state === 'active')&&[m.input.title,methodSteps(m.input),m.input.observe??'',methodScope(m.input)].some(v=>v.includes(methodSearch))).sort((a,b)=>(methodOrder.findIndex(r=>r.id===a.id)<0?999:methodOrder.findIndex(r=>r.id===a.id))-(methodOrder.findIndex(r=>r.id===b.id)<0?999:methodOrder.findIndex(r=>r.id===b.id)));
   const followupHub=(mode:'today'|'full'|'hidden')=><FollowupHub planActions={ids=>setRequestedPlanActions({ids,nonce:uuid()})} data={data} mode={mode} openLesson={id=>void refresh().then(()=>setRequestedLesson({id,nonce:uuid()})).catch(e=>setSyncError(messageOf(e)))} refresh={refresh} adjustMethod={(mid,kid,version)=>{const method=data.methods.find(m=>m.id===mid);if(!method)return;if(draftsRef.current[mid]){setEditor(mid);setError('先核对已有方法填写，再根据这条知识调整。');return;}begin({kind:'method',value:{...method.input,basis:[...(method.input.basis??[]).filter(b=>b.id!==kid),{id:kid,version}]}},{kind:'method',value:method});}} requested={requestedFollowup} onRequested={()=>setRequestedFollowup(null)}/>;
   const todayRecords=<TodayRecords data={data} moments={todayMoments} today={today} open={(kind,id)=>kind==='lesson'?setRequestedLesson({id,nonce:uuid(),view:'detail'}):setRequestedSession({id,nonce:uuid()})}/>;
   const sessionHub=(mode:'today'|'records'|'drafts')=><SessionHub data={data} mode={mode} afterPrimary={mode==='today'?todayRecords:undefined} refresh={refresh} accepted={session=>setData(current=>mergeSnapshot(current,{...emptySnapshot,sessions:[session]}))} acceptMethod={saved=>setData(current=>acceptSaved(current,saved))} openGoal={id=>void openDetail(id)} openAction={id=>setRequestedFollowup({kind:'action',id,nonce:uuid()})} requested={requestedSession} onRequested={()=>setRequestedSession(null)} requestedActions={requestedPlanActions} onRequestedActions={()=>setRequestedPlanActions(null)}/>;
@@ -317,11 +322,11 @@ export function FoundationWorkspace() {
             <Action title="新建方法" press={() => begin({ kind: 'method', value: newMethod() })} />
             <Check label="显示暂停和停用方法" checked={showHidden} change={() => setShowHidden(!showHidden)} />
             <HelpButton/>
-            {!methods.length && <Text>方法是支持目标的具体做法。可以先写名称并关联目标，以后再补充细节。</Text>}
+            {!methods.length && <Text>普通新建方法需写名称、具体做法并关联目标；计划或总结里的快捷新增可以先只写名称。</Text>}
             <Action title={rankingBusy?'正在整理方法顺序…':'按最新近况重新排序'} secondary disabled={rankingBusy} press={()=>void loadMethodOrder()}/><Text>有困难意味着先检查和调整，不表示应该增加使用次数。列表不会随着后台刷新自动换位。</Text>{rankingError&&<Text>{rankingError}</Text>}
             {!rankingBusy&&methods.map(m => <View key={m.id} style={s.card} testID={`prd-method-${m.id}`}><Text style={s.heading}>{m.input.title}</Text>
               <Text>{methodOrder.find(r=>r.id===m.id)?.reason??'新加入的方法，稍后可按近况重排'}</Text><Text>关联目标：{m.input.goal_ids.map(id => data.goals.find(g => g.id === id)?.input.title ?? '待核对目标').join('、')}</Text>
-              <Text>{m.input.description || '具体做法可后补'}</Text>
+              <Text>{methodSteps(m.input) || '快捷创建，具体做法待补充'}</Text>
               {relatedKnowledge(undefined,m.id).map(k => <View key={k.input.id} style={{gap:6}}><Text>{k.input.kind === 'difficulty' ? '关联困难' : '关联经验'}：{k.input.content}</Text><Action title={`查看关联知识：${k.details?.title||k.input.content}`} secondary press={()=>setRequestedFollowup({kind:'knowledge',id:k.input.id,nonce:uuid()})}/></View>)}
               <Action title={`查看方法：${m.input.title}`} secondary press={() => void openDetail(m.id)} />
               <Action title={`编辑方法：${m.input.title}`} secondary press={() => begin({ kind: 'method', value: m.input }, { kind: 'method', value: m })} /></View>)}
@@ -352,9 +357,10 @@ export function FoundationWorkspace() {
       </View>)}
       {!longDirections.length&&<Action title="新建长期方向" press={()=>{setShowDirections(false);setTab('goals');begin({kind:'goal',value:{...newGoal(),level:'long'}});}}/>}
     </DetailOverlay>}
-    {draft && <DetailOverlay title={draft.mutation.kind === 'goal' ? '填写目标' : draft.mutation.kind === 'method' ? '填写方法' : '维护选项'} close={() => { if (!busy) setEditor(null); }} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy ? '正在保存…' : draft.pending ? '重试同一次保存' : '保存'} disabled={busy || (conflict && !draft.pending)} press={() => void submit()} /></>}>
+    {draft && <DetailOverlay title={draft.mutation.kind === 'goal' ? '填写目标' : draft.mutation.kind === 'method' ? '填写方法' : '维护选项'} close={() => { if (!busy) setEditor(null); }} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy ? '正在保存…' : draft.pending ? '重试同一次保存' : '保存'} disabled={busy || methodStepsMissing || (conflict && !draft.pending)} press={() => void submit()} /></>}>
       {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/><Text style={s.hint}>填写内容会留在本机，可关闭后继续。保存成功后家人才能看到。</Text>
       {error ? <Text accessibilityRole="alert">{error}</Text> : null}
+      {methodStepsMissing&&<Text accessibilityRole="alert">普通新建方法须填写具体做法；计划或总结中的快捷新增可只填名称。</Text>}
       {conflict && latest && <View style={s.card}><Text>另一位家人已修改这条记录，你的填写仍保留。</Text><Text style={s.heading}>家人保存的最新内容</Text><ReadOnlyValues mutation={mutationOf(latest)} data={data} />
         <Action title="备份我的填写并采用最新版本" secondary disabled={busy} press={() => void (async () => {
           try { await AsyncStorage.setItem(`${key}:conflict:${draft.id}:${Date.now()}`, JSON.stringify(draft));
@@ -367,7 +373,7 @@ export function FoundationWorkspace() {
           <Field label={{course:'课程名称',teacher:'老师名称',domain:'领域名称'}[draft.mutation.value.kind]} value={draft.mutation.value.name} change={name => patch({ name })} placeholder={draft.mutation.value.kind === 'course' ? '例如：语言课' : draft.mutation.value.kind === 'teacher' ? '例如：张老师' : fieldMatrix['goal.domain'].example} disabled={busy || Boolean(draft.pending)} />
           <Check label="可在后续记录中选择" checked={draft.mutation.value.active} disabled={busy || Boolean(draft.pending)} change={() => patch({ active: !(draft.mutation.value as { active: boolean }).active })} />
         </>}
-      {draft.mutation.kind==='method'&&latest?.kind==='method'&&(draft.method_change||draft.mutation.value.description!==latest.value.input.description||draft.mutation.value.steps!==latest.value.input.steps)&&<><Select label="这次方法修改的性质" value={draft.method_change??'adjustment'} disabled={busy||Boolean(draft.pending)} options={[{value:'adjustment',label:'调整实际做法，分开回看前后观察'},{value:'correction',label:'只更正文案，实际做法没有改变'}]} onChange={v=>void persist({...draftsRef.current,[draft.id]:{...draft,operation_id:uuid(),method_change:v as 'adjustment'|'correction'}})}/><Text>旧观察和方法版本都会保留；仅更正文案不会重新开始比较期。</Text></>}
+      {draft.mutation.kind==='method'&&latest?.kind==='method'&&(draft.method_change||draft.mutation.value.description!==latest.value.input.description||draft.mutation.value.steps!==latest.value.input.steps||draft.mutation.value.observe!==latest.value.input.observe||draft.mutation.value.scope!==latest.value.input.scope)&&<><Select label="这次方法修改的性质" value={draft.method_change??'adjustment'} disabled={busy||Boolean(draft.pending)} options={[{value:'adjustment',label:'调整实际做法，分开回看前后观察'},{value:'correction',label:'只更正文案，实际做法没有改变'}]} onChange={v=>void persist({...draftsRef.current,[draft.id]:{...draft,operation_id:uuid(),method_change:v as 'adjustment'|'correction'}})}/><Text>旧观察和方法版本都会保留；仅更正文案不会重新开始比较期。</Text></>}
       {draft.expected_version !== null && <Field label="修改说明" hint="改变状态时，请说明依据或原因。" value={draft.change_note} disabled={busy || Boolean(draft.pending)} change={change_note => void persist({ ...draftsRef.current, [draft.id]: { ...draft, operation_id: uuid(), change_note } })} placeholder="例如：先暂停，等调整好活动再试" />}
 
 
@@ -377,7 +383,7 @@ export function FoundationWorkspace() {
       <Text style={s.heading}>{nameOf(mutationOf(detail))}</Text>
       {detail.kind === 'goal' ? <><Text>{detail.value.input.meaning || '尚未补充生活意义'}</Text><Text>{detail.value.input.criteria || '尚未设置观察标准'}</Text><Text>预期帮助条件：{detail.value.input.support||'未填写'}</Text><Text>领域：{detail.value.input.domain?.name||'未选择'}；目标日期：{detail.value.input.due||'未设置'}</Text>
         {data.methods.filter(m => m.input.goal_ids.includes(detail.value.id)).map(m => <Text key={m.id}>关联方法：{m.input.title}</Text>)}</> : detail.kind === 'method' ? <>
-        <Text>{detail.value.input.description || '具体做法可后补'}</Text><Text>当前说明第{detail.value.version}版；适用条件与步骤：{detail.value.input.steps||'未补充'}</Text><Text>指导来源：{detail.value.input.guidance||'未补充'}</Text><MethodUsage data={data} id={detail.value.id} openVersion={version=>setDistribution({id:detail.value.id,kind:'method',version})}/>{detail.value.basis_snapshots?.map(b=><Text key={`${b.id}:${b.version}`}>调整依据：{b.content}（知识第{b.version}版）{b.conditions?`；当时条件：${b.conditions}`:''}</Text>)}
+        <Text>具体做法：{methodSteps(detail.value.input)||'快捷创建，待补充'}</Text><Text>观察意图：{detail.value.input.observe||'未补充'}；适用条件：{methodScope(detail.value.input)||'未补充'}</Text><Text>当前说明第{detail.value.version}版；指导来源：{detail.value.input.guidance||'未补充'}</Text><MethodUsage data={data} id={detail.value.id} openVersion={version=>setDistribution({id:detail.value.id,kind:'method',version})}/>{detail.value.basis_snapshots?.map(b=><Text key={`${b.id}:${b.version}`}>调整依据：{b.content}（知识第{b.version}版）{b.conditions?`；当时条件：${b.conditions}`:''}</Text>)}
         {detail.value.input.goal_ids.map(id => <Text key={id}>关联目标：{data.goals.find(g => g.id === id)?.input.title}</Text>)}
       </> : null}
       {relatedKnowledge(detail.kind==='goal'?detail.value.id:undefined,detail.kind==='method'?detail.value.id:undefined).map(k=>knowledgeCard(k,detail.kind==='goal'?detail.value.id:undefined,detail.kind==='method'?detail.value.id:undefined))}
@@ -389,7 +395,7 @@ export function FoundationWorkspace() {
       <Text style={s.heading}>修改记录</Text>
       {history.map(rev => <View key={rev.entity.value.version} style={s.card}><Text>{new Date(rev.recorded_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</Text>
         <Text>{nameOf(mutationOf(rev.entity))}</Text><Text>{rev.change_note || (rev.event === 'created' ? '首次记录' : '内容修改')}</Text>
-        {rev.entity.kind === 'method' && <Text>{rev.entity.value.input.description}</Text>}
+        {rev.entity.kind === 'method' && <Text>{methodSteps(rev.entity.value.input)||'当时尚未补充具体做法'}</Text>}
       </View>)}
       {historyMore&&<Action title='更早的修改记录' disabled={historyLoading} secondary press={()=>void loadObjectHistory(detail.value.id,historyPage+1)}/>}
     </DetailOverlay>}

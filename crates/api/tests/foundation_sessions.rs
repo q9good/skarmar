@@ -27,6 +27,7 @@ fn put(db: &mut Connection, u: &User, mutation: Mutation) -> Saved {
         skarma_core::foundation::model::Write {
             provided_fields: None,
             method_change: None,
+            method_create_mode: None,
             id: id(),
             operation_id: id(),
             expected_version: None,
@@ -459,6 +460,7 @@ fn historical_goal_lineage_and_method_version_survive_library_changes() {
         skarma_core::foundation::model::Write {
             provided_fields: None,
             method_change: None,
+            method_create_mode: None,
             id: g.clone(),
             operation_id: id(),
             expected_version: Some(1),
@@ -492,6 +494,7 @@ fn historical_goal_lineage_and_method_version_survive_library_changes() {
         skarma_core::foundation::model::Write {
             provided_fields: None,
             method_change: None,
+            method_create_mode: None,
             id: m.clone(),
             operation_id: id(),
             expected_version: Some(1),
@@ -507,6 +510,7 @@ fn historical_goal_lineage_and_method_version_survive_library_changes() {
         skarma_core::foundation::model::Write {
             provided_fields: None,
             method_change: None,
+            method_create_mode: None,
             id: g.clone(),
             operation_id: id(),
             expected_version: Some(2),

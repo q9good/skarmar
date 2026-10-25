@@ -6,7 +6,7 @@ import {randomUUID} from 'node:crypto';
 export async function completionContract(label,send,admin){
  const headers={'Content-Type':'application/json','X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1',Origin:'https://prd-contract.local',Cookie:admin};
  async function call(method,path,body,status=200){const r=await send('/api'+path,{method,headers,body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();assert.equal(r.status,status,`${label} completion ${path}: ${JSON.stringify(data)}`);return data;}
- const entity=async(kind,value)=>{const id=randomUUID();return(await call('PUT','/prd/records/'+id,{id,operation_id:randomUUID(),expected_version:null,change_note:'',mutation:{kind,value}})).value;};
+ const entity=async(kind,value)=>{const id=randomUUID();return(await call('PUT','/prd/records/'+id,{id,operation_id:randomUUID(),expected_version:null,change_note:'',...(kind==='method'?{method_create_mode:'quick'}:{}),mutation:{kind,value}})).value;};
  const g=await entity('goal',{title:'合成补全轮替目标',level:'short'}),m=await entity('method',{title:'合成轮流示范',goal_ids:[g.id]});
  const c=await entity('catalog',{kind:'course',name:'合成补全课程',active:true}),t=await entity('catalog',{kind:'teacher',name:'合成补全老师',active:true});
  const kid=randomUUID();await call('POST','/prd/process',{kind:'knowledge',value:{id:kid,operation_id:randomUUID(),expected_version:null,action:'create',input:{id:kid,kind:'experience',content:'合成先跟随再示范',goal_ids:[g.id],method_ids:[m.id],stage:'helpful'},details:{title:'合成已有经验'}}});

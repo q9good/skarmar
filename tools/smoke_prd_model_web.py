@@ -1,5 +1,5 @@
 """New-model UI saves and conflicts on a disposable localhost PRD database."""
-import os
+import os,re
 from pathlib import Path
 from urllib.parse import urlparse
 from playwright.sync_api import expect, sync_playwright
@@ -51,15 +51,19 @@ with sync_playwright() as p:
     long=next(g for g in state()['goals'] if g['input']['level']=='long');assert long['input']['criteria']==''
     nav(a,'方法');a.get_by_role('button',name='新建方法',exact=True).click();a.get_by_role('textbox',name='方法名称',exact=True).fill('测试等待示范')
     for title in ['测试用筷子','测试长期方向']:a.get_by_role('checkbox',name=title,exact=True).click()
-    save(a);method=state()['methods'][0];assert set(method['input']['goal_ids'])=={short['id'],long['id']}
-    assert method['input']['description']==''
+    expect(a.get_by_role('alert')).to_contain_text('普通新建方法须填写具体做法');expect(a.get_by_role('button',name='保存',exact=True)).to_be_disabled()
+    steps=a.get_by_role('textbox',name='具体做法／必填',exact=True);steps.fill('测试：先跟着孩子的玩法');a.get_by_role('textbox',name='观察意图／可选',exact=True).fill('测试：观察是否愿意再试');a.get_by_role('textbox',name='适用条件／可选',exact=True).fill('测试：熟悉的游戏中');a.get_by_role('button',name='查看填写示例：具体做法／必填',exact=True).click();expect(steps).to_have_value('测试：先跟着孩子的玩法')
+    with a.expect_request(re.compile(r'/api/prd/records/')) as full_request:save(a)
+    assert full_request.value.post_data_json['method_create_mode']=='full'
+    method=state()['methods'][0];assert set(method['input']['goal_ids'])=={short['id'],long['id']}
+    assert method['input']['steps']=='测试：先跟着孩子的玩法' and method['input']['observe']=='测试：观察是否愿意再试' and method['input']['scope']=='测试：熟悉的游戏中'
     nav(a,'目标');expect(a.get_by_role('button',name='关联方法：测试等待示范',exact=True)).to_have_count(2)
     nav(a,'方法');a.get_by_role('button',name='编辑方法：测试等待示范',exact=True).click()
-    a.get_by_role('textbox',name='具体做法（可后补）',exact=True).fill('测试：先示范，再等待')
+    a.get_by_role('textbox',name='具体做法／必填',exact=True).fill('测试：先示范，再等待')
     save(a);assert state()['methods'][0]['version']==2
-    a.get_by_role('button',name='查看方法：测试等待示范',exact=True).click();expect(a.get_by_role('dialog').get_by_text('测试：先示范，再等待',exact=True)).to_have_count(2)
+    a.get_by_role('button',name='查看方法：测试等待示范',exact=True).click();method_dialog=a.get_by_role('dialog',name='查看详情与修改记录',exact=True);expect(method_dialog.get_by_text('具体做法：测试：先示范，再等待',exact=True)).to_be_visible();expect(method_dialog.get_by_text('测试：先示范，再等待',exact=True)).to_have_count(1)
     a.get_by_role('button',name='关闭查看详情与修改记录',exact=True).click()
-    print('PASS goal templates preserve text; name-only methods and two-way goal associations persist; method versions visible',flush=True)
+    print('PASS goal templates preserve text; full methods require steps and keep guidance; two-way goal associations and versions remain visible',flush=True)
     nav(a,'课程和老师');a.get_by_role('button',name='新增老师',exact=True).click();a.get_by_role('textbox',name='老师名称',exact=True).fill('测试老师旧名');save(a)
     teacher=next(c for c in state()['catalog'] if c['input']['kind']=='teacher')
     a.get_by_role('button',name='维护选项：测试老师旧名',exact=True).click();a.get_by_role('textbox',name='老师名称',exact=True).fill('测试老师新名');save(a)

@@ -25,7 +25,11 @@ fn read(db: &mut Connection, u: &User, view: &str, object: &str, kind: &str) -> 
     .unwrap()
 }
 fn object(db: &mut Connection, u: &User, id: &str, kind: &str, input: Value) {
-    store::write_foundation(db,u,serde_json::from_value(json!({"id":id,"operation_id":self::id(),"expected_version":null,"change_note":"","mutation":{"kind":kind,"value":input}})).unwrap()).unwrap();
+    let mut request = json!({"id":id,"operation_id":self::id(),"expected_version":null,"change_note":"","mutation":{"kind":kind,"value":input}});
+    if kind == "method" {
+        request["method_create_mode"] = json!("quick");
+    }
+    store::write_foundation(db, u, serde_json::from_value(request).unwrap()).unwrap();
 }
 fn lesson(
     db: &mut Connection,

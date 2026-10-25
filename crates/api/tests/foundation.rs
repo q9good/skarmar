@@ -35,6 +35,7 @@ fn write(identifier: &str, expected_version: Option<u64>, mutation: Mutation) ->
     Write {
         provided_fields: None,
         method_change: None,
+        method_create_mode: None,
         id: identifier.into(),
         operation_id: id(),
         expected_version,
@@ -426,6 +427,140 @@ fn catalog_rename_keeps_id_and_old_snapshots_while_stop_restore_preserves_histor
 }
 
 #[test]
+fn method_creation_modes_require_full_steps_but_allow_context_quick_name_and_goals() {
+    let mut db = database();
+    let u = actor();
+    let goal_id = id();
+    store::write_foundation(
+        &mut db,
+        &u,
+        write(&goal_id, None, goal("测试目标", "short", None)),
+    )
+    .unwrap();
+    let command =
+        |identifier: &str, mode: Option<&str>, version: Option<u64>, value: serde_json::Value| {
+            let mut raw = serde_json::json!({
+                "id":identifier,
+                "operation_id":id(),
+                "expected_version":version,
+                "change_note":"测试创建模式",
+                "mutation":{"kind":"method","value":value}
+            });
+            if let Some(mode) = mode {
+                raw["method_create_mode"] = serde_json::json!(mode);
+            }
+            serde_json::from_value::<Write>(raw).unwrap()
+        };
+
+    let missing = id();
+    assert_eq!(
+        store::write_foundation(
+            &mut db,
+            &u,
+            command(
+                &missing,
+                None,
+                None,
+                serde_json::json!({"title":"未标模式","goal_ids":[goal_id]})
+            )
+        )
+        .unwrap_err()
+        .0,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let full = id();
+    assert_eq!(
+        store::write_foundation(
+            &mut db,
+            &u,
+            command(
+                &full,
+                Some("full"),
+                None,
+                serde_json::json!({"title":"普通方法","goal_ids":[goal_id]})
+            )
+        )
+        .unwrap_err()
+        .0,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let full_saved = store::write_foundation(
+        &mut db,
+        &u,
+        command(
+            &full,
+            Some("full"),
+            None,
+            serde_json::json!({
+                "title":"普通方法",
+                "steps":"先跟着他的玩法",
+                "observe":"愿意再试一次",
+                "scope":"熟悉的游戏中",
+                "goal_ids":[goal_id]
+            }),
+        ),
+    )
+    .unwrap();
+    let Saved::Method(full_saved) = full_saved else {
+        panic!()
+    };
+    assert_eq!(full_saved.input.steps, "先跟着他的玩法");
+    assert_eq!(full_saved.input.observe, "愿意再试一次");
+    assert_eq!(full_saved.input.scope, "熟悉的游戏中");
+    assert_eq!(store::foundation_history(&mut db, &full).unwrap().len(), 1);
+
+    let quick = id();
+    let quick_request = command(
+        &quick,
+        Some("quick"),
+        None,
+        serde_json::json!({"title":"快捷方法","goal_ids":[goal_id]}),
+    );
+    let quick_saved = store::write_foundation(&mut db, &u, quick_request.clone()).unwrap();
+    assert_eq!(
+        serde_json::to_value(store::write_foundation(&mut db, &u, quick_request).unwrap()).unwrap(),
+        serde_json::to_value(&quick_saved).unwrap()
+    );
+    let Saved::Method(quick_saved) = quick_saved else {
+        panic!()
+    };
+    assert!(quick_saved.input.steps.is_empty());
+    assert_eq!(quick_saved.input.goal_ids, vec![goal_id.clone()]);
+    assert_eq!(store::foundation_history(&mut db, &quick).unwrap().len(), 1);
+
+    assert_eq!(
+        store::write_foundation(
+            &mut db,
+            &u,
+            command(
+                &quick,
+                Some("full"),
+                Some(1),
+                serde_json::json!({
+                    "title":"快捷方法补充",
+                    "steps":"后来补充具体做法",
+                    "goal_ids":[goal_id]
+                })
+            )
+        )
+        .unwrap_err()
+        .0,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert!(
+        serde_json::from_value::<Write>(serde_json::json!({
+            "id":id(),
+            "operation_id":id(),
+            "expected_version":null,
+            "change_note":"",
+            "method_create_mode":"import",
+            "mutation":{"kind":"method","value":{"title":"非法模式","goal_ids":[goal_id]}}
+        }))
+        .is_err()
+    );
+}
+
+#[test]
 fn goal_domain_due_and_support_are_optional_versioned_and_safe_for_legacy_records() {
     let mut db = database();
     let u = actor();
@@ -771,7 +906,14 @@ fn omitted_update_fields_preserve_existing_values_but_explicit_empty_and_null_cl
     } else {
         panic!()
     }
-    store::write_foundation(&mut db,&u,command(&mid,None,"method",serde_json::json!({"title":"原方法","goal_ids":[g],"description":"要保留的做法","steps":"要保留的步骤","guidance":"老师示范","state":"paused","resume_on":"2099-01-01","pinned":true}))).unwrap();
+    let mut method_create = command(
+        &mid,
+        None,
+        "method",
+        serde_json::json!({"title":"原方法","goal_ids":[g],"description":"要保留的做法","steps":"要保留的步骤","guidance":"老师示范","state":"paused","resume_on":"2099-01-01","pinned":true}),
+    );
+    method_create.method_create_mode = Some(MethodCreateMode::Full);
+    store::write_foundation(&mut db, &u, method_create).unwrap();
     let edited = store::write_foundation(
         &mut db,
         &u,

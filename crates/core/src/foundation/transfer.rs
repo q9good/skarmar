@@ -780,6 +780,7 @@ fn catalog(db: &dyn Sql, actor: &User, kind: m::CatalogKind, name: &str) -> Resu
         m::Write {
             provided_fields: None,
             method_change: None,
+            method_create_mode: None,
             id: id.clone(),
             operation_id: Uuid::new_v4().to_string(),
             expected_version: None,
@@ -820,6 +821,7 @@ fn apply(db: &dyn Sql, actor: &User, row: &Row) -> Result<Option<Value>> {
             m::Write {
                 provided_fields: None,
                 method_change: None,
+                method_create_mode: None,
                 id,
                 operation_id: op,
                 expected_version: None,
@@ -833,6 +835,7 @@ fn apply(db: &dyn Sql, actor: &User, row: &Row) -> Result<Option<Value>> {
             m::Write {
                 provided_fields: None,
                 method_change: None,
+                method_create_mode: None,
                 id,
                 operation_id: op,
                 expected_version: None,
@@ -1223,6 +1226,7 @@ fn upgrade_commit(db: &dyn Sql, actor: &User, input: UpgradeInput) -> Result<Val
             m::Write {
                 provided_fields: None,
                 method_change: None,
+                method_create_mode: None,
                 id: g.id.clone(),
                 operation_id: Uuid::new_v4().to_string(),
                 expected_version: None,
@@ -1291,6 +1295,7 @@ fn upgrade_commit(db: &dyn Sql, actor: &User, input: UpgradeInput) -> Result<Val
             m::Write {
                 provided_fields: None,
                 method_change: None,
+                method_create_mode: None,
                 id: method.id.clone(),
                 operation_id: Uuid::new_v4().to_string(),
                 expected_version: None,
@@ -1382,6 +1387,7 @@ fn upgrade_commit(db: &dyn Sql, actor: &User, input: UpgradeInput) -> Result<Val
                 m::Write {
                     provided_fields: None,
                     method_change: None,
+                    method_create_mode: None,
                     id,
                     operation_id: Uuid::new_v4().to_string(),
                     expected_version: Some(item.version),

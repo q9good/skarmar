@@ -31,7 +31,7 @@ with sync_playwright() as p:
     for kind,title in [('goal','测试自己穿鞋'),('method','测试等待示范')]:
         id=str(uuid4());ids[kind]=id
         value={'title':title,'level':'short','meaning':'','criteria':'','template':'text','parent_id':None,'state':'active','archived':False,'frequency':None,'attention_start':None} if kind=='goal' else {'title':title,'goal_ids':[ids['goal']],'description':'','steps':'','guidance':'','state':'active','pinned':False,'needs_attention':False,'attention_reason':''}
-        call('PUT','/prd/records/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}})
+        body={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});call('PUT','/prd/records/'+id,body)
     a.reload();expect(button(a,'记录上课')).to_be_visible()
     nav(a,'记录上课');expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_count(0)
     nav(a,'课程名称（必填）：请选择课程');a.get_by_role('textbox',name='新增课程名称',exact=True).fill('测试语言课');nav(a,'保存并选用')

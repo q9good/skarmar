@@ -35,7 +35,8 @@ with sync_playwright() as p:
  login(a,'owner','synthetic-prd-ui-password');assert not state()['knowledge']
  family=call('POST','/auth/users',{'username':'family','display_name':'测试家人','password':'s','role':'member'})
  gid,mid=str(uuid4()),str(uuid4())
- for id,kind,value in [(gid,'goal',{'title':'测试近期本领','level':'short'}),(mid,'method',{'title':'测试方法','goal_ids':[gid]})]:call('PUT','/prd/records/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}})
+ for id,kind,value in [(gid,'goal',{'title':'测试近期本领','level':'short'}),(mid,'method',{'title':'测试方法','goal_ids':[gid]})]:
+  body={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});call('PUT','/prd/records/'+id,body)
  a.reload();click(a,'跟进');click(a,'新建经验');field(a,'知识名称（必填）').fill('测试示范经验');field(a,'做法与依据').fill('测试：先示范，孩子愿意再尝试');fill_bindings(a);a.get_by_role('combobox',name='经验阶段',exact=True).select_option('helpful');save(a,parent=False)
  click(a,'经验库与困难');detail(a,'测试示范经验');kid=state()['knowledge'][0]['input']['id'];assert state()['knowledge'][0]['input']['stage']=='helpful'
  click(a,'记录本次经验反馈');a.get_by_role('combobox',name='本次结果',exact=True).select_option('helpful');field(a,'本次实际观察').fill('测试：愿意轮流');save(a);expect(a.get_by_text('实践总次数 1（附注不计次数）',exact=True)).to_be_visible()

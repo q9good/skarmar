@@ -14,7 +14,7 @@ with sync_playwright() as p:
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  def entity(kind,value):
-  id=str(uuid4());return call('PUT','/prd/records/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}})['value']
+  id=str(uuid4());body={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});return call('PUT','/prd/records/'+id,body)['value']
  def close_all():
   for _ in range(8):
    if page.get_by_role('dialog').count()==0:return
@@ -26,7 +26,7 @@ with sync_playwright() as p:
  click('记录一次家庭干预');expect(page.get_by_role('dialog',name='填写干预计划',exact=True)).to_be_visible();click('主要练：测试轮流');field('准备怎么做').fill('测试：轮流滚球');expect(btn('保存共享草稿并退出')).to_be_in_viewport(ratio=1);click('保存共享草稿并退出');expect(page.get_by_role('dialog')).to_have_count(0);expect(btn('填写今天的总结')).to_be_visible();assert call('GET','/prd/state')['sessions'][0]['status']=='planned'
  print('PASS default date/time plus quick main target saves plan in three clicks with one sentence; footer always visible',flush=True)
  click('方法');click('查看方法：测试等待');click('记一条心得');field('知识名称（必填）').fill('测试等待心得');field('做法与依据').fill('测试：熟悉游戏先等待');page.get_by_role('combobox',name='经验阶段',exact=True).select_option('try');click('保存跟进');expect(page.get_by_role('dialog',name='维护经验或困难',exact=True)).to_have_count(0)
- k=call('GET','/prd/state')['knowledge'][0];assert k['input']['method_ids']==[m['id']];page.get_by_role('dialog',name='查看详情与修改记录',exact=True).get_by_role('button',name='查看关联知识：测试等待心得',exact=True).click();click('据此调整方法：测试等待');field('具体做法（可后补）').fill('测试：先等待，再视需要示范');field('修改说明').fill('测试：根据熟悉场景的心得调整');click('保存');expect(page.get_by_role('dialog',name='填写方法',exact=True)).to_have_count(0);saved=call('GET','/prd/state')['methods'][0];assert saved['version']==2 and saved['basis_snapshots'][0]['id']==k['input']['id'];close_all()
+ k=call('GET','/prd/state')['knowledge'][0];assert k['input']['method_ids']==[m['id']];page.get_by_role('dialog',name='查看详情与修改记录',exact=True).get_by_role('button',name='查看关联知识：测试等待心得',exact=True).click();click('据此调整方法：测试等待');field('具体做法／必填').fill('测试：先等待，再视需要示范');field('修改说明').fill('测试：根据熟悉场景的心得调整');click('保存');expect(page.get_by_role('dialog',name='填写方法',exact=True)).to_have_count(0);saved=call('GET','/prd/state')['methods'][0];assert saved['version']==2 and saved['basis_snapshots'][0]['id']==k['input']['id'];close_all()
  print('PASS method-context experience links both ways and explicit method adjustment keeps exact knowledge basis',flush=True)
  click('目标');click('新建目标');field('本领名称').fill('测试有例子的目标');click('补充目标说明（可选）');field('观察标准').fill('测试：保留自己的描述');click('查看填写示例：观察标准');expect(page.get_by_text(re.compile('合成示例 · 例如：'))).to_be_visible();expect(field('观察标准')).to_have_value('测试：保留自己的描述');click('关闭填写目标')
  click('方法');click('查看说明');expect(page.get_by_text('怎样理解方法的证据',exact=True)).to_be_visible();expect(page.get_by_text('添加到手机桌面',exact=True)).to_be_visible();click('关闭使用与方法说明')

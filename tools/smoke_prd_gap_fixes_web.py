@@ -12,7 +12,7 @@ with sync_playwright() as p:
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  def entity(kind,value):
-  id=str(uuid4());return call('PUT','/prd/records/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}})['value']
+  id=str(uuid4());body={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});return call('PUT','/prd/records/'+id,body)['value']
  def kb(kind,title,state):
   id=str(uuid4());return call('POST','/prd/process',{'kind':'knowledge','value':{'id':id,'operation_id':str(uuid4()),'action':'create','input':{'id':id,'kind':kind,'content':title,'goal_ids':[g['id']],'method_ids':[m['id']],'stage':'helpful' if kind=='experience' else None,'next_review_date':today if kind=='difficulty' and state=='following' else None},'details':{'title':title,'state':state}}})
  def sync():

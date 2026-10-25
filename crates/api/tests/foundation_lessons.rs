@@ -26,6 +26,7 @@ fn put(db: &mut Connection, user: &User, mutation: Mutation) -> Saved {
         Write {
             provided_fields: None,
             method_change: None,
+            method_create_mode: None,
             id: id(),
             operation_id: id(),
             expected_version: None,
@@ -169,6 +170,7 @@ fn duplicate_retry_is_one_lesson_and_names_do_not_follow_catalog_rename() {
         Write {
             provided_fields: None,
             method_change: None,
+            method_create_mode: None,
             id: input.teacher_id.clone(),
             operation_id: id(),
             expected_version: Some(1),

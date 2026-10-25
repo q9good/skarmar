@@ -33,8 +33,9 @@ with sync_playwright() as p:
  field(a,'准备怎么做').fill('测试：一起玩滚球，练轮流和求助')
  click(a,'快捷新增计划方法');field(a,'新方法名称').fill('测试先示范')
  def lose_method(route):
+  assert route.request.post_data_json['method_create_mode']=='quick'
   response=route.fetch();assert response.ok;route.abort('failed')
- a.route('**/api/prd/records/*',lose_method,times=1);click(a,'保存方法并选入本次');expect(a.get_by_role('alert')).to_be_visible();assert len(state()['methods'])==1;click(a,'关闭快捷新增方法');click(a,'关闭填写干预计划');a.reload();click(a,re.compile(r'^继续干预填写：'));click(a,'继续确认快捷新增');click(a,'保存方法并选入本次');expect(a.get_by_role('dialog')).to_have_count(1);assert len(state()['methods'])==1
+ a.route('**/api/prd/records/*',lose_method,times=1);click(a,'保存方法并选入本次');expect(a.get_by_role('alert')).to_be_visible();assert len(state()['methods'])==1 and state()['methods'][0]['input']['steps']=='';click(a,'关闭快捷新增方法');click(a,'关闭填写干预计划');a.reload();click(a,re.compile(r'^继续干预填写：'));click(a,'继续确认快捷新增');click(a,'保存方法并选入本次');expect(a.get_by_role('dialog')).to_have_count(1);assert len(state()['methods'])==1
  save(a,'保存共享草稿并退出');assert len(state()['sessions'])==1 and state()['sessions'][0]['status']=='planned';assert call('GET','/prd/coverage?days=30&source=family')['records']['selected']==0
  expect(button(a,'填写今天的总结')).to_be_visible();print('PASS phone first screen, target roles swap without lost notes, inline method and shared plan excluded from counts',flush=True)
  login(b,'family','s')
@@ -63,7 +64,7 @@ with sync_playwright() as p:
  def lose_response(route):
   response=route.fetch();assert response.ok,response.text();route.abort('failed')
  a.route('**/api/prd/sessions/*',lose_response,times=1);click(a,'正式提交干预总结');expect(button(a,'重试同一次干预保存')).to_be_visible();assert len(state()['sessions'])==2
- a.reload();click(a,re.compile(r'^继续干预填写：'));save(a,'重试同一次干预保存');s=state();other=next(s for s in s['sessions'] if s['id']!=sid);assert len(s['sessions'])==2 and len(call('GET','/prd/sessions/'+other['id']+'/history'))==1;assert len(other['actual_methods'])==1 and other['input']['plan']=='';assert next(m for m in s['methods'] if m['input']['title']=='测试等待手势')['input']['goal_ids']==[gids[1]]
+ a.reload();click(a,re.compile(r'^继续干预填写：'));save(a,'重试同一次干预保存');s=state();other=next(s for s in s['sessions'] if s['id']!=sid);assert len(s['sessions'])==2 and len(call('GET','/prd/sessions/'+other['id']+'/history'))==1;assert len(other['actual_methods'])==1 and other['input']['plan']=='';quick_method=next(m for m in s['methods'] if m['input']['title']=='测试等待手势');assert quick_method['input']['goal_ids']==[gids[1]] and quick_method['input']['steps']==''
  print('PASS direct summary, inline actual method, and lost response across reload retries exactly once',flush=True)
  click(a,'记录');click(a,'家庭干预');expect(a.get_by_text('家庭干预记录',exact=True)).to_be_visible();expect(a.get_by_role('button',name=re.compile(r'^\d{4}-\d{2}-\d{2} · 已完成\d+次$'))).not_to_have_count(0)
  click(a,'查看目标覆盖与实际方法');expect(a.get_by_text(re.compile(r'.*家庭 2 次，机构 0 节$'))).to_be_visible();a.get_by_role('combobox',name='统计来源',exact=True).select_option('combined');expect(a.get_by_text(re.compile(r'^测试轮流 · 1 次'))).to_be_visible();a.get_by_role('combobox',name='统计窗口',exact=True).select_option('7');expect(a.get_by_text(re.compile(r'^近7天固定色阶：'))).to_be_visible();a.screenshot(path=str(OUT/'coverage-360.png'));click(a,'关闭全部方向的近况')

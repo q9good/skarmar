@@ -102,7 +102,7 @@ pub fn snapshot(db: &dyn Sql) -> Result<Snapshot> {
         }
         for (phase, rows) in [("计划", s.planned_methods), ("实际", s.actual_methods)] {
             for m in rows {
-                methods.push(json!({"session_id":s.id,"session_version":s.version,"status":s.status,"business_date":s.input.business_date,"phase":phase,"method_id":m.id,"method_version":m.version,"title":m.input.title,"description":m.input.description}));
+                methods.push(json!({"session_id":s.id,"session_version":s.version,"status":s.status,"business_date":s.input.business_date,"phase":phase,"method_id":m.id,"method_version":m.version,"title":m.input.title,"description":if m.input.description.is_empty(){m.input.steps.clone()}else{m.input.description.clone()},"observe":m.input.observe,"scope":m.input.scope}));
             }
         }
     }
