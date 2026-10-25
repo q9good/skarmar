@@ -1,12 +1,13 @@
 import type {Session} from './prd-sessions';
 import type { Lesson, Knowledge, NextAction } from './prd-lessons';
 import type { Level } from './api';
-export type GoalInput = { resume_on?:string|null;title: string; level: Level; meaning: string; parent_id: string | null; criteria: string;
+export type CatalogSnapshot = { id: string; version: number; kind: 'course' | 'teacher' | 'domain'; name: string };
+export type GoalInput = { resume_on?:string|null;title: string; level: Level; meaning: string; parent_id: string | null; domain: CatalogSnapshot | null; criteria: string; support: string;
   template: 'count' | 'duration' | 'steps' | 'text' | null; state: 'not_started' | 'active' | 'maintaining' | 'paused' | 'achieved' | null;
-  archived: boolean; frequency: 'weekly' | 'fortnightly' | 'monthly' | 'none' | null; attention_start: string | null };
+  archived: boolean; frequency: 'weekly' | 'fortnightly' | 'monthly' | 'none' | null; attention_start: string | null; due: string | null };
 export type MethodInput = { basis?:{id:string;version:number}[]; resume_on?:string|null;title: string; description: string; steps: string; goal_ids: string[]; guidance: string;
   state: 'active' | 'paused' | 'retired' | null; pinned: boolean; needs_attention: boolean; attention_reason: string };
-export type CatalogInput = { kind: 'course' | 'teacher'; name: string; active: boolean };
+export type CatalogInput = { kind: 'course' | 'teacher' | 'domain'; name: string; active: boolean };
 export type RecordOf<T> = { id: string; version: number; input: T };
 export type Goal = RecordOf<GoalInput>;
 export type Method = RecordOf<MethodInput>&{basis_snapshots?:{id:string;version:number;kind:string;content:string;conditions:string}[]};
@@ -18,8 +19,8 @@ export type Write = { method_change?:'adjustment'|'correction';operation_id: str
 export type Draft = Write & { pending?: Write; conflict_backup?: Mutation };
 export type Revision = { entity: Saved; recorded_at: string; actor_id: string; change_note: string; event: string };
 export const emptySnapshot: Snapshot = { schema: 'skarmar.prd.v1', goals: [], methods: [], catalog: [], lessons: [], sessions:[], knowledge: [], actions: [] };
-export const newGoal = (): GoalInput => ({ title: '', level: 'short', meaning: '', parent_id: null, criteria: '', template: null,
-  state: 'active', archived: false, frequency: null, attention_start: null });
+export const newGoal = (): GoalInput => ({ title: '', level: 'short', meaning: '', parent_id: null, domain: null, criteria: '', support: '', template: null,
+  state: 'active', archived: false, frequency: null, attention_start: null, due: null });
 export const newMethod = (): MethodInput => ({ title: '', description: '', steps: '', goal_ids: [], guidance: '', state: 'active', pinned: false, needs_attention: false, attention_reason: '' });
 function merge<T extends { id: string; version: number }>(old: T[], next: T[]): T[] {
   const map = new Map(old.map(item => [item.id, item]));
@@ -52,9 +53,15 @@ export function decodeDrafts(raw: string | null): Record<string, Draft> {
   const validMutation = (m: unknown) => {
     if (!record(m) || !record(m.value)) return false;
     const v = m.value;
-    if (m.kind === 'goal') return Object.keys(newGoal()).every(k => k in v) && typeof v.title === 'string' && typeof v.meaning === 'string' && typeof v.criteria === 'string' && ['long','medium','short'].includes(String(v.level)) && typeof v.archived === 'boolean';
+    if (m.kind === 'goal') {
+      const legacyKeys=Object.keys(newGoal()).filter(k=>!['domain','due','support'].includes(k));
+      const domain=v.domain;
+      return legacyKeys.every(k => k in v) && typeof v.title === 'string' && typeof v.meaning === 'string' && typeof v.criteria === 'string' && ['long','medium','short'].includes(String(v.level)) && typeof v.archived === 'boolean' &&
+        (v.support===undefined||typeof v.support==='string') && (v.due===undefined||v.due===null||typeof v.due==='string') &&
+        (domain===undefined||domain===null||record(domain)&&typeof domain.id==='string'&&Number.isSafeInteger(domain.version)&&Number(domain.version)>0&&domain.kind==='domain'&&typeof domain.name==='string');
+    }
     if (m.kind === 'method') return Object.keys(newMethod()).every(k => k in v) && typeof v.title === 'string' && typeof v.description === 'string' && typeof v.steps === 'string' && typeof v.guidance === 'string' && Array.isArray(v.goal_ids) && v.goal_ids.every(id => typeof id === 'string') && typeof v.pinned === 'boolean' && typeof v.needs_attention === 'boolean' && typeof v.attention_reason === 'string';
-    return m.kind === 'catalog' && ['course','teacher'].includes(String(v.kind)) && typeof v.name === 'string' && typeof v.active === 'boolean';
+    return m.kind === 'catalog' && ['course','teacher','domain'].includes(String(v.kind)) && typeof v.name === 'string' && typeof v.active === 'boolean';
   };
   const validWrite = (v: unknown): v is Write => record(v) && (v.method_change===undefined||['adjustment','correction'].includes(String(v.method_change))) && typeof v.id === 'string' && typeof v.operation_id === 'string' &&
     (v.expected_version === null || Number.isSafeInteger(v.expected_version) && Number(v.expected_version) > 0) && typeof v.change_note === 'string' && validMutation(v.mutation);

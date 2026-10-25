@@ -3,7 +3,7 @@ import sys,json,io
 from openpyxl import load_workbook
 expected=json.loads(sys.argv[1]);book=load_workbook(io.BytesIO(sys.stdin.buffer.read()),data_only=False)
 assert book['导出说明']['B1'].value=='skarmar.prd.export.v1'
-assert int(book['导出说明']['B2'].value)==6
+assert int(book['导出说明']['B2'].value)==7
 assert not any('auth_' in name or 'operation' in name for name in book.sheetnames)
 raw={}
 for row in list(book['原始数据分段'].values)[1:]:

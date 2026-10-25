@@ -584,7 +584,7 @@ fn v1_development_schema_upgrades_without_changing_objects_or_history() {
     let version: i64 = db
         .query_row("SELECT version FROM prd_schema", [], |r| r.get(0))
         .unwrap();
-    assert_eq!(version, 6);
+    assert_eq!(version, 7);
 }
 
 #[test]

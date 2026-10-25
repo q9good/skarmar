@@ -28,7 +28,7 @@ export function decodeOutbox(raw:string|null):Outbox {
 function validReceipt(e:QueueEntry):boolean{
  try{
   const r=e.receipt;if(!r)return false;
-  if(e.write.kind==='catalog')return 'kind' in r&&r.kind==='catalog'&&Number.isSafeInteger(r.value.version)&&r.value.version>0&&typeof r.value.id==='string'&&['course','teacher'].includes(r.value.input?.kind)&&typeof r.value.input.name==='string'&&typeof r.value.input.active==='boolean';
+  if(e.write.kind==='catalog')return 'kind' in r&&r.kind==='catalog'&&Number.isSafeInteger(r.value.version)&&r.value.version>0&&typeof r.value.id==='string'&&['course','teacher','domain'].includes(r.value.input?.kind)&&typeof r.value.input.name==='string'&&typeof r.value.input.active==='boolean';
   if('kind' in r||!Number.isSafeInteger(r.version)||r.version<1||!['recorded','withdrawn','deleted'].includes(r.status)||typeof r.creator_id!=='string'||typeof r.creator_name!=='string'||typeof r.created_at!=='string'||!Array.isArray(r.acknowledgements)||!r.acknowledgements.every(id=>typeof id==='string'))return false;
   decodeLessonDrafts(JSON.stringify({[r.id+':observation']:{phase:'basic',request:{id:r.id,operation_id:'receipt-check',expected_version:r.version,action:{kind:'observation',value:r.observation}}}}));
   const validEntity=(v:unknown,kind:'goal'|'method')=>{const row=v as {id:string;version:number;input:unknown};if(!row||!Number.isSafeInteger(row.version)||row.version<1)return false;decodeDrafts(JSON.stringify({[row.id]:{id:row.id,operation_id:'receipt-check',expected_version:row.version,change_note:'',mutation:{kind,value:row.input}}}));return true;};

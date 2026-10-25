@@ -36,7 +36,16 @@ with sync_playwright() as p:
     criterion=a.get_by_role('textbox',name='观察标准',exact=True);expect(criterion).to_have_value('')
     criterion.fill('测试：5次机会中有3次只需提醒')
     a.get_by_role('combobox',name='观察方式',exact=True).select_option('duration');expect(criterion).to_have_value('测试：5次机会中有3次只需提醒')
+    a.get_by_role('textbox',name='预期帮助条件（可选）',exact=True).fill('测试：先不提示，需要时再示范')
+    a.get_by_role('button',name='领域／可选：选择或自定义',exact=True).click()
+    domain_panel=a.get_by_role('dialog',name='选择领域',exact=True);domain_panel.get_by_role('textbox',name='自定义领域',exact=True).fill('测试沟通互动');domain_panel.get_by_role('button',name='保存并选用',exact=True).click()
+    expect(a.get_by_role('button',name='领域／可选：测试沟通互动',exact=True)).to_be_visible()
+    a.get_by_role('button',name='目标日期／可选：改用数字输入',exact=True).click();a.get_by_role('textbox',name='目标日期／可选',exact=True).fill('20270120')
     save(a);short=next(g for g in state()['goals'] if g['input']['title']=='测试用筷子')
+    assert short['input']['support']=='测试：先不提示，需要时再示范'
+    assert short['input']['due']=='2027-01-20'
+    assert short['input']['domain']['name']=='测试沟通互动' and short['input']['domain']['kind']=='domain'
+    assert len([c for c in state()['catalog'] if c['input']['kind']=='domain'])==1
     a.get_by_role('button',name='新建目标',exact=True).click();a.get_by_role('textbox',name='本领名称',exact=True).fill('测试长期方向')
     a.get_by_role('combobox',name='目标类型',exact=True).select_option('long');save(a)
     long=next(g for g in state()['goals'] if g['input']['level']=='long');assert long['input']['criteria']==''
@@ -52,11 +61,12 @@ with sync_playwright() as p:
     a.get_by_role('button',name='关闭查看详情与修改记录',exact=True).click()
     print('PASS goal templates preserve text; name-only methods and two-way goal associations persist; method versions visible',flush=True)
     nav(a,'课程和老师');a.get_by_role('button',name='新增老师',exact=True).click();a.get_by_role('textbox',name='老师名称',exact=True).fill('测试老师旧名');save(a)
-    teacher=state()['catalog'][0]
+    teacher=next(c for c in state()['catalog'] if c['input']['kind']=='teacher')
     a.get_by_role('button',name='维护选项：测试老师旧名',exact=True).click();a.get_by_role('textbox',name='老师名称',exact=True).fill('测试老师新名');save(a)
     for _ in range(2):
         a.get_by_role('button',name='维护选项：测试老师新名',exact=True).click();a.get_by_role('checkbox',name='可在后续记录中选择',exact=True).click();save(a)
-    assert state()['catalog'][0]['id']==teacher['id'] and state()['catalog'][0]['version']==4
+    current_teacher=next(c for c in state()['catalog'] if c['id']==teacher['id'])
+    assert current_teacher['version']==4
     a.get_by_role('button',name='查看改名历史：测试老师新名',exact=True).click();expect(a.get_by_role('dialog').get_by_text('测试老师旧名',exact=True)).to_be_visible()
     a.get_by_role('button',name='关闭查看详情与修改记录',exact=True).click()
     print('PASS shared catalog rename, stop/restore, stable ID and old name history',flush=True)

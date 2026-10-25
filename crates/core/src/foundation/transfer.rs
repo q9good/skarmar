@@ -751,10 +751,10 @@ fn plan_summary(id: &str, plan: &Plan) -> Value {
     value!({"preview_id":id,"digest":plan.digest,"namespace":plan.namespace,"rows":plan.rows.iter().map(|r|value!({"key":r.key,"sheet":r.sheet,"row":r.row,"kind":r.mapped.kind(),"target_id":r.target_id,"skipped":r.skipped,"mapped":r.mapped})).collect::<Vec<_>>(),"warning":"只追加；经验保留明确映射的阶段，未指定时为想法。文字不换算成训练次数或量化进度。未映射字段完整存档。预览不替代提交时校验。"})
 }
 fn catalog(db: &dyn Sql, actor: &User, kind: m::CatalogKind, name: &str) -> Result<String> {
-    let key = if kind == m::CatalogKind::Course {
-        "course"
-    } else {
-        "teacher"
+    let key = match kind {
+        m::CatalogKind::Course => "course",
+        m::CatalogKind::Teacher => "teacher",
+        m::CatalogKind::Domain => "domain",
     };
     if let Some(row) = db
         .query(

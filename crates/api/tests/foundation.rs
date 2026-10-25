@@ -426,6 +426,154 @@ fn catalog_rename_keeps_id_and_old_snapshots_while_stop_restore_preserves_histor
 }
 
 #[test]
+fn goal_domain_due_and_support_are_optional_versioned_and_safe_for_legacy_records() {
+    let mut db = database();
+    let u = actor();
+    let domain_id = id();
+    let saved_domain = store::write_foundation(
+        &mut db,
+        &u,
+        write(
+            &domain_id,
+            None,
+            Mutation::Catalog(CatalogInput {
+                kind: CatalogKind::Domain,
+                name: "沟通互动".into(),
+                active: true,
+            }),
+        ),
+    )
+    .unwrap();
+    let Saved::Catalog(domain) = saved_domain else {
+        panic!()
+    };
+    let domain = CatalogSnapshot {
+        id: domain.id,
+        version: domain.version,
+        kind: CatalogKind::Domain,
+        name: domain.input.name,
+    };
+    let goal_id = id();
+    let command = |version: Option<u64>, value: serde_json::Value| {
+        serde_json::from_value::<Write>(serde_json::json!({
+            "id":goal_id,
+            "operation_id":id(),
+            "expected_version":version,
+            "change_note":"合成字段核对",
+            "mutation":{"kind":"goal","value":value}
+        }))
+        .unwrap()
+    };
+    let saved = store::write_foundation(
+        &mut db,
+        &u,
+        command(
+            None,
+            serde_json::json!({
+                "title":"主动求助",
+                "level":"short",
+                "criteria":"需要帮助时主动表达",
+                "support":"先不提示，需要时再示范",
+                "domain":domain,
+                "due":"2027-01-20"
+            }),
+        ),
+    )
+    .unwrap();
+    let Saved::Goal(goal) = saved else { panic!() };
+    assert_eq!(goal.input.domain.as_ref().unwrap().name, "沟通互动");
+    assert_eq!(goal.input.due.as_deref(), Some("2027-01-20"));
+    assert_eq!(goal.input.support, "先不提示，需要时再示范");
+
+    let renamed = store::write_foundation(
+        &mut db,
+        &u,
+        write(
+            &domain_id,
+            Some(1),
+            Mutation::Catalog(CatalogInput {
+                kind: CatalogKind::Domain,
+                name: "表达与互动".into(),
+                active: true,
+            }),
+        ),
+    )
+    .unwrap();
+    assert_eq!(renamed.version(), 2);
+    let partial = store::write_foundation(
+        &mut db,
+        &u,
+        command(
+            Some(1),
+            serde_json::json!({"title":"主动表达需要","level":"short"}),
+        ),
+    )
+    .unwrap();
+    let Saved::Goal(partial) = partial else {
+        panic!()
+    };
+    assert_eq!(partial.input.domain.as_ref().unwrap().name, "沟通互动");
+    assert_eq!(partial.input.domain.as_ref().unwrap().version, 1);
+    assert_eq!(partial.input.due.as_deref(), Some("2027-01-20"));
+    assert_eq!(partial.input.support, "先不提示，需要时再示范");
+
+    let cleared = store::write_foundation(
+        &mut db,
+        &u,
+        command(
+            Some(2),
+            serde_json::json!({
+                "title":"主动表达需要",
+                "level":"short",
+                "domain":null,
+                "due":null,
+                "support":""
+            }),
+        ),
+    )
+    .unwrap();
+    let Saved::Goal(cleared) = cleared else {
+        panic!()
+    };
+    assert!(cleared.input.domain.is_none());
+    assert!(cleared.input.due.is_none());
+    assert!(cleared.input.support.is_empty());
+    assert_eq!(
+        store::write_foundation(
+            &mut db,
+            &u,
+            command(
+                Some(3),
+                serde_json::json!({
+                    "title":"主动表达需要",
+                    "level":"short",
+                    "due":"2027-02-31"
+                }),
+            ),
+        )
+        .unwrap_err()
+        .0,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+
+    let legacy: Saved = serde_json::from_value(serde_json::json!({
+        "kind":"goal",
+        "value":{
+            "id":id(),
+            "version":1,
+            "input":{"title":"旧目标","level":"long"}
+        }
+    }))
+    .unwrap();
+    let Saved::Goal(legacy) = legacy else {
+        panic!()
+    };
+    assert!(legacy.input.domain.is_none());
+    assert!(legacy.input.due.is_none());
+    assert!(legacy.input.support.is_empty());
+}
+
+#[test]
 fn failing_history_write_rolls_back_entity_operation_and_relationships() {
     let mut db = database();
     let actor = actor();

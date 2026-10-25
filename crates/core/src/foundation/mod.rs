@@ -97,7 +97,7 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         [row] if row.len() == 1 => row[0].parse::<u32>().unwrap_or(0),
         _ => 0,
     };
-    if !(1..=6).contains(&version) {
+    if !(1..=7).contains(&version) {
         return Err(ApiError::conflict("新模型版本不兼容，请核对转换方案"));
     }
     let mut allowed = expected.to_vec();
@@ -133,9 +133,10 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
         }
         4 => db.execute_batch(include_str!("observations_v5.sql"))?,
         5 => db.execute_batch(include_str!("transfer_v6.sql"))?,
+        6 => db.execute_batch(include_str!("catalog_v7.sql"))?,
         _ => {}
     }
-    if version < 6 {
+    if version < 7 {
         return initialize(db);
     }
 
@@ -274,6 +275,21 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
             }
             if let Some(date) = &input.attention_start {
                 valid_date(date)?;
+            }
+            if let Some(date) = &input.due {
+                valid_date(date)?;
+            }
+            if let Some(selected) = input.domain.clone() {
+                if selected.kind != CatalogKind::Domain {
+                    return Err(ApiError::invalid("请选择正确的领域选项"));
+                }
+                let unchanged = matches!(
+                    &previous,
+                    Some(Saved::Goal(old)) if old.input.domain.as_ref() == Some(&selected)
+                );
+                if !unchanged {
+                    input.domain = Some(catalog_snapshot(db, &selected.id, CatalogKind::Domain)?);
+                }
             }
             if let Some(date) = &input.resume_on {
                 valid_date(date)?;
@@ -415,6 +431,7 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
             let kind = match input.kind {
                 CatalogKind::Course => "course",
                 CatalogKind::Teacher => "teacher",
+                CatalogKind::Domain => "domain",
             };
             match &previous {
                 Some(Saved::Catalog(old)) if old.input.kind == input.kind => {}

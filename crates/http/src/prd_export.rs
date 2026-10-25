@@ -54,6 +54,8 @@ fn label(path: &str) -> String {
             "at" => "服务器时间",
             "criterion" => "指标标准",
             "criteria" => "观察标准",
+            "domain" => "领域",
+            "due" => "目标日期",
             "support" => "帮助条件",
             "opportunities" => "机会数",
             "achieved" => "做到数",

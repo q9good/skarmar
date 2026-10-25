@@ -12,6 +12,7 @@ import {knowledgeForGoal,knowledgeRelation,knowledgeSource} from './knowledge-re
 import {coverageLegend} from './prd-coverage';
 import {SaveStatus,trackLocalSave} from './save-status';
 import {ExampleHint} from './input-guidance';
+import {fieldMatrix} from './field-guidance';
 import {HelpButton} from './product-help';
 import {ObservationHub} from './prd-observation-view';
 import {prioritizeMethods} from './prd-history';
@@ -35,7 +36,7 @@ import {SessionHub} from './prd-session-view';
 import { LessonHub } from './prd-lesson-view';
 import { Pressable, Text, TextInput } from './readability';
 import { acceptSaved, decodeDrafts, emptySnapshot, examples, findSaved, goalStateName, levelNames, mergeSnapshot, mutationOf,
-  nameOf, newGoal, newMethod, type Draft, type GoalInput, type MethodInput, type Mutation, type Revision, type Saved, type Snapshot, type Write } from './foundation';
+  nameOf, newGoal, newMethod, type Catalog, type CatalogSnapshot, type Draft, type GoalInput, type MethodInput, type Mutation, type Revision, type Saved, type Snapshot, type Write } from './foundation';
 const messageOf = (e: unknown) => e instanceof Error ? e.message : '保存未完成，请保留填写后重试。';
 function Action({ title, press, disabled = false, secondary = false }: { title: string; press: () => void; disabled?: boolean; secondary?: boolean }) {
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={press} style={[s.action, secondary && s.secondary, disabled && { opacity: 0.5 }]}>
@@ -46,13 +47,50 @@ function Check({ label, checked, change, disabled }: { label: string; checked: b
   return <Pressable accessibilityRole="checkbox" aria-checked={checked} accessibilityState={{ checked, disabled }} accessibilityLabel={label} onPress={change} disabled={disabled} style={[s.secondary, { padding: 10, borderRadius: 8 }]}>
     <Text>{checked ? '☑' : '☐'} {label}</Text></Pressable>;
 }
-function GoalFields({ value, change, data, id, disabled, existing }: { value: GoalInput; change: (patch: Partial<GoalInput>) => void; data: Snapshot; id: string; disabled: boolean; existing: boolean }) {
+const domainSnapshot=(catalog:Catalog):CatalogSnapshot=>({id:catalog.id,version:catalog.version,kind:'domain',name:catalog.input.name});
+function DomainChoice({value,change,data,accepted,disabled}:{value:CatalogSnapshot|null|undefined;change:(value:CatalogSnapshot|null)=>void;data:Snapshot;accepted:(saved:Saved)=>void;disabled:boolean}) {
+  const copy=fieldMatrix['goal.domain'];
+  const [panel,setPanel]=useState(false),[search,setSearch]=useState(''),[name,setName]=useState(''),[error,setError]=useState(''),[saving,setSaving]=useState(false),[help,setHelp]=useState(false);
+  const pending=useRef<Write|undefined>(undefined);
+  const options=data.catalog.filter(c=>c.input.kind==='domain'&&c.input.active);
+  const current=data.catalog.find(c=>c.id===value?.id);
+  const selected=value?value.name+(current&&current.input.name!==value.name?'（历史名称）':''):copy.example;
+  return <View style={{gap:8}}>
+    <Text style={s.label}>领域／可选</Text>
+    <Text style={s.hint}>{copy.question}</Text>
+    <Action title={`领域／可选：${selected}`} secondary disabled={disabled} press={()=>{setSearch('');setError('');setPanel(true);}}/>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${help?'收起':'查看'}填写说明：领域／可选`} onPress={()=>setHelp(value=>!value)} style={{paddingVertical:10,minHeight:44}}><Text style={{fontSize:14,color:'#34765B'}}>{help?'收起说明':'看看填写说明（可选）'}</Text></Pressable>
+    {help&&<Text selectable style={s.hint}>填写说明 · {copy.help}；一个目标只保留一个领域。</Text>}
+    {panel&&<DetailOverlay title="选择领域" close={()=>{if(!saving)setPanel(false);}}>
+      <Field label="搜索领域" value={search} change={setSearch} disabled={saving} multiline={false}/>
+      {value&&<Action title="不选择领域" secondary disabled={saving} press={()=>{change(null);setPanel(false);}}/>}
+      {options.filter(c=>c.input.name.includes(search)).map(c=><Action key={c.id} title={c.input.name} secondary disabled={saving} press={()=>{change(domainSnapshot(c));setPanel(false);}}/>)}
+      <Field label="自定义领域" hint={copy.question} value={name} change={setName} placeholder={copy.example} disabled={saving||Boolean(pending.current)} multiline={false}/>
+      {error&&<Text accessibilityRole="alert">{error}</Text>}
+      <Action title={saving?'正在保存…':'保存并选用'} disabled={saving||!name.trim()} press={()=>void(async()=>{
+        setSaving(true);setError('');
+        const body=pending.current??{id:uuid(),operation_id:uuid(),expected_version:null,change_note:'',mutation:{kind:'catalog',value:{kind:'domain',name:name.trim(),active:true}}} satisfies Write;
+        pending.current=body;
+        try{
+          const saved=await request<Saved>(`/prd/records/${body.id}`,'PUT',body);
+          if(saved.kind!=='catalog'||saved.value.input.kind!=='domain')throw new Error('领域选项回执不匹配，请刷新后重试。');
+          accepted(saved);change(domainSnapshot(saved.value));pending.current=undefined;setName('');setPanel(false);
+        }catch(e){
+          if(e instanceof ApiError&&[400,401,403,409,413,422].includes(e.status))pending.current=undefined;
+          setError(messageOf(e));
+        }finally{setSaving(false);}
+      })()}/>
+    </DetailOverlay>}
+  </View>;
+}
+function GoalFields({ value, change, data, id, disabled, existing, catalogSaved }: { value: GoalInput; change: (patch: Partial<GoalInput>) => void; data: Snapshot; id: string; disabled: boolean; existing: boolean; catalogSaved:(saved:Saved)=>void }) {
   const [more, setMore] = useState(existing);
   const rank = { long: 0, medium: 1, short: 2 };
   return <>
     <Field label="本领名称" hint="想帮助孩子做到什么？" value={value.title} change={title => change({ title })} placeholder="例如：自己用筷子" disabled={disabled} />
     <Select label="目标类型" value={value.level} disabled={disabled || existing} options={Object.entries(levelNames).map(([value, label]) => ({ value, label }))}
       onChange={level => change({ level: level as GoalInput['level'], parent_id: null, state: 'active' })} />
+    <Text style={s.label}>更多设置</Text>
     <Action title={more ? '收起目标补充信息' : '补充目标说明（可选）'} secondary press={() => setMore(!more)} />
     {more && <>
       <Field label="生活意义" hint="这会帮助哪方面生活？" value={value.meaning} change={meaning => change({ meaning })} placeholder="例如：更独立地吃饭" disabled={disabled} multiline />
@@ -60,8 +98,11 @@ function GoalFields({ value, change, data, id, disabled, existing }: { value: Go
         { value: 'text', label: '直接写文字' }, { value: 'count', label: '次数／机会' }, { value: 'duration', label: '时长／数量' }, { value: 'steps', label: '步骤／描述' }]}
         onChange={template => change({ template: template as GoalInput['template'] })} />
       <Field label="观察标准" hint="怎样知道有进步？" value={value.criteria} change={criteria => change({ criteria })} placeholder={examples[value.template ?? 'text']} disabled={disabled} multiline />
+      <Field label="预期帮助条件（可选）" value={value.support??''} change={support=>change({support})} disabled={disabled} placeholder={fieldMatrix['goal.support'].example} multiline />
       <Select label="上级目标" value={value.parent_id ?? ''} disabled={disabled} options={[{ value: '', label: '不关联上级' }, ...data.goals.filter(g => g.id !== id && rank[g.input.level] < rank[value.level]).map(g => ({ value: g.id, label: g.input.title }))]}
         onChange={parent_id => change({ parent_id: parent_id || null })} />
+      <DomainChoice value={value.domain} change={domain=>change({domain})} data={data} accepted={catalogSaved} disabled={disabled}/>
+      <DateField label="目标日期／可选" question={fieldMatrix['goal.due'].question} emptyText={fieldMatrix['goal.due'].example} help={fieldMatrix['goal.due'].help} value={value.due??''} disabled={disabled} onChange={due=>change({due:due||null})}/>
       <Select label="目标状态" value={value.state ?? 'active'} disabled={disabled} options={(value.level === 'long' ? ['active', 'maintaining', 'paused'] : ['not_started', 'active', 'maintaining', 'paused', 'achieved']).map(state => ({ value: state, label: goalStateName({ ...value, state: state as GoalInput['state'] }) }))}
         onChange={state => change({ state: state as GoalInput['state'],resume_on:state==='paused'?value.resume_on??null:null })} />
       {value.state==='paused'&&<DateField label="确认目标是否恢复（留空不排期）" value={value.resume_on??''} onChange={v=>change({resume_on:v||null})} disabled={disabled}/>}
@@ -92,6 +133,7 @@ function MethodFields({ value, change, data, disabled }: { value: MethodInput; c
 function ReadOnlyValues({ mutation, data }: { mutation: Mutation; data: Snapshot }) {
   const values: [string, string][] = mutation.kind === 'goal' ? [
     ['名称', mutation.value.title], ['生活意义', mutation.value.meaning], ['观察标准', mutation.value.criteria],
+    ['预期帮助条件', mutation.value.support??''], ['领域', mutation.value.domain?.name??''], ['目标日期', mutation.value.due??''],
     ['观察方式', ({count:'次数／机会',duration:'时长／数量',steps:'步骤／描述',text:'直接写文字'}[mutation.value.template ?? 'text'])],
     ['关注节奏', mutation.value.frequency ? ({weekly:'每周',fortnightly:'每两周',monthly:'每月',none:'不设节奏'}[mutation.value.frequency]) : '继承状态默认'],
     ['状态', goalStateName(mutation.value)], ['收起', mutation.value.archived ? '是' : '否'],
@@ -191,7 +233,7 @@ export function FoundationWorkspace() {
   const draft = editor ? drafts[editor] : undefined;
   const latest = draft ? findSaved(data, draft.id) : undefined;
   const conflict = Boolean(draft && latest && draft.expected_version !== latest.value.version);
-  const candidate=useStableOptions(data,editor,draft?.mutation.kind==='method'?draft.mutation.value.goal_ids:[]);
+  const candidate=useStableOptions(data,editor,draft?.mutation.kind==='method'?draft.mutation.value.goal_ids:draft?.mutation.kind==='goal'&&draft.mutation.value.domain?[draft.mutation.value.domain.id]:[]);
   const patch = (value: Record<string, unknown>) => {
     if (!draft || draft.pending || busy) return;
     void persist({ ...draftsRef.current, [draft.id]: { ...draft, operation_id: uuid(), mutation: { ...draft.mutation, value: { ...draft.mutation.value, ...value } } as Mutation } });
@@ -226,7 +268,7 @@ export function FoundationWorkspace() {
   const relatedKnowledge = (goalId?: string, methodId?: string) => goalId?knowledgeForGoal(data,goalId).map(r=>r.knowledge):data.knowledge.filter(k=>!k.deleted&&!!methodId&&k.input.method_ids.includes(methodId));
   const knowledgeCard=(k:Snapshot['knowledge'][number],goalId?:string,methodId?:string)=><View key={k.input.id} style={{gap:6}}><Text>{k.input.kind==='difficulty'?'关联困难':'关联经验'}：{k.input.content}</Text><Text style={s.hint}>{knowledgeRelation(data,k,goalId,methodId)}</Text><Text style={s.hint}>{knowledgeSource(data,k)}</Text><Action title={`查看关联知识：${k.details?.title||k.input.content}`} secondary press={()=>setRequestedFollowup({kind:'knowledge',id:k.input.id,nonce:uuid()})}/></View>;
   const today=localDate();
-  const goals = data.goals.filter(g => (goalLevel==='all'||g.input.level===goalLevel)&&(showHidden || !g.input.archived)&&[g.input.title,g.input.meaning,g.input.criteria].some(v=>v.includes(goalSearch)));
+  const goals = data.goals.filter(g => (goalLevel==='all'||g.input.level===goalLevel)&&(showHidden || !g.input.archived)&&[g.input.title,g.input.meaning,g.input.criteria,g.input.support??'',g.input.domain?.name??'',g.input.due??''].some(v=>v.includes(goalSearch)));
   const longDirections = data.goals.filter(g => g.input.level === 'long' && !g.input.archived);
   const methods = [...data.methods].filter(m => (showHidden || m.input.state === 'active')&&[m.input.title,m.input.description,m.input.steps].some(v=>v.includes(methodSearch))).sort((a,b)=>(methodOrder.findIndex(r=>r.id===a.id)<0?999:methodOrder.findIndex(r=>r.id===a.id))-(methodOrder.findIndex(r=>r.id===b.id)<0?999:methodOrder.findIndex(r=>r.id===b.id)));
   const followupHub=(mode:'today'|'full'|'hidden')=><FollowupHub planActions={ids=>setRequestedPlanActions({ids,nonce:uuid()})} data={data} mode={mode} openLesson={id=>void refresh().then(()=>setRequestedLesson({id,nonce:uuid()})).catch(e=>setSyncError(messageOf(e)))} refresh={refresh} adjustMethod={(mid,kid,version)=>{const method=data.methods.find(m=>m.id===mid);if(!method)return;if(draftsRef.current[mid]){setEditor(mid);setError('先核对已有方法填写，再根据这条知识调整。');return;}begin({kind:'method',value:{...method.input,basis:[...(method.input.basis??[]).filter(b=>b.id!==kid),{id:kid,version}]}},{kind:'method',value:method});}} requested={requestedFollowup} onRequested={()=>setRequestedFollowup(null)}/>;
@@ -235,8 +277,8 @@ export function FoundationWorkspace() {
   return <LessonOutboxProvider data={data} cacheLoaded={snapshot=>setData(current=>mergeSnapshot(snapshot,current))} accepted={receipt=>setData(current=>'kind' in receipt?acceptSaved(current,receipt):mergeSnapshot(current,{...emptySnapshot,lessons:[receipt]}))}><View style={s.root}>
     <View style={s.header}><Text style={s.brand}>✦ skarmar</Text><Action title="我的账号" secondary press={() => setAccount(true)} /></View>
     <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-      {account ? <><AccountPanel businessTools={false} prdExport back={() => setAccount(false)} onImported={refresh} logout={async () => { await persistence.current; await auth.logout(); }} /><HelpButton title="使用说明与手机桌面入口"/><Action title="共享需要与帮助说明" secondary press={()=>setRequestedObservation({kind:'needs',id:'',nonce:uuid()})}/><Action title="维护课程和老师选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /></> : <>
-        <View style={s.header}><Text accessibilityRole="header" style={s.title}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程和老师' }[tab]}</Text>{tab==='today'&&<Text accessibilityLabel="家庭业务日期" style={s.hint}>{businessDateLabel(today)}</Text>}</View>
+      {account ? <><AccountPanel businessTools={false} prdExport back={() => setAccount(false)} onImported={refresh} logout={async () => { await persistence.current; await auth.logout(); }} /><HelpButton title="使用说明与手机桌面入口"/><Action title="共享需要与帮助说明" secondary press={()=>setRequestedObservation({kind:'needs',id:'',nonce:uuid()})}/><Action title="维护课程和老师选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /><Action title="维护领域选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /></> : <>
+        <View style={s.header}><Text accessibilityRole="header" style={s.title}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程、老师和领域' }[tab]}</Text>{tab==='today'&&<Text accessibilityLabel="家庭业务日期" style={s.hint}>{businessDateLabel(today)}</Text>}</View>
         <LessonQueueStatus/>
         {syncError ? <View style={s.card}><Text accessibilityRole="alert">{syncError}</Text><Action title="重试同步" secondary press={() => {setProgressNonce(n=>n+1);void refresh().catch(e => setSyncError(messageOf(e)));}} /></View> : null}
         {notice ? <Text role="status">{notice}</Text> : null}
@@ -261,6 +303,8 @@ export function FoundationWorkspace() {
             {goals.map(g => <View key={g.id} style={s.card} testID={`prd-goal-${g.id}`}>
               <Text style={s.heading}>{g.input.title}</Text>{goalView==='coverage'&&g.input.level!=='long'&&goalReport&&(()=>{const row=goalReport.goals.find(r=>r.id===g.id);return row?<View style={{padding:10,borderRadius:8,backgroundColor:['#F3F6EF','#E4EEDC','#CADDB9','#94B681','#4E7656'][row.band]}}><Text style={{color:row.band===4?'#FFFFFF':'#243D36'}}>近{goalDays}天 {row.counts.selected}次覆盖 · 家庭{row.counts.family}／机构{row.counts.lesson}</Text></View>:null;})()}<Text>{levelNames[g.input.level]} · {goalStateName(g.input)}{g.input.archived ? ' · 已收起' : ''}</Text>
               <Text>{g.input.meaning || '尚未补充生活意义'}</Text>
+              {(g.input.domain||g.input.due)&&<Text>领域：{g.input.domain?.name||'未选择'} · 目标日期：{g.input.due||'未设置'}</Text>}
+              {g.input.support&&<Text>预期帮助条件：{g.input.support}</Text>}
               {goalView==='progress'&&(()=>{const p=progress?.goals.find(row=>row.id===g.id);return <View style={{gap:7,padding:10,backgroundColor:'#F3F6EF'}}>{p?<><Text>{p.measurement_count}条实际测量 · {p.segment_count}组指标与条件；截至{progress?.as_of}</Text>{measurementSeries(p.latest,localDate()).map(series=><Text key={series.key}>{series.name} · 指标第{series.metricVersion}版／目标第{series.goalVersion}版 · {series.sourceName} · {series.methodBasis} · {series.support||'帮助条件未记录'}：{series.points.at(-1)!.date}，{series.points.at(-1)!.label}{p.latest.find(r=>r.id===series.points.at(-1)!.id)?.source_deleted?'（来源已撤销或删除，保留当时测量）':''}</Text>)}{p.segment_count>3&&<Text>这里只列最近3组；其他组请打开完整趋势。</Text>}</>:<Text>{progressError?'实际测量暂未读到，请刷新重试。':!progress?'正在读取实际测量…':'待观察：尚无实际测量，不用训练次数代替进步。'}</Text>}<Action title={`查看测量趋势：${g.input.title}`} secondary press={()=>setRequestedObservation({kind:'goal',id:g.id,nonce:uuid()})}/></View>;})()}
 
               {relatedKnowledge(g.id).map(k=>knowledgeCard(k,g.id))}
@@ -283,7 +327,7 @@ export function FoundationWorkspace() {
               <Action title={`编辑方法：${m.input.title}`} secondary press={() => begin({ kind: 'method', value: m.input }, { kind: 'method', value: m })} /></View>)}
           </> : <>
             <Text>选项可新增、改名、停用和恢复，历史记录保留当时名称。</Text>
-            {(['course', 'teacher'] as const).map(kind => <View key={kind} style={{ gap: 12 }}><Action title={kind === 'course' ? '新增课程' : '新增老师'} press={() => begin({ kind: 'catalog', value: { kind, name: '', active: true } })} />
+            {(['course', 'teacher', 'domain'] as const).map(kind => <View key={kind} style={{ gap: 12 }}><Action title={{course:'新增课程',teacher:'新增老师',domain:'新增领域'}[kind]} press={() => begin({ kind: 'catalog', value: { kind, name: '', active: true } })} />
               {data.catalog.filter(c => c.input.kind === kind).map(c => <View key={c.id} style={s.card}><Text>{c.input.name} · {c.input.active ? '使用中' : '已停用'}</Text>
                 <Action title={`维护选项：${c.input.name}`} secondary press={() => begin({ kind: 'catalog', value: c.input }, { kind: 'catalog', value: c })} />
                 <Action title={`查看改名历史：${c.input.name}`} secondary press={() => void openDetail(c.id)} /></View>)}
@@ -318,9 +362,9 @@ export function FoundationWorkspace() {
           catch (e) { setError(messageOf(e)); }
         })()} /></View>}
       {draft.conflict_backup && <View style={s.card}><Text style={s.heading}>你此前填写的备份</Text><Text style={s.hint}>对照下方最新表单，按需补回；长按文字可复制。</Text><ReadOnlyValues mutation={draft.conflict_backup} data={data} /></View>}
-      {draft.mutation.kind === 'goal' ? <GoalFields id={draft.id} value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} existing={draft.expected_version !== null} change={patch} /> : draft.mutation.kind === 'method' ?
+      {draft.mutation.kind === 'goal' ? <GoalFields id={draft.id} value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} existing={draft.expected_version !== null} catalogSaved={saved=>setData(current=>acceptSaved(current,saved))} change={patch} /> : draft.mutation.kind === 'method' ?
         <MethodFields value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} change={patch} /> : <>
-          <Field label={draft.mutation.value.kind === 'course' ? '课程名称' : '老师名称'} value={draft.mutation.value.name} change={name => patch({ name })} placeholder={draft.mutation.value.kind === 'course' ? '例如：语言课' : '例如：张老师'} disabled={busy || Boolean(draft.pending)} />
+          <Field label={{course:'课程名称',teacher:'老师名称',domain:'领域名称'}[draft.mutation.value.kind]} value={draft.mutation.value.name} change={name => patch({ name })} placeholder={draft.mutation.value.kind === 'course' ? '例如：语言课' : draft.mutation.value.kind === 'teacher' ? '例如：张老师' : fieldMatrix['goal.domain'].example} disabled={busy || Boolean(draft.pending)} />
           <Check label="可在后续记录中选择" checked={draft.mutation.value.active} disabled={busy || Boolean(draft.pending)} change={() => patch({ active: !(draft.mutation.value as { active: boolean }).active })} />
         </>}
       {draft.mutation.kind==='method'&&latest?.kind==='method'&&(draft.method_change||draft.mutation.value.description!==latest.value.input.description||draft.mutation.value.steps!==latest.value.input.steps)&&<><Select label="这次方法修改的性质" value={draft.method_change??'adjustment'} disabled={busy||Boolean(draft.pending)} options={[{value:'adjustment',label:'调整实际做法，分开回看前后观察'},{value:'correction',label:'只更正文案，实际做法没有改变'}]} onChange={v=>void persist({...draftsRef.current,[draft.id]:{...draft,operation_id:uuid(),method_change:v as 'adjustment'|'correction'}})}/><Text>旧观察和方法版本都会保留；仅更正文案不会重新开始比较期。</Text></>}
@@ -331,7 +375,7 @@ export function FoundationWorkspace() {
     {distribution&&<HistoryPanel data={data} object={distribution} close={()=>setDistribution(null)} openSession={id=>setRequestedSession({id,nonce:uuid()})}/>}
     {detail && <DetailOverlay title="查看详情与修改记录" close={() => { ++detailSequence.current; setDetailId(null); setHistory([]); }}>
       <Text style={s.heading}>{nameOf(mutationOf(detail))}</Text>
-      {detail.kind === 'goal' ? <><Text>{detail.value.input.meaning || '尚未补充生活意义'}</Text><Text>{detail.value.input.criteria || '尚未设置观察标准'}</Text>
+      {detail.kind === 'goal' ? <><Text>{detail.value.input.meaning || '尚未补充生活意义'}</Text><Text>{detail.value.input.criteria || '尚未设置观察标准'}</Text><Text>预期帮助条件：{detail.value.input.support||'未填写'}</Text><Text>领域：{detail.value.input.domain?.name||'未选择'}；目标日期：{detail.value.input.due||'未设置'}</Text>
         {data.methods.filter(m => m.input.goal_ids.includes(detail.value.id)).map(m => <Text key={m.id}>关联方法：{m.input.title}</Text>)}</> : detail.kind === 'method' ? <>
         <Text>{detail.value.input.description || '具体做法可后补'}</Text><Text>当前说明第{detail.value.version}版；适用条件与步骤：{detail.value.input.steps||'未补充'}</Text><Text>指导来源：{detail.value.input.guidance||'未补充'}</Text><MethodUsage data={data} id={detail.value.id} openVersion={version=>setDistribution({id:detail.value.id,kind:'method',version})}/>{detail.value.basis_snapshots?.map(b=><Text key={`${b.id}:${b.version}`}>调整依据：{b.content}（知识第{b.version}版）{b.conditions?`；当时条件：${b.conditions}`:''}</Text>)}
         {detail.value.input.goal_ids.map(id => <Text key={id}>关联目标：{data.goals.find(g => g.id === id)?.input.title}</Text>)}

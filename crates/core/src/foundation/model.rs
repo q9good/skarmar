@@ -38,7 +38,11 @@ pub struct GoalInput {
     #[serde(default)]
     pub parent_id: Option<String>,
     #[serde(default)]
+    pub domain: Option<CatalogSnapshot>,
+    #[serde(default)]
     pub criteria: String,
+    #[serde(default)]
+    pub support: String,
     #[serde(default)]
     pub template: Option<ObservationTemplate>,
     #[serde(default)]
@@ -50,6 +54,8 @@ pub struct GoalInput {
     pub frequency: Option<Frequency>,
     #[serde(default)]
     pub attention_start: Option<String>,
+    #[serde(default)]
+    pub due: Option<String>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Goal {
@@ -115,6 +121,7 @@ pub struct Method {
 pub enum CatalogKind {
     Course,
     Teacher,
+    Domain,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]

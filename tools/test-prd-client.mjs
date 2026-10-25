@@ -33,6 +33,9 @@ test('multiple drafts and exact pending operations survive serialization; malfor
   const method={id:'m',operation_id:'op2',expected_version:1,change_note:'revision',mutation:{kind:'method',value:newMethod()}};
   const drafts={g:{...goal,pending:goal},m:method};
   assert.deepEqual(decodeDrafts(JSON.stringify(drafts)),drafts);
+  const legacyValue={...newGoal()};delete legacyValue.domain;delete legacyValue.due;delete legacyValue.support;
+  const legacy={...goal,mutation:{kind:'goal',value:legacyValue}};
+  assert.deepEqual(decodeDrafts(JSON.stringify({g:legacy})),{g:legacy});
   for(const raw of ['[]','null','invalid',JSON.stringify({g:{...goal,mutation:{kind:'goal'}}}),JSON.stringify({wrong:goal}),JSON.stringify({g:{...goal,pending:{...goal,id:'other'}}})]) assert.throws(()=>decodeDrafts(raw));
   assert.deepEqual(decodeDrafts(null),{});
 });
@@ -271,7 +274,7 @@ test('review queue groups shared methods once, retains other goals and does not 
 });
 
 import {planningKnowledge,goalChoiceGroups,recommendationReason} from '../apps/client/src/planning-context.ts';
-import {guidanceFor,observationExamples} from '../apps/client/src/field-guidance.ts';
+import {fieldMatrix,guidanceFor,observationExamples} from '../apps/client/src/field-guidance.ts';
 import {methodUsage} from '../apps/client/src/method-usage.ts';
 import {previewContext,seenEvidence,startReviewBatch,batchResult,decodeReviewBatch,nextReviewDate} from '../apps/client/src/review-flow.ts';
 test('planning excludes closed knowledge, favors explicit key flags and deduplicates goal groups',()=>{
@@ -284,6 +287,9 @@ test('planning excludes closed knowledge, favors explicit key flags and deduplic
 test('guidance retains persistent questions, short placeholders and full non-value examples for all goal templates',()=>{
  for(const key of ['count','duration','steps','text']){const g=guidanceFor('实际表现：目标',observationExamples[key]);assert.ok(g.question);assert.ok(Array.from(g.shortExample).length<=15);assert.equal(g.fullExample,observationExamples[key]);assert.match(g.fullExample,/例如/);}
  assert.match(guidanceFor('本领名称').question,/帮助孩子/);assert.equal(guidanceFor('搜索知识').fullExample,'');
+ assert.equal(guidanceFor('预期帮助条件（可选）').question,'准备在什么帮助条件下观察？');
+ assert.equal(guidanceFor('预期帮助条件（可选）').fullExample,'例如：先不提示，需要时再示范');
+ assert.equal(fieldMatrix['goal.domain'].example,'选择或自定义');assert.equal(fieldMatrix['goal.due'].question,'预计何时回看目标？');
 });
 test('method usage counts actual sources and immutable versions, excluding planned deleted and future records',()=>{
  const snap=(v)=>({id:'m',version:v,input:{title:'历史方法'+v}});

@@ -132,7 +132,7 @@ pub fn snapshot(db: &dyn Sql) -> Result<Snapshot> {
     Ok(Snapshot {
         schema: "skarmar.prd.export.v1".into(),
         exported_at: chrono::Utc::now().to_rfc3339(),
-        database_version: 6,
+        database_version: 7,
         tables,
     })
 }

@@ -96,7 +96,7 @@ with sync_playwright() as p:
     nav(b,'记录');nav(b,'课时核对');nav(b,'下个月');nav(b,'测试王老师：2 节 · 待核对 1');lesson_detail(b)
     assert button(b,'删除课记（管理员）').count()==0 and button(b,'撤销这条课记').count()==0;dismiss(b,'课记详情')
     # Creator can withdraw the unreferenced second record, while original source is protected.
-    nav(a,'课堂记录');buttons=a.get_by_role('button',name=re.compile(r'^查看课记：'));buttons.first.click();nav(a,'撤销这条课记');submit(a,'确认操作')
+    nav(a,'课堂记录');a.get_by_test_id('prd-lesson-'+second_id).get_by_role('button',name=re.compile(r'^查看课记：')).click();nav(a,'撤销这条课记');submit(a,'确认操作')
     assert next(l for l in state()['lessons'] if l['id']==second_id)['status']=='withdrawn'
     nav(a,'课堂记录');lesson_detail(a);nav(a,'查看课记修改记录');expect(a.get_by_text('观察第 1 版 · 整理第 1 版',exact=True)).to_be_visible();nav(a,'删除课记（管理员）');nav(a,'确认操作');expect(a.get_by_role('alert')).to_be_visible();assert next(l for l in state()['lessons'] if l['id']==lesson_id)['status']=='recorded'
     dismiss(a,'核对课记操作')

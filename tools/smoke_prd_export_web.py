@@ -15,7 +15,9 @@ with sync_playwright() as p:
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录上课')).to_be_enabled()
- goal=str(uuid4());call('PUT','/prd/records/'+goal,{'id':goal,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'goal','value':{'title':'=SUM(A1:A9)','level':'short','meaning':'合成业务记录'}}})
+ domain_id=str(uuid4());domain_saved=call('PUT','/prd/records/'+domain_id,{'id':domain_id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'catalog','value':{'kind':'domain','name':'测试领域','active':True}}})['value']
+ domain={'id':domain_saved['id'],'version':domain_saved['version'],'kind':'domain','name':domain_saved['input']['name']}
+ goal=str(uuid4());call('PUT','/prd/records/'+goal,{'id':goal,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'goal','value':{'title':'=SUM(A1:A9)','level':'short','meaning':'合成业务记录','domain':domain,'due':'2027-01-20','support':'先不提示，需要时再示范'}}})
  options={}
  for kind in ['course','teacher']:
   id=str(uuid4());options[kind]=id;call('PUT','/prd/records/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'catalog','value':{'kind':kind,'name':'测试'+kind,'active':True}}})
@@ -29,6 +31,9 @@ with sync_playwright() as p:
  assert book['导出说明']['B1'].value=='skarmar.prd.export.v1';assert '实际测量' in book.sheetnames and '复盘修订' in book.sheetnames
  texts='\n'.join(str(cell.value) for sheet in book for row in sheet for cell in row if cell.value is not None)
  assert 'LOCAL_UNSUBMITTED_GOAL_9A' not in texts;assert 'LOCAL_QUEUED_LESSON_9A' not in texts;assert 'synthetic-prd-ui-password' not in texts
+ goal_headers=[cell.value for cell in book['目标'][1]]
+ assert {'填写 · 领域','填写 · 目标日期','填写 · 帮助条件'}.issubset(set(goal_headers))
+ assert '测试领域' in texts and '2027-01-20' in texts and '先不提示，需要时再示范' in texts
  assert any(cell.value=='=SUM(A1:A9)' and cell.data_type=='s' for row in book['目标'] for cell in row);assert not any(cell.data_type=='f' for sheet in book for row in sheet for cell in row)
  assert call('GET','/prd/state')==before
  # Static mobile metadata/assets are served by the application, with the product spelling.
