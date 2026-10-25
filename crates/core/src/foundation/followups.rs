@@ -297,6 +297,7 @@ pub fn source(db: &dyn Sql, s: &Source) -> Result<Value> {
             snapshot.action_snapshots.clear();
             if let Some(summary) = snapshot.input.summary.as_mut() {
                 summary.new_knowledge.clear();
+                summary.knowledge_details = None;
                 summary.new_actions.clear();
                 summary.feedback.clear();
                 summary.knowledge_versions.clear();

@@ -70,8 +70,12 @@ import {chooseMain,decodeSessionDrafts,emptySession,monthWeeks,startSummary} fro
 test('swapping the main target retains each target note and summary never assumes planned methods were actually used',()=>{
  const targets=[{goal_id:'a',role:'main',note:'note a'},{goal_id:'b',role:'secondary',note:'note b'}];
  const swapped=chooseMain(targets,'b');assert.equal(swapped[0].note,'note a');assert.equal(swapped[1].note,'note b');assert.deepEqual(swapped.map(t=>t.role),['secondary','main']);
- const input={...emptySession('2026-10-24'),targets,methods:[{id:'m',version:2}],tags:['游戏']};const actual=startSummary(input);assert.equal(actual.confirmation,'unconfirmed');assert.deepEqual(actual.methods,[]);assert.deepEqual(actual.tags,['游戏']);assert.equal(actual.targets[0].observation,'');
+ const input={...emptySession('2026-10-24'),targets,methods:[{id:'m',version:2}],tags:['游戏']};const actual=startSummary(input);assert.equal(actual.confirmation,'unconfirmed');assert.deepEqual(actual.methods,[]);assert.deepEqual(actual.tags,['游戏']);assert.equal(actual.targets[0].observation,'');assert.deepEqual(actual.knowledge_details,{});
  const request={id:'s',operation_id:'op',expected_version:null,action:'save_draft',input,change_note:''};const d={request,stage:'plan',pending:request};assert.deepEqual(decodeSessionDrafts(JSON.stringify({s:d})),{s:d});
+ const legacySummary={...actual};delete legacySummary.knowledge_details;const legacyRequest={...request,id:'legacy',input:{...input,summary:legacySummary}};
+ assert.deepEqual(decodeSessionDrafts(JSON.stringify({legacy:{request:legacyRequest,stage:'summary'}})).legacy.request.input.summary,legacySummary);
+ const orphan={...actual,knowledge_details:{orphan:emptyDetails()}},orphanRequest={...request,input:{...input,summary:orphan}};
+ assert.throws(()=>decodeSessionDrafts(JSON.stringify({s:{request:orphanRequest,stage:'summary'}})));
  assert.throws(()=>decodeSessionDrafts(JSON.stringify({s:{...d,pending:{...request,operation_id:'other'}}})));
  assert.throws(()=>decodeSessionDrafts(JSON.stringify({s:{...d,request:{...request,input:{...input,summary:{targets:[]}}}}})));
  assert.deepEqual(decodeSessionDrafts(null),{});
@@ -290,6 +294,10 @@ test('guidance retains persistent questions, short placeholders and full non-val
  assert.equal(guidanceFor('预期帮助条件（可选）').question,'准备在什么帮助条件下观察？');
  assert.equal(guidanceFor('预期帮助条件（可选）').fullExample,'例如：先不提示，需要时再示范');
  assert.equal(fieldMatrix['goal.domain'].example,'选择或自定义');assert.equal(fieldMatrix['goal.due'].question,'预计何时回看目标？');
+ assert.deepEqual(guidanceFor('实际情况／必填 1'),{question:'大人怎样回应，后来呢？',shortExample:'例如：换玩具后离开了',fullExample:'例如：换玩具后离开了'});
+ assert.equal(guidanceFor('成人回应／可选 1').fullExample,'例如：先回应他的手势，再示范小步骤');
+ assert.equal(guidanceFor('原因猜测／可选 1').question,'有什么尚未确定的猜测？');
+ assert.equal(guidanceFor('本次条件／可选 1').question,'在什么场景和帮助条件下观察？');
 });
 test('method usage counts actual sources and immutable versions, excluding planned deleted and future records',()=>{
  const snap=(v)=>({id:'m',version:v,input:{title:'历史方法'+v}});

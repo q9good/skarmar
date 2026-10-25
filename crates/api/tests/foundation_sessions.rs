@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use skarma_api::store;
 use skarma_core::{
     auth::{AccountRole, User},
-    foundation::{coverage, model::*, session_model::*},
+    foundation::{coverage, model::*, process_model::Details, session_model::*},
     model::Level,
 };
 use uuid::Uuid;
@@ -198,6 +198,154 @@ fn outputs_retry_edit_and_failure_are_atomic_and_admin_delete_preserves_knowledg
         1
     );
 }
+#[test]
+fn summary_difficulties_save_structured_details_atomically_and_preserve_omitted_fields() {
+    let (mut db, u, input, goal, _) = fixture();
+    let session_id = id();
+    let first_id = id();
+    let second_id = id();
+    let mut input = summarized(input, &goal, Confirmation::None);
+    let summary = input.summary.as_mut().unwrap();
+    summary.new_knowledge = vec![
+        serde_json::from_value(json!({
+            "id":first_id,
+            "kind":"difficulty",
+            "content":"等待时离开座位",
+            "goal_ids":[goal]
+        }))
+        .unwrap(),
+        serde_json::from_value(json!({
+            "id":second_id,
+            "kind":"difficulty",
+            "content":"换材料后把玩具推开",
+            "goal_ids":[goal]
+        }))
+        .unwrap(),
+    ];
+    let first_details = Details {
+        adult_response: "先暂停并陪他休息".into(),
+        guess: "可能有些累了".into(),
+        conditions: "换了新材料".into(),
+        ..Default::default()
+    };
+    let second_details = Details {
+        adult_response: "把材料收近并等待".into(),
+        guess: "还不确定是否不熟悉".into(),
+        conditions: "第一次用这套材料".into(),
+        ..Default::default()
+    };
+    summary.knowledge_details = Some(std::collections::BTreeMap::from([
+        (first_id.clone(), first_details.clone()),
+        (second_id.clone(), second_details.clone()),
+    ]));
+    db.execute_batch(&format!(
+        "CREATE TRIGGER fail_second_difficulty BEFORE INSERT ON prd_knowledge WHEN NEW.id='{}' BEGIN SELECT RAISE(ABORT,'synthetic late output failure'); END;",
+        second_id
+    ))
+    .unwrap();
+    let request = cmd(&session_id, None, Action::Complete, Some(input));
+    assert!(store::write_foundation_session(&mut db, &u, request.clone()).is_err());
+    let failed = store::foundation_snapshot(&mut db).unwrap();
+    assert!(failed.sessions.is_empty());
+    assert!(failed.knowledge.is_empty());
+    db.execute_batch("DROP TRIGGER fail_second_difficulty")
+        .unwrap();
+
+    let saved = store::write_foundation_session(&mut db, &u, request.clone()).unwrap();
+    let retry = store::write_foundation_session(&mut db, &u, request).unwrap();
+    assert_eq!(saved.version, retry.version);
+    let state = store::foundation_snapshot(&mut db).unwrap();
+    assert_eq!(state.knowledge.len(), 2);
+    let first = state
+        .knowledge
+        .iter()
+        .find(|k| k.input.id == first_id)
+        .unwrap();
+    assert_eq!(first.input.content, "等待时离开座位");
+    assert_eq!(first.details.adult_response, first_details.adult_response);
+    assert_eq!(first.details.guess, first_details.guess);
+    assert_eq!(first.details.conditions, first_details.conditions);
+    assert_eq!(
+        first.source_session_id.as_deref(),
+        Some(session_id.as_str())
+    );
+    assert_eq!(first.input.goal_ids, vec![goal.clone()]);
+
+    // An older client omitting structured details may edit the parent without clearing them.
+    let mut omitted = saved.input;
+    let summary = omitted.summary.as_mut().unwrap();
+    summary.knowledge_details = None;
+    summary.targets[0].observation = "只修改本次实际表现".into();
+    let preserved = store::write_foundation_session(
+        &mut db,
+        &u,
+        cmd(&session_id, Some(1), Action::Complete, Some(omitted)),
+    )
+    .unwrap();
+    let state = store::foundation_snapshot(&mut db).unwrap();
+    assert!(
+        state
+            .knowledge
+            .iter()
+            .all(|knowledge| knowledge.version == 1)
+    );
+    assert_eq!(
+        state
+            .knowledge
+            .iter()
+            .find(|k| k.input.id == first_id)
+            .unwrap()
+            .details,
+        first_details
+    );
+
+    // A present entry explicitly versions only the changed structured fields.
+    let mut changed = preserved.input;
+    let summary = changed.summary.as_mut().unwrap();
+    summary
+        .knowledge_versions
+        .extend([(first_id.clone(), 1), (second_id.clone(), 1)]);
+    let mut revised_details = first_details.clone();
+    revised_details.adult_response = "后来先回应求助，再陪他休息".into();
+    summary.knowledge_details = Some(std::collections::BTreeMap::from([
+        (first_id.clone(), revised_details.clone()),
+        (second_id.clone(), second_details),
+    ]));
+    store::write_foundation_session(
+        &mut db,
+        &u,
+        cmd(
+            &session_id,
+            Some(preserved.version),
+            Action::Complete,
+            Some(changed),
+        ),
+    )
+    .unwrap();
+    let state = store::foundation_snapshot(&mut db).unwrap();
+    let first = state
+        .knowledge
+        .iter()
+        .find(|k| k.input.id == first_id)
+        .unwrap();
+    let second = state
+        .knowledge
+        .iter()
+        .find(|k| k.input.id == second_id)
+        .unwrap();
+    assert_eq!(first.version, 2);
+    assert_eq!(first.details.adult_response, revised_details.adult_response);
+    assert_eq!(second.version, 1);
+
+    let legacy: Summary = serde_json::from_value(json!({
+        "targets":[],
+        "confirmation":"none",
+        "new_knowledge":[]
+    }))
+    .unwrap();
+    assert!(legacy.knowledge_details.is_none());
+}
+
 #[test]
 fn action_reservation_is_exclusive_cancellation_releases_and_future_completion_is_rejected() {
     let (mut db, u, input, g, _) = fixture();

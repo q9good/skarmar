@@ -416,6 +416,14 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
         if summary.new_knowledge.len() > 20 || summary.new_actions.len() > 20 {
             return Err(ApiError::invalid("一次最多保存20条产出"));
         }
+        if summary.knowledge_details.as_ref().is_some_and(|details| {
+            details.len() > 20
+                || details
+                    .keys()
+                    .any(|id| !summary.new_knowledge.iter().any(|k| &k.id == id))
+        }) {
+            return Err(ApiError::invalid("困难结构化内容须对应本次新建的知识"));
+        }
     }
     for id in &input.action_ids {
         if !old
@@ -570,6 +578,7 @@ fn outputs(db: &dyn Sql, actor: &User, s: &Session, stamp: &str, note: &str) -> 
     let summary = s.input.summary.as_ref().unwrap();
     let mut source = summary.clone();
     source.new_knowledge.clear();
+    source.knowledge_details = None;
     source.new_actions.clear();
     let existing = super::lessons::list_knowledge(db)?
         .into_iter()
@@ -602,11 +611,21 @@ fn outputs(db: &dyn Sql, actor: &User, s: &Session, stamp: &str, note: &str) -> 
             valid_date(date)?;
         }
         let old = existing.iter().find(|k| k.input.id == input.id);
+        let mut details = old.map(|k| k.details.clone()).unwrap_or_default();
+        if let Some(submitted) = summary
+            .knowledge_details
+            .as_ref()
+            .and_then(|values| values.get(&input.id))
+        {
+            details.adult_response = submitted.adult_response.clone();
+            details.guess = submitted.guess.clone();
+            details.conditions = submitted.conditions.clone();
+        }
         if let Some(k) = old {
             if k.deleted {
                 continue;
             }
-            if k.input != *input
+            if (k.input != *input || k.details != details)
                 && summary.knowledge_versions.get(&input.id).copied() != Some(k.version)
             {
                 return Err(ApiError::conflict(
@@ -614,7 +633,7 @@ fn outputs(db: &dyn Sql, actor: &User, s: &Session, stamp: &str, note: &str) -> 
                 ));
             }
         }
-        if old.is_some_and(|k| k.input == *input) {
+        if old.is_some_and(|k| k.input == *input && k.details == details) {
             continue;
         }
         if old.is_none()
@@ -628,7 +647,7 @@ fn outputs(db: &dyn Sql, actor: &User, s: &Session, stamp: &str, note: &str) -> 
             return Err(ApiError::conflict("知识编号已用于其他来源"));
         }
         let k = Knowledge {
-            details: old.map(|k| k.details.clone()).unwrap_or_default(),
+            details,
             derived_from: old.map(|k| k.derived_from.clone()).unwrap_or_default(),
             source_event_id: None,
             source_review_id: None,

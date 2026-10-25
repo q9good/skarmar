@@ -85,6 +85,11 @@ pub struct Summary {
     pub feedback: Vec<super::process_model::PracticeFeedback>,
     #[serde(default)]
     pub knowledge_versions: std::collections::BTreeMap<String, u64>,
+    /// Missing means an older client did not submit structured knowledge details.
+    /// A present entry may explicitly set or clear the summary-owned fields.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub knowledge_details:
+        Option<std::collections::BTreeMap<String, super::process_model::Details>>,
     #[serde(default)]
     pub new_actions: Vec<NewAction>,
     #[serde(default)]
