@@ -7,7 +7,7 @@ from playwright.sync_api import expect,sync_playwright
 BASE=os.environ['SKARMA_TEST_URL'].rstrip('/');assert urlparse(BASE).hostname in {'localhost','127.0.0.1','::1'}
 OUT=Path('.local/prd-session-ui');OUT.mkdir(parents=True,exist_ok=True)
 with sync_playwright() as p:
- browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE','/usr/bin/chromium'),headless=True,args=['--no-sandbox'])
+ browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox'])
  first=browser.new_context(viewport={'width':360,'height':640});second=browser.new_context(viewport={'width':430,'height':932});a,b=first.new_page(),second.new_page();errors=[]
  for page in [a,b]:page.on('pageerror',lambda e:errors.append(str(e)))
  def button(page,name):return page.get_by_role('button',name=name,exact=True)

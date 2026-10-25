@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright,expect
 BASE=os.environ['SKARMA_TEST_URL'].rstrip('/');assert urlparse(BASE).hostname in {'localhost','127.0.0.1','::1'}
 with sync_playwright() as p:
- browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox']);a=browser.new_context(viewport={'width':360,'height':740});b=browser.new_context();page=a.new_page();other=b.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox']);a=browser.new_context(viewport={'width':360,'height':740});b=browser.new_context();page=a.new_page();other=b.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def btn(name,who=page):return who.get_by_role('button',name=name,exact=True)
  def login(who,trusted=False):
   who.goto(BASE);who.get_by_role('textbox',name='账号',exact=True).fill('owner');who.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');check=who.get_by_role('checkbox',name='在这台家庭设备保持登录约一年',exact=True);expect(check).to_have_attribute('aria-checked','false')

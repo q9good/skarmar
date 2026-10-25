@@ -6,7 +6,7 @@ from playwright.sync_api import sync_playwright,expect
 BASE=os.environ['SKARMA_TEST_URL'].rstrip('/')
 assert urlparse(BASE).hostname in {'localhost','127.0.0.1','::1'}
 with sync_playwright() as p:
- browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+ browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox'])
  ctx=browser.new_context(viewport={'width':360,'height':740});page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def button(name):return page.get_by_role('button',name=name,exact=True)
  def click(name):button(name).click()

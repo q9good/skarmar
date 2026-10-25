@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright,expect
 BASE=os.environ['SKARMA_TEST_URL'].rstrip('/');assert urlparse(BASE).hostname in {'localhost','127.0.0.1','::1'}
 OUT=Path('.local/prd-polish-ui');OUT.mkdir(parents=True,exist_ok=True)
 with sync_playwright() as p:
- b=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox']);ctx=b.new_context(viewport={'width':360,'height':740});page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ b=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox']);ctx=b.new_context(viewport={'width':360,'height':740});page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def btn(name):return page.get_by_role('button',name=name,exact=True)
  def click(name):btn(name).click()
  def field(name):return page.get_by_role('textbox',name=name,exact=True)
@@ -32,7 +32,9 @@ with sync_playwright() as p:
  click('方法');click('查看说明');expect(page.get_by_text('怎样理解方法的证据',exact=True)).to_be_visible();expect(page.get_by_text('添加到手机桌面',exact=True)).to_be_visible();click('关闭使用与方法说明')
  click('今天');click('记录上课');expect(page.get_by_text('先选课程和老师。',exact=True)).to_be_visible();click('知道了，不再提示');click('关闭记录上课');click('目标');expect(btn('继续课记：未选课程')).to_be_visible();click('继续课记：未选课程');expect(page.get_by_text('先选课程和老师。',exact=True)).to_have_count(0);click('关闭记录上课')
  print('PASS examples remain readable without replacing input, static evidence/install help and global lesson-draft recovery',flush=True)
- today=page.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())");lid=str(uuid4());call('PUT','/prd/lessons/'+lid,{'id':lid,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':{'business_date':today,'course_id':c['id'],'teacher_id':t['id'],'notes':'测试课堂','teacher_notes':'测试：换个球再试'}}});click('刷新');click('记录');click('课时核对');click('自定义课时核对日期');page.get_by_label('课时起始日期：选择日期',exact=True).fill(today);page.get_by_label('课时截止日期：选择日期',exact=True).fill(today);expect(btn('测试老师：1 节')).to_be_visible();click('测试老师：1 节');expect(btn(re.compile('^查看课记：'))).to_have_count(1)
+ today=page.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())");lid=str(uuid4());call('PUT','/prd/lessons/'+lid,{'id':lid,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':{'business_date':today,'course_id':c['id'],'teacher_id':t['id'],'notes':'测试课堂','teacher_notes':'测试：换个球再试'}}});
+ with page.expect_response(re.compile('/api/prd/state$')):page.evaluate("window.dispatchEvent(new Event('focus'))")
+ click('记录');click('课时核对');click('自定义课时核对日期');page.get_by_label('课时起始日期：选择日期',exact=True).fill(today);page.get_by_label('课时截止日期：选择日期',exact=True).fill(today);expect(btn('测试老师：1 节')).to_be_visible();click('测试老师：1 节');expect(btn(re.compile('^查看课记：'))).to_have_count(1)
  click('课堂记录');field('搜索课堂观察和老师建议').fill('换个球');page.get_by_role('checkbox',name='只看老师建议',exact=True).click();expect(page.get_by_text('匹配来源：老师建议',exact=True)).to_be_visible()
  page.set_viewport_size({'width':320,'height':740});assert not page.evaluate('document.documentElement.scrollWidth > innerWidth');page.screenshot(path=str(OUT/'lesson-filter-mobile.png'));assert not errors,errors
  print('PASS custom settlement dates and teacher-based totals, search matching-source label and narrow layout',flush=True);b.close()

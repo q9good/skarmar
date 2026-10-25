@@ -8,7 +8,7 @@ BASE=os.environ['SKARMA_TEST_URL'].rstrip('/');assert urlparse(BASE).hostname in
 OUT=Path('.local/prd-import-ui');OUT.mkdir(parents=True,exist_ok=True)
 w=Workbook();s=w.active;s.title='目标';s.append(['编号','名称','未映射']);s.append(['G1','合成导入目标','=SUM(A1:A3)']);s=w.create_sheet('方法');s.append(['编号','名称','关联目标']);s.append(['M1','合成导入方法','目标:G1']);s=w.create_sheet('经验');s.append(['编号','内容','关联目标','阶段','状态']);s.append(['K1','合成既有经验','目标:G1','已验证','停用']);s=w.create_sheet('历史');s.append(['原文']);s.append(['合成原始历史🙂']);filename=OUT/'synthetic.xlsx';w.save(filename)
 with sync_playwright() as p:
- b=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox']);ctx=b.new_context(viewport={'width':360,'height':740},accept_downloads=True);page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ b=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox']);ctx=b.new_context(viewport={'width':360,'height':740},accept_downloads=True);page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def button(name):return page.get_by_role('button',name=name,exact=True)
  def click(name):button(name).click()
  def state():return ctx.request.get(BASE+'/api/prd/state').json()

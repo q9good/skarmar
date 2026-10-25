@@ -11,7 +11,7 @@ OUT = Path('.local/prd-foundation-validation/screenshots')
 OUT.mkdir(parents=True, exist_ok=True)
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE', '/usr/bin/chromium'), headless=True, args=['--no-sandbox'])
+    browser = p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'), headless=True, args=['--no-sandbox'])
     context = browser.new_context(viewport={'width': 360, 'height': 640})
     page = context.new_page()
     errors = []

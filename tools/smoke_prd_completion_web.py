@@ -10,7 +10,7 @@ BASE=os.environ['SKARMA_TEST_URL'].rstrip('/')
 assert urlparse(BASE).hostname in {'localhost','127.0.0.1','::1'}
 OUT=Path('.local/prd-completion-ui-screenshots');OUT.mkdir(parents=True,exist_ok=True)
 with sync_playwright() as p:
- browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+ browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox'])
  ctx=browser.new_context(viewport={'width':1280,'height':900});page=ctx.new_page();errors=[]
  page.on('pageerror',lambda e:errors.append(str(e)))
  def btn(name):return page.get_by_role('button',name=name,exact=True)
