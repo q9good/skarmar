@@ -1,14 +1,17 @@
+import {SessionRenewalContext} from './session-renewal';
+import {DetailOverlay} from './overlay';
 import { Pressable, Text, TextInput, ReadabilitySettings } from './readability';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { advanceAuthSession, ApiError, onUnauthorized, request } from './api';
+import { advanceAuthSession, bindRequestIdentity, ApiError, onUnauthorized, request } from './api';
 import { downloadWorkbook } from './download';
 import { ImportPanel } from './import-view';
+import { PrdImportPanel } from './prd-import-view';
 
 export type Account = { id: string; username: string; display_name: string; role: 'admin' | 'member'; active: boolean };
-export type Identity = { user: Account; space: string; demo: boolean };
+export type Identity = { user: Account; space: string; demo: boolean;session?:{expires_at:number;trusted_device:boolean} };
 type Registration = { id: string; username: string; display_name: string; email: string; created_at: string };
-type Auth = { identity: Identity; logout: () => Promise<void>; passwordChanged: () => void };
+type Auth = { identity: Identity; logout: () => Promise<void>; passwordChanged: () => void;renew:()=>void };
 const Context = createContext<Auth | null>(null);
 export function useAuth() { const value = useContext(Context); if (!value) throw new Error('尚未登录'); return value; }
 const messageOf = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试';
@@ -32,13 +35,15 @@ function Input({ label, value, change, secret, username, email, newPassword, dis
 
 export function AuthBoundary({ children }: { children: React.ReactNode }) {
   const [identity, setIdentity] = useState<Identity | null>(null);
+  const acceptIdentity=(value:Identity)=>{bindRequestIdentity(value.demo?null:{actor:value.user.id,space:value.space});setIdentity(value);};
   const [checking, setChecking] = useState(true);
+  const [renewing,setRenewing]=useState(false);
   const [notice, setNotice] = useState('');
-  const expire = useCallback(() => { advanceAuthSession(); setIdentity(null); setNotice('登录已失效，请重新登录。本机草稿仍为原账号保留。'); }, []);
+  const expire = useCallback((notice?:string) => { advanceAuthSession(); setIdentity(null);setRenewing(false); setNotice(notice??'登录已失效，请重新登录。本机草稿仍为原账号保留。'); }, []);
   useEffect(() => { onUnauthorized(expire); return () => onUnauthorized(undefined); }, [expire]);
   useEffect(() => {
     let active = true;
-    request<Identity>('/auth/me').then(value => { if (active) setIdentity(value); })
+    request<Identity>('/auth/me').then(value => { if (active) acceptIdentity(value); })
       .catch(error => { if (active && !(error instanceof ApiError && error.status === 401)) setNotice('暂时无法连接，请稍后重试登录。'); })
       .finally(() => { if (active) setChecking(false); });
     return () => { active = false; };
@@ -47,7 +52,7 @@ export function AuthBoundary({ children }: { children: React.ReactNode }) {
     if (!identity || identity.demo) return;
     let active = true;
     const timer = setInterval(() => {
-      request<Identity>('/auth/me').catch(error => { if (active && error instanceof ApiError && error.status === 401) expire(); });
+      request<Identity>('/auth/me').then(value=>{if(!active)return;if(value.user.id!==identity.user.id||value.space!==identity.space){expire();return;}acceptIdentity(value);}).catch(error => { if (active && error instanceof ApiError && error.status === 401) expire(); });
     }, 60_000);
     return () => { active = false; clearInterval(timer); };
   }, [identity, expire]);
@@ -56,15 +61,28 @@ export function AuthBoundary({ children }: { children: React.ReactNode }) {
     await request('/auth/logout', 'POST'); advanceAuthSession(); setIdentity(null); setNotice('已退出登录。这个账号的本机草稿已保留。');
   };
   if (checking) return <View style={s.loading}><ActivityIndicator color="#34765B" /><Text style={s.hint}>正在连接你的记录空间…</Text></View>;
-  if (!identity) return <Login notice={notice} signedIn={value => { advanceAuthSession(); setNotice(''); setIdentity(value); }} />;
-  return <Context.Provider value={{ identity, logout, passwordChanged: () => { advanceAuthSession(); setIdentity(null); setNotice('密码已更新，请重新登录。'); } }}>
-    <React.Fragment key={`${identity.space}:${identity.user.id}`}>{children}</React.Fragment>
+  if (!identity) return <Login notice={notice} signedIn={value => { advanceAuthSession(); setNotice(''); acceptIdentity(value); }} />;
+  return <Context.Provider value={{ identity, logout, renew:()=>setRenewing(true), passwordChanged: () => { advanceAuthSession(); setIdentity(null); setNotice('密码已更新，请重新登录。'); } }}>
+    <SessionRenewalContext.Provider value={{expiresSoon:Boolean(identity.session&&identity.session.expires_at-Date.now()/1000<=(identity.session.trusted_device?7:1)*86400),renew:()=>setRenewing(true)}}><View style={{flex:1,minHeight:0}}>
+    {identity.session&&identity.session.expires_at-Date.now()/1000<=(identity.session.trusted_device?7:1)*86400&&<View style={{padding:12,gap:8,backgroundColor:'#FFF5DE'}}><Text>这台设备的登录即将到期，填写仍保留在本机。</Text><Action title="重新验证并继续填写" secondary onPress={()=>setRenewing(true)}/></View>}
+    <View style={{flex:1,minHeight:0}} key={`${identity.space}:${identity.user.id}`}>{children}</View>
+    {renewing&&<RenewSession identity={identity} close={()=>setRenewing(false)} renewed={value=>{advanceAuthSession();acceptIdentity(value);setRenewing(false);}}/>}
+    </View></SessionRenewalContext.Provider>
   </Context.Provider>;
+}
+
+function RenewSession({identity,close,renewed}:{identity:Identity;close:()=>void;renewed:(v:Identity)=>void}){
+  const [password,setPassword]=useState(''),[trusted,setTrusted]=useState(identity.session?.trusted_device??false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  return <DetailOverlay title="续期登录" close={()=>{if(!busy)close();}}><Text>验证 {identity.user.display_name} 的密码后继续当前填写，原表单保持原样。</Text><Input label="续期密码" value={password} change={setPassword} secret disabled={busy}/>
+    <Pressable accessibilityRole="checkbox" accessibilityLabel="续期为受信任家庭设备" aria-checked={trusted} accessibilityState={{checked:trusted,disabled:busy}} disabled={busy} onPress={()=>setTrusted(v=>!v)} style={{padding:12}}><Text>{trusted?'☑':'☐'} 这台家庭设备保持登录约一年</Text></Pressable>
+    {error&&<Text accessibilityRole="alert">{error}</Text>}<Action title={busy?'正在验证…':'验证并回到填写'} disabled={busy||!password} onPress={()=>void(async()=>{setBusy(true);setError('');try{const value=await request<Identity>('/auth/login','POST',{username:identity.user.username,password,trusted_device:trusted});if(value.user.id!==identity.user.id||value.space!==identity.space)throw new Error('账号或空间已变化，请重新打开原账号的填写。');setPassword('');renewed(value);}catch(e){setError(messageOf(e));}finally{setBusy(false);}})()}/>
+  </DetailOverlay>;
 }
 
 function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Identity) => void }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [trustedDevice,setTrustedDevice]=useState(false);
   const [registering, setRegistering] = useState(false);
   const [registrationUsername, setRegistrationUsername] = useState('');
   const [registrationName, setRegistrationName] = useState('');
@@ -79,7 +97,7 @@ function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Iden
     if (busy) return;
     if (!username.trim() || !password) { setError('请填写账号和密码'); return; }
     setBusy(true); setError('');
-    try { const value = await request<Identity>('/auth/login', 'POST', { username, password }); setPassword(''); signedIn(value); }
+    try { const value = await request<Identity>('/auth/login', 'POST', { username, password, trusted_device:trustedDevice }); setPassword(''); signedIn(value); }
     catch (error) { setError(messageOf(error)); }
     finally { setBusy(false); }
   };
@@ -125,6 +143,8 @@ function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Iden
         <Input label="账号" value={username} change={setUsername} username disabled={busy} />
         <Input label="密码" value={password} change={setPassword} secret={!visible} disabled={busy} submit={() => void submit()} />
         <Pressable accessibilityRole="button" onPress={() => setVisible(value => !value)}><Text style={s.link}>{visible ? '隐藏密码' : '显示密码'}</Text></Pressable>
+        <Pressable accessibilityRole="checkbox" accessibilityLabel="在这台家庭设备保持登录约一年" aria-checked={trustedDevice} accessibilityState={{checked:trustedDevice,disabled:busy}} disabled={busy} onPress={()=>setTrustedDevice(v=>!v)} style={{paddingVertical:12,minHeight:48}}><Text>{trustedDevice?'☑':'☐'} 在这台家庭设备保持登录约一年</Text></Pressable>
+        <Text style={s.hint}>仅为自己信任的设备选择。退出登录、停用账号或修改密码仍会提前结束会话；浏览器清除数据后需重新登录。</Text>
         <Action title={busy ? '正在登录…' : '登录'} onPress={() => void submit()} disabled={busy} />
         <Action title="申请注册" secondary onPress={() => { setRegistering(true); setVisible(false); setError(''); setSuccess(''); }} disabled={busy} />
         <Text style={s.hint}>刚提交申请？请等待管理员批准后再登录。忘记密码请联系空间管理员。</Text>
@@ -134,10 +154,11 @@ function Login({ notice, signedIn }: { notice: string; signedIn: (identity: Iden
   </ScrollView>;
 }
 
-export function AccountPanel({ back, logout, onImported }: { back: () => void; logout: () => Promise<void>; onImported: () => Promise<unknown> }) {
+export function AccountPanel({ back, logout, onImported, businessTools = true,prdExport=false }: { back: () => void; logout: () => Promise<void>; onImported: () => Promise<unknown>; businessTools?: boolean;prdExport?:boolean }) {
   const auth = useAuth();
   const [users, setUsers] = useState<Account[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [confirmRevoke,setConfirmRevoke]=useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [username, setUsername] = useState('');
   const [name, setName] = useState('');
@@ -168,15 +189,19 @@ export function AccountPanel({ back, logout, onImported }: { back: () => void; l
     <Text style={s.hint}>账号：{auth.identity.user.username} · 空间：{auth.identity.space}</Text>
     {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
     {notice ? <Text accessibilityRole="alert" style={s.notice}>{notice}</Text> : null}
-    {Platform.OS === 'web' && <View style={s.card}><Text style={s.cardTitle}>导出数据</Text>
-      <Text style={s.body}>将本空间已保存的全部数据下载为 Excel：训练记录、逐目标明细、目标、途径、困难、经验、历史及关联关系。</Text>
-      <Text style={s.hint}>包含已保存的训练草稿。本机尚未保存的草稿不包含在内；导出不会修改记录。</Text>
+    {(businessTools||prdExport) && Platform.OS === 'web' && <View style={s.card}><Text style={s.cardTitle}>导出数据</Text>
+      <Text style={s.body}>{prdExport?'导出已保存的目标、方法、课程、家庭干预、经验困难、反馈、复盘、测量、瞬间观察和共享说明，包含版本与关联。':'将本空间已保存的全部业务数据下载为Excel，包含历史和关联关系。'}</Text>
+      <Text style={s.hint}>包含服务器已保存的计划和总结草稿。本机未提交填写、待上传队列和登录凭据不包含在内；导出不会修改记录。</Text>
       <Action title={busy ? '正在处理…' : '导出 Excel'} disabled={busy} onPress={() => void act(async () => {
-        await downloadWorkbook(); setNotice('Excel 已交给浏览器下载，请在下载列表中查看。');
+        await downloadWorkbook(prdExport?'prd_v1':'legacy'); setNotice('Excel 已交给浏览器下载，请在下载列表中查看。');
       })} />
     </View>}
-    {Platform.OS === 'web' && auth.identity.user.role === 'admin' &&
+    {prdExport && Platform.OS === 'web' && auth.identity.user.role === 'admin' && <PrdImportPanel disabled={busy} onBusyChange={setBusy} onImported={onImported} />}
+    {businessTools && Platform.OS === 'web' && auth.identity.user.role === 'admin' &&
       <ImportPanel disabled={busy} onBusyChange={setBusy} onImported={onImported} />}
+    <View style={s.card}><Text style={s.cardTitle}>设备登录</Text><Action title="重新验证这台设备的登录" secondary disabled={busy} onPress={auth.renew}/><Text style={s.body}>可退出本账号的其他设备，保留这台设备的当前登录。本机草稿仍留在原设备，不会被删除。</Text>
+      <Action title={confirmRevoke?'取消退出其他设备':'退出其他设备'} secondary disabled={busy} onPress={()=>setConfirmRevoke(v=>!v)}/>
+      {confirmRevoke&&<Action title="确认退出本账号其他设备" disabled={busy} onPress={()=>void act(async()=>{await request('/auth/sessions/revoke-others','POST');setConfirmRevoke(false);setNotice('其他设备已退出，这台设备保持登录。');})}/>}</View>
     <ReadabilitySettings />
     <View style={s.card}><Text style={s.cardTitle}>修改密码</Text>
       <Input label="当前密码" value={currentPassword} change={setCurrentPassword} secret disabled={busy} />

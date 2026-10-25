@@ -1,0 +1,93 @@
+import {transferContract} from './prd-transfer-contract.mjs';
+import {completionContract} from './prd-completion-contract.mjs';
+import {exportContract} from './prd-export-contract.mjs';
+import {observationContract} from './prd-observation-contract.mjs';
+import {authSessionContract} from './prd-auth-session-contract.mjs';
+import {outboxContract} from './prd-outbox-contract.mjs';
+import {followupContract} from './prd-followup-contract.mjs';
+import { sessionContract } from './prd-session-contract.mjs';
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { lessonContract } from './prd-lesson-contract.mjs';
+export const prdTestPassword = 'synthetic-prd-contract-password';
+const goal = title => ({ kind: 'goal', value: { title, level: 'short' } });
+export async function prdContract(label, send) {
+  const origin = 'https://prd-contract.local';
+  async function call(method, path, body, cookie, status = 200, contract = 'skarmar.prd.v1') {
+    const response = await send('/api' + path, { method, headers: {
+      'Content-Type': 'application/json', 'X-Skarma-Request': '1', Origin: origin,
+      ...(cookie ? { Cookie: cookie } : {}), ...(contract ? { 'X-Skarma-Contract': contract } : {}),
+    }, body: body === undefined ? undefined : JSON.stringify(body) });
+    const data = await response.json();
+    assert.equal(response.status, status, `${label} ${method} ${path}: ${JSON.stringify(data)}`);
+    return { data, cookie: response.headers.get('set-cookie')?.split(';')[0] };
+  }
+  const login = async (username, password) => (await call('POST','/auth/login',{ username, password })).cookie;
+  const admin = await login('owner', prdTestPassword);
+  assert(admin);
+  await call('GET','/prd/state',undefined,undefined,401);
+  assert.deepEqual((await call('GET','/runtime',undefined,admin)).data,{ model:'prd_v1', contract:'skarmar.prd.v1' });
+  const member = (await call('POST','/auth/users',{ username:'family',display_name:'测试家人',password:'s',role:'member' },admin)).data;
+  const cookie = await login('family','s');
+  assert(cookie);
+  const state = async () => (await call('GET','/prd/state',undefined,cookie)).data;
+  const command = (id, mutation, expected_version = null) => ({ id, mutation, expected_version, operation_id:randomUUID(), change_note:'' });
+  const id = randomUUID(), original = command(id, goal('测试共同目标'));
+  await call('PUT','/prd/records/' + id,original,cookie,409,null);
+  await call('PUT','/prd/records/' + id,original,cookie,409,'old-contract');
+  await call('PUT','/prd/records/' + id,{ ...original, actor_id:randomUUID() },cookie,422);
+  await call('PUT','/prd/records/' + randomUUID(),original,cookie,422);
+  assert.equal((await state()).goals.length,0);
+  const created = (await call('PUT','/prd/records/' + id,original,cookie)).data;
+  assert.equal(created.value.version,1); assert.equal(created.value.input.title,'测试共同目标');
+  assert.equal(created.value.input.state,'active'); assert.equal(created.value.input.criteria,'');
+  assert.deepEqual((await call('PUT','/prd/records/' + id,original,cookie)).data,created);
+  await call('PUT','/prd/records/' + id,{ ...original, mutation:goal('操作编号被重用') },cookie,409);
+  const changes = ['测试妈妈的修改','测试爸爸的修改'].map(title => command(id,goal(title),1));
+  const responses = await Promise.all(changes.map(body => send('/api/prd/records/' + id,{ method:'PUT',headers:{ 'Content-Type':'application/json','X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1',Origin:origin,Cookie:cookie },body:JSON.stringify(body) })));
+  assert.deepEqual(responses.map(r => r.status).sort(),[200,409]);
+  await Promise.all(responses.map(r => r.arrayBuffer()));
+  assert.equal((await state()).goals[0].version,2);
+  // Retrying an older successful command must not roll the stored version back.
+  assert.deepEqual((await call('PUT','/prd/records/' + id,original,cookie)).data,created);
+  assert.equal((await state()).goals[0].version,2);
+  const revisions = (await call('GET','/prd/records/' + id + '/history',undefined,cookie)).data;
+  assert.equal(revisions.length,2); assert(revisions.every(r => r.actor_id === member.id));
+  const methodId=randomUUID();
+  await call('PUT','/prd/records/' + methodId,command(methodId,{ kind:'method',value:{ title:'测试方法',goal_ids:[id] } }),cookie);
+  const method = (await state()).methods[0];
+  assert.deepEqual(method.input.goal_ids,[id]);assert.equal(method.input.description,'');
+  await call('PUT','/prd/records/' + methodId,command(methodId,{ kind:'method',value:{ ...method.input, description:'测试第二版做法' } },1),cookie);
+  const methodHistory = (await call('GET','/prd/records/' + methodId + '/history',undefined,cookie)).data;
+  assert.equal(methodHistory[0].entity.value.input.description,'');assert.equal(methodHistory[1].entity.value.input.description,'测试第二版做法');
+  const teacher=randomUUID(); const catalog=(name,active=true)=>({kind:'catalog',value:{kind:'teacher',name,active}});
+  await call('PUT','/prd/records/' + teacher,command(teacher,catalog('测试老师旧名')),cookie);
+  await call('PUT','/prd/records/' + teacher,command(teacher,catalog('测试老师新名'),1),cookie);
+  await call('PUT','/prd/records/' + teacher,command(teacher,catalog('测试老师新名',false),2),cookie);
+  await call('PUT','/prd/records/' + randomUUID(),command(randomUUID(),catalog('测试老师新名')),cookie,422);
+  const duplicate=randomUUID();await call('PUT','/prd/records/' + duplicate,command(duplicate,catalog('测试老师新名')),cookie,409);
+  await call('PUT','/prd/records/' + teacher,command(teacher,catalog('测试老师新名'),3),cookie);
+  const names=(await call('GET','/prd/records/' + teacher+'/history',undefined,cookie)).data;
+  assert.equal(names.length,4);assert.equal(names[0].entity.value.input.name,'测试老师旧名');
+  assert.equal((await state()).catalog[0].id,teacher);
+  await call('POST','/goals',{id:randomUUID(),title:'旧页面写入',level:'short',parent_id:null,area:'',criteria:''},cookie,409);
+  await call('DELETE','/goals/' + id,{expected_version:2},admin,409);
+  assert.equal((await state()).goals.length,1);
+  await call('PUT','/auth/users/'+member.id,{ active:false },admin);
+  const denied=randomUUID();await call('PUT','/prd/records/'+denied,command(denied,goal('停用账号不可写')),cookie,401);
+  const snapshot=(await call('GET','/prd/state',undefined,admin)).data;
+  assert.equal(snapshot.goals.length,1);assert.equal(snapshot.methods.length,1);assert.equal(snapshot.catalog.length,1);
+  console.log(`PASS ${label}: authenticated create/update/history, contract gate, retry, concurrency, relations, immutable versions, stable names and revoked-member rejection`);
+  await lessonContract(label,send,admin);
+  await sessionContract(label,send,admin);
+  await followupContract(label,send,admin);
+  await outboxContract(label,send,admin);
+  await authSessionContract(label,send,admin,prdTestPassword);
+  await observationContract(label,send,admin);
+  const importSource=await transferContract(label,send,admin);
+  const completion=await completionContract(label,send,admin);
+  await exportContract(label,send,admin);
+  const finalSnapshot=(await call('GET','/prd/state',undefined,admin)).data;
+  const observations={};for(const kind of ['metric','measurement','moment','needs'])observations[kind]=(await call('GET','/prd/process?view=observations&object_kind='+kind,undefined,admin)).data;
+  return { admin, snapshot:finalSnapshot,observations,importSource,completion };
+}

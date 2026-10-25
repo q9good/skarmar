@@ -1,0 +1,10 @@
+import React,{useState} from 'react';
+import {View} from 'react-native';
+import {Text,Pressable} from './readability';
+import {monthWeeks} from './prd-sessions';
+const colors=['#FFFFFF','#E3EEDB','#BFD8B7','#34765B'],weekdays=['日','一','二','三','四','五','六'];
+export function InterventionCalendar({month,today,counts,pending={},select}:{month:string;today:string;counts:Record<string,number>;pending?:Record<string,number>;select:(day:string)=>void}){
+ const [width,setWidth]=useState(328),columns=Math.max(1,Math.min(7,Math.floor((width+2)/46))),full=columns===7;
+ const dates=full?monthWeeks(month).flat():monthWeeks(month).flat().filter(Boolean);
+ return <View onLayout={e=>setWidth(e.nativeEvent.layout.width)} style={{gap:6}}><Text>点某一天直接看记录；颜色表示已记录0／1／2／3+次，不代表能力进展。待总结单独标出，不计完成次数。</Text>{!full&&<Text>窄屏按日期排列，每格同时写明星期。</Text>}{full&&<View style={{flexDirection:'row',gap:2}}>{['一','二','三','四','五','六','日'].map(d=><Text key={d} style={{flex:1,textAlign:'center'}}>{d}</Text>)}</View>}<View style={{flexDirection:'row',flexWrap:'wrap',gap:2}}>{dates.map((day,i)=>{const past=day&&day<=today,n=past?counts[day]??0:0,p=pending[day]??0;return day?<Pressable key={day} accessibilityRole="button" accessibilityLabel={`${day} · ${past?'已完成'+n+'次':'未来日期'}${p?' · 待总结'+p+'项':''}`} onPress={()=>select(day)} style={{width:(width-(columns-1)*2)/columns,minWidth:44,minHeight:76,alignItems:'center',paddingVertical:6,borderRadius:6,borderWidth:day===today?2:1,borderColor:'#53665A',backgroundColor:past?colors[Math.min(n,3)]:'#F0F3ED'}}><Text style={{color:past&&n>=3?'#FFFFFF':'#243D36'}}>{Number(day.slice(-2))}</Text>{!full&&<Text style={{color:past&&n>=3?'#FFFFFF':'#243D36',fontSize:14}}>周{weekdays[new Date(day+'T00:00:00Z').getUTCDay()]}</Text>}<Text style={{color:past&&n>=3?'#FFFFFF':'#243D36'}}>{past?n:'—'}</Text>{p>0&&<Text style={{fontSize:13,color:past&&n>=3?'#FFFFFF':'#243D36'}}>待总结{p}</Text>}</Pressable>:<View key={'blank'+i} style={{width:(width-(columns-1)*2)/columns,minHeight:76}}/>;})}</View></View>;
+}

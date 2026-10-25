@@ -1,7 +1,7 @@
 use axum::{body::Body, http::StatusCode};
 use skarma_core::{
     Command,
-    config::{Config, Runtime},
+    config::{Config, DataModel, Runtime},
     sql::{Sql, Value},
     store::{ApiError, Result as AppResult},
 };
@@ -234,7 +234,7 @@ impl DurableObject for SkarmaSpace {
             let command: Command = serde_json::from_str(&encoded)?;
             // Restrict the private upload endpoint to an authorization proof;
             // arbitrary commands cannot be smuggled through upload metadata.
-            if !matches!(&command, Command::Authenticated { command, .. } if matches!(**command, Command::ImportAuthorize))
+            if !matches!(&command, Command::Authenticated { command, .. } if matches!(**command, Command::ImportAuthorize | Command::DataTransfer(skarma_core::foundation::transfer::Command::AuthorizeUpload)))
             {
                 return Response::error("Invalid import authorization", 400);
             }
@@ -254,7 +254,7 @@ impl DurableObject for SkarmaSpace {
         };
         if export
             && !matches!(&command, Command::ExportSnapshot)
-            && !matches!(&command, Command::Authenticated { command, .. } if matches!(**command, Command::ExportSnapshot))
+            && !matches!(&command, Command::Authenticated { command, .. } if matches!(**command, Command::ExportSnapshot | Command::FoundationExportSnapshot))
         {
             return Response::error("Invalid export command", 400);
         }
@@ -286,7 +286,12 @@ impl DurableObject for SkarmaSpace {
         let transaction = storage
             .transaction(move |_txn| async move {
                 let result = (|| {
-                    skarma_core::store::initialize(&sql)?;
+                    match cfg.model {
+                        DataModel::Legacy => skarma_core::store::initialize(&sql)?,
+                        DataModel::PrdV1 => {
+                            skarma_core::foundation::initialize_authenticated(&sql)?
+                        }
+                    }
                     if let Some(input) = initial_admin
                         && sql
                             .query("SELECT id FROM auth_users LIMIT 1", &[])?
@@ -325,8 +330,7 @@ impl DurableObject for SkarmaSpace {
             outcome
         };
         if export {
-            let bytes = outcome
-                .and_then(|value| skarma_http::export::workbook(serde_json::from_value(value)?));
+            let bytes = outcome.and_then(|value| skarma_http::export::workbook_value(value));
             return match bytes {
                 Ok(bytes) => Response::from_bytes(bytes),
                 Err(error) => Response::from_json(&serde_json::json!({"error":error.1}))

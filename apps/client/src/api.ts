@@ -70,28 +70,41 @@ const base = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 export class ApiError extends Error {
   constructor(message: string, public status: number) { super(message); }
 }
-let unauthorized: (() => void) | undefined;
+let unauthorized: ((notice?:string) => void) | undefined;
 let sessionEpoch = 0;
-export function onUnauthorized(handler?: () => void) { unauthorized = handler; }
-export function advanceAuthSession() { sessionEpoch += 1; }
-async function fetchResponse(path: string, method = 'GET', body?: unknown, upload?: FormData): Promise<Response> {
+export function onUnauthorized(handler?: (notice?:string) => void) { unauthorized = handler; }
+type RequestIdentity={actor:string;space:string};
+let requestIdentity:RequestIdentity|null=null;
+export const AUTH_SCOPE_CHANGED='登录账号与当前填写不一致，请重新登录原账号后继续。';
+export function bindRequestIdentity(value:RequestIdentity|null){requestIdentity=value;}
+export function advanceAuthSession() { sessionEpoch += 1; requestIdentity=null; }
+/** Capture before awaiting local storage. An old async form must never resume
+ * using the identity of a later login, even though request() binds at send time. */
+export function authSessionGuard():()=>void {
+  const epoch=sessionEpoch;
+  return ()=>{if(epoch!==sessionEpoch)throw new ApiError('登录状态已更新，原填写仍保留，请重新确认后提交。',409);};
+}
+export type RequestOptions = { signal?:AbortSignal; space?:string };
+async function fetchResponse(path: string, method = 'GET', body?: unknown, upload?: FormData, options?:RequestOptions): Promise<Response> {
   const epoch = sessionEpoch;
+  const identity=!["/auth/login","/auth/register","/auth/me"].includes(path)?requestIdentity:null;
   let response: Response;
   try { response = await fetch(`${base}/api${path}`, {
-    method, credentials: 'include', cache: 'no-store',
-    headers: { 'X-Skarma-Request': '1', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+    method, credentials: 'include', cache: 'no-store', signal:options?.signal,
+    headers: { 'X-Skarma-Request': '1', ...(identity?{'X-Skarma-Actor':identity.actor,'X-Skarma-Space':identity.space}:{}), ...(path==='/data-transfer'?{'X-Skarma-Transfer':'skarmar.transfer.v1'}:{}), ...(options?.space?{'X-Skarma-Space':options.space}:{}), ...(path.startsWith('/prd/') ? { 'X-Skarma-Contract': 'skarmar.prd.v1' } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: upload ?? (body === undefined ? undefined : JSON.stringify(body)),
   }); } catch { throw new ApiError('暂时无法连接，请保留草稿后重试', 503); }
   if (response.status === 401 && epoch === sessionEpoch && path !== '/auth/login' && path !== '/auth/me') unauthorized?.();
   if (!response.ok) {
     let data: { error?: string };
     try { data = await response.json(); } catch { throw new ApiError('服务暂时无法响应，请稍后重试', response.status); }
+    if(response.status===409&&data.error===AUTH_SCOPE_CHANGED&&epoch===sessionEpoch)unauthorized?.(AUTH_SCOPE_CHANGED);
     throw new ApiError(data.error ?? '操作未完成，请保留草稿后重试', response.status);
   }
   return response;
 }
-export async function request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
-  const response = await fetchResponse(path, method, body);
+export async function request<T>(path: string, method = 'GET', body?: unknown, options?:RequestOptions): Promise<T> {
+  const response = await fetchResponse(path, method, body, undefined, options);
   let data: unknown;
   try { data = await response.json(); } catch { throw new ApiError('服务暂时无法响应，请稍后重试', 502); }
   return data as T;
@@ -105,9 +118,9 @@ export async function uploadFile<T>(path: string, file: File): Promise<T> {
   catch { throw new ApiError('预览结果暂时无法读取，请重新选择文件', 502); }
 }
 
-export async function exportWorkbook(): Promise<Blob> {
+export async function exportWorkbook(model:'legacy'|'prd_v1'='legacy'): Promise<Blob> {
   const epoch = sessionEpoch;
-  const response = await fetchResponse('/export.xlsx');
+  const response = await fetchResponse(model==='prd_v1'?'/prd/export.xlsx':'/export.xlsx');
   if (response.headers.get('content-type')?.split(';')[0] !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
     throw new ApiError('下载未完成，请稍后重试', 502);
   }

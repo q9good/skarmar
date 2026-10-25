@@ -1,0 +1,52 @@
+"""Remaining balance/relation/refresh/sharing gaps. Disposable localhost data only."""
+import os,re
+from pathlib import Path
+from urllib.parse import urlparse
+from uuid import uuid4
+from playwright.sync_api import sync_playwright,expect
+BASE=os.environ['SKARMA_TEST_URL'].rstrip('/');assert urlparse(BASE).hostname in {'localhost','127.0.0.1','::1'}
+OUT=Path('.local/prd-balance-ui');OUT.mkdir(parents=True,exist_ok=True)
+with sync_playwright() as p:
+ browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox']);ctx=browser.new_context(viewport={'width':360,'height':740});page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ def btn(name):return page.get_by_role('button',name=name,exact=True)
+ def click(name):btn(name).click()
+ def field(name):return page.get_by_role('textbox',name=name,exact=True)
+ def select(name,value):page.get_by_role('combobox',name=name,exact=True).select_option(value)
+ def call(method,path,body=None):
+  r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
+ def entity(kind,value):
+  id=str(uuid4());return call('PUT','/prd/records/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}})['value']
+ def knowledge(kind,title,goals,methods=[]):
+  id=str(uuid4());return call('POST','/prd/process',{'kind':'knowledge','value':{'id':id,'operation_id':str(uuid4()),'expected_version':None,'action':'create','input':{'id':id,'kind':kind,'content':title,'goal_ids':goals,'method_ids':methods,'stage':'helpful' if kind=='experience' else None,'next_review_date':today if kind=='difficulty' else None},'details':{'title':title}}})
+ page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录上课')).to_be_enabled()
+ today=page.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())")
+ long=entity('goal',{'title':'单独关注探索','level':'long'});medium=entity('goal',{'title':'中期游戏参与','level':'medium'})
+ a=entity('goal',{'title':'轮替','level':'short','parent_id':medium['id']});b=entity('goal',{'title':'主动求助','level':'short'});c=entity('goal',{'title':'表达需要','level':'short','parent_id':medium['id']});method=entity('method',{'title':'合成跟随示范','goal_ids':[a['id']]})
+ entity('method',{'title':'尚未尝试的做法','goal_ids':[b['id']]});knowledge('experience','双路径经验',[a['id']],[method['id']]);knowledge('experience','方法细节经验',[],[method['id']]);knowledge('difficulty','原到期困难',[a['id']])
+ output_id=str(uuid4());saved=[]
+ for n,targets in enumerate([[a],[a,c]]):
+  id=str(uuid4());input={'business_date':today,'time_slot':'晚上','plan':'','targets':[{'goal_id':g['id'],'role':'main' if i==0 else 'secondary'} for i,g in enumerate(targets)],'focus_goal_ids':[long['id']],'summary':{'targets':[{'goal_id':g['id'],'performed':True,'observation':'PRIVATE_UNSELECTED_'+g['input']['title']} for g in targets],'confirmation':'used','methods':[{'id':method['id'],'version':1}],'tags':['游戏','轮流'],'signals':[{'kind':'主动开始','goal_ids':[long['id']]}],'new_knowledge':[{'id':output_id,'kind':'experience','content':'保留来源经验','goal_ids':[a['id']],'method_ids':[],'stage':'helpful'}] if n==0 else []}}
+  saved.append(call('PUT','/prd/sessions/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'action':'complete','input':input,'change_note':''}))
+ pending_diff=knowledge('difficulty','求助待观察',[b['id']]);event_id=str(uuid4());action_id=str(uuid4());call('POST','/prd/process',{'kind':'feedback','value':{'id':event_id,'operation_id':str(uuid4()),'expected_version':None,'action':'record','input':{'knowledge_id':pending_diff['input']['id'],'source':{'kind':'independent','id':event_id,'version':1},'business_date':today,'result':'unknown','observation':'合成：先安排明确观察'},'next_actions':[{'id':action_id,'content':'先请老师示范求助','goal_ids':[b['id']],'method_ids':[],'assignee_id':None}]}})
+ page.reload();expect(btn('记录上课')).to_be_enabled();click('记录一次家庭干预');field('准备怎么做').fill('原计划安排要保留');click('选择本次目标');page.get_by_role('checkbox',name='选择目标：轮替',exact=True).click();click('关闭选择本次目标');click('查看上次家庭依据：轮替');reference=page.get_by_role('dialog',name='计划参考依据',exact=True);expect(reference.get_by_text('PRIVATE_UNSELECTED_轮替',exact=True)).to_be_visible();expect(reference.get_by_text('PRIVATE_UNSELECTED_表达需要',exact=True)).to_have_count(0);page.go_back();expect(field('准备怎么做')).to_have_value('原计划安排要保留');click('查看全部方向的近况')
+ expect(page.get_by_role('combobox',name='近况目标层级',exact=True)).to_have_value('short');expect(page.get_by_role('img',name='轮替覆盖条，家庭2次，机构0次',exact=True)).to_be_visible();select('近况展示方式','ring');expect(page.get_by_role('img',name=re.compile('当前显示项覆盖环图，合计3次命中'))).to_be_visible();expect(page.get_by_text(re.compile('命中数之和可能大于记录场次'))).to_be_visible()
+ page.get_by_role('img',name=re.compile('当前显示项覆盖环图')).scroll_into_view_if_needed();page.screenshot(path=str(OUT/'ring-mobile.png'));select('近况统计内容','methods');expect(page.get_by_text(re.compile('尚未尝试的做法 · 0 次覆盖$'))).to_be_visible();expect(page.get_by_role('img',name=re.compile('当前显示项覆盖环图，合计2次命中'))).to_be_visible();select('近况统计内容','tags');expect(page.get_by_role('img',name=re.compile('当前显示项覆盖环图，合计4次命中'))).to_be_visible()
+ select('近况统计内容','goals');select('近况目标层级','medium');expect(page.get_by_role('img',name=re.compile('当前显示项覆盖环图，合计2次命中'))).to_be_visible();select('近况目标层级','long');expect(page.get_by_text(re.compile(r'^(1\. )?单独关注探索 · 2 次覆盖$'))).to_be_visible();expect(page.get_by_text(re.compile('下级证据另列：家庭0／机构0'))).to_be_visible()
+ select('近况目标层级','short');select('近况展示方式','table');page.get_by_role('checkbox',name='只看本窗口尚无记录的目标',exact=True).click();expect(btn('加入本次目标：主动求助')).to_be_visible();expect(btn('加入本次目标：轮替')).to_have_count(0);click('加入本次目标：主动求助');expect(page.get_by_role('dialog',name='全部方向的近况',exact=True)).to_have_count(0);expect(field('准备怎么做')).to_have_value('原计划安排要保留');expect(page.get_by_role('combobox',name='目标角色：主动求助',exact=True)).to_have_value('secondary');page.get_by_role('checkbox',name='纳入这条下一步：先请老师示范求助',exact=True).click();click('保存共享草稿并退出');expect(page.get_by_role('dialog')).to_have_count(0)
+ plan=next(s for s in call('GET','/prd/state')['sessions'] if s['status']=='planned');assert {t['goal_id'] for t in plan['input']['targets']}=={a['id'],b['id']} and plan['input']['plan']=='原计划安排要保留';assert action_id in plan['input']['action_ids'];assert next(a for a in call('GET','/prd/state')['actions'] if a['input']['id']==action_id)['status']=='in_plan'
+ print('PASS source counts, non-exclusive ring totals, level/chart filters, actual methods/tags, and selecting an unrecorded goal preserves and saves the plan',flush=True)
+ click('目标');click('查看目标：轮替');dialog=page.get_by_role('dialog',name='查看详情与修改记录',exact=True);expect(dialog.get_by_text('关联经验：双路径经验',exact=True)).to_have_count(1);expect(dialog.get_by_text('直接关联本目标；经方法关联：合成跟随示范',exact=True)).to_be_visible();expect(dialog.get_by_text('经方法关联：合成跟随示范',exact=True)).to_be_visible();expect(dialog.get_by_text('来源：家人独立录入',exact=True)).to_have_count(3);page.go_back()
+ call('PUT','/prd/sessions/'+saved[0]['id'],{'id':saved[0]['id'],'operation_id':str(uuid4()),'expected_version':saved[0]['version'],'action':'delete','input':None,'change_note':'合成来源删除检查'})
+ page.reload();expect(btn('记录上课')).to_be_enabled();click('目标');click('查看目标：轮替');expect(page.get_by_role('dialog').get_by_text(re.compile('来源：家庭干预第1版 · 来源记录已删除'))).to_be_visible();page.go_back()
+ print('PASS direct/via-method knowledge paths are distinguished without duplicate cards and removed sources remain visible',flush=True)
+ click('跟进');btn(re.compile('^查看共享复盘队列')).click();expect(btn('开始复盘：原到期困难')).to_be_visible();knowledge('difficulty','服务器新到期困难',[b['id']]);call('PUT','/prd/records/'+b['id'],{'id':b['id'],'operation_id':str(uuid4()),'expected_version':1,'change_note':'合成改名','mutation':{'kind':'goal','value':{**b['input'],'title':'求助新名称'}}})
+ with page.expect_response(re.compile('/api/prd/state$')):page.evaluate("window.dispatchEvent(new Event('focus'))")
+ expect(btn('开始复盘：服务器新到期困难')).to_have_count(0);click('按最新安排刷新分组');expect(btn('开始复盘：服务器新到期困难')).to_be_visible();expect(page.get_by_role('heading',name='围绕目标：求助新名称',exact=True)).to_be_visible()
+ page.route('**/api/prd/process?view=review_queue*',lambda route:route.fulfill(status=503,content_type='application/json',body='{"error":"合成暂不可用"}'),times=1);click('按最新安排刷新分组');expect(page.get_by_role('dialog').get_by_role('alert')).to_contain_text('保留此前分组');expect(btn('开始复盘：服务器新到期困难')).to_be_visible();click('按最新安排刷新分组');expect(page.get_by_role('dialog').get_by_role('alert')).to_have_count(0);page.go_back()
+ print('PASS explicit queue refresh fetches current names and new tasks; background sync keeps order and failed refresh retains the last snapshot',flush=True)
+ click('准备给专业人员的简要更新');page.get_by_role('checkbox',name='摘要目标：单独关注探索',exact=True).click();click('生成可删减的摘要草稿');expect(field('可编辑的更新摘要')).to_have_value(re.compile('明确长期关注：单独关注探索'));text=field('可编辑的更新摘要').input_value();assert 'PRIVATE_UNSELECTED' not in text and '主动开始' in text;page.go_back()
+ course=entity('catalog',{'kind':'course','name':'合成待查看课程','active':True});teacher=entity('catalog',{'kind':'teacher','name':'合成待查看老师','active':True});lid=str(uuid4());call('PUT','/prd/lessons/'+lid,{'id':lid,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':{'business_date':today,'course_id':course['id'],'teacher_id':teacher['id'],'notes':'合成课后请看看','request_review':True}}})
+ page.reload();expect(btn('记录上课')).to_be_enabled();click('跟进');click('整理课堂材料：'+today+' · 合成待查看课程');expect(page.get_by_role('dialog',name='整理课堂记录',exact=True)).to_be_visible();expect(page.get_by_role('dialog').get_by_text('合成课后请看看',exact=False)).to_be_visible();page.go_back();expect(page.get_by_role('dialog')).to_have_count(0)
+ print('PASS followup classroom task opens the original lesson organization directly',flush=True)
+ click('目标');click('查看目标：轮替');click('查看覆盖时间分布');page.set_viewport_size({'width':320,'height':740});assert not page.evaluate('document.documentElement.scrollWidth > innerWidth');assert not errors,errors
+ print('PASS sharing only a long focus excludes other target observations; narrow layout and browser execution remain valid',flush=True);browser.close()

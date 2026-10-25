@@ -1,5 +1,6 @@
 pub mod auth;
 pub mod config;
+pub mod foundation;
 pub mod import;
 pub mod lessons;
 pub mod model;
@@ -19,12 +20,36 @@ use store::Result;
 pub enum Command {
     Authenticated {
         token: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        expected_actor: Option<String>,
         command: Box<Command>,
     },
     Auth(auth::AuthCommand),
     ImportAuthorize,
     ImportPreview(import::ImportPreviewInput),
     ImportCommit(import::ImportCommitInput),
+    RuntimeInfo,
+    DataTransfer(foundation::transfer::Command),
+    FoundationQueued {
+        user_id: String,
+        write: foundation::lesson_model::QueuedWrite,
+    },
+    FoundationExportSnapshot,
+    FoundationState,
+    FoundationProcess(foundation::process_model::Command),
+    FoundationSession(foundation::session_model::Write),
+    FoundationSessionHistory {
+        id: String,
+    },
+    FoundationCoverage(foundation::coverage::Request),
+    FoundationHistory {
+        id: String,
+    },
+    FoundationWrite(foundation::model::Write),
+    FoundationLesson(foundation::lesson_model::LessonWrite),
+    FoundationLessonHistory {
+        id: String,
+    },
     State,
     ExportSnapshot,
     GoalHistory {
@@ -69,13 +94,169 @@ pub enum Command {
 /// The adapter must enclose this entire call in one database transaction.
 /// Returning Err must roll back all writes, including goal revisions and operation IDs.
 pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
+    let prd = foundation::enabled(db)?;
+    if prd
+        && !matches!(
+            &command,
+            Command::RuntimeInfo
+                | Command::DataTransfer(_)
+                | Command::Authenticated { .. }
+                | Command::Auth(_)
+                | Command::FoundationQueued { .. }
+                | Command::FoundationExportSnapshot
+                | Command::FoundationState
+                | Command::FoundationHistory { .. }
+                | Command::FoundationWrite(_)
+                | Command::FoundationLesson(_)
+                | Command::FoundationLessonHistory { .. }
+                | Command::FoundationSession(_)
+                | Command::FoundationSessionHistory { .. }
+                | Command::FoundationCoverage(_)
+                | Command::FoundationProcess(_)
+        )
+    {
+        return Err(store::ApiError::conflict(
+            "页面版本与新模型不匹配，请保留填写后刷新页面",
+        ));
+    }
+    if !prd
+        && matches!(
+            &command,
+            Command::FoundationQueued { .. }
+                | Command::FoundationExportSnapshot
+                | Command::FoundationState
+                | Command::FoundationHistory { .. }
+                | Command::FoundationWrite(_)
+                | Command::FoundationLesson(_)
+                | Command::FoundationLessonHistory { .. }
+                | Command::FoundationSession(_)
+                | Command::FoundationSessionHistory { .. }
+                | Command::FoundationCoverage(_)
+                | Command::FoundationProcess(_)
+        )
+    {
+        return Err(store::ApiError(
+            axum::http::StatusCode::NOT_FOUND,
+            "尚未启用新模型".into(),
+        ));
+    }
     Ok(match command {
-        Command::Authenticated { token, command } => {
+        Command::Authenticated {
+            token,
+            command,
+            expected_actor,
+        } => {
             let actor = auth::session(db, &token)?;
+            if expected_actor.as_ref().is_some_and(|id| id != &actor.id) {
+                return Err(store::ApiError::conflict(auth::SCOPE_CHANGED));
+            }
             if matches!(*command, Command::Auth(_) | Command::Authenticated { .. }) {
                 return Err(store::ApiError::invalid("认证请求不能嵌套"));
             }
+            if prd
+                && !matches!(
+                    &*command,
+                    Command::RuntimeInfo
+                        | Command::DataTransfer(_)
+                        | Command::FoundationQueued { .. }
+                        | Command::FoundationExportSnapshot
+                        | Command::FoundationState
+                        | Command::FoundationHistory { .. }
+                        | Command::FoundationWrite(_)
+                        | Command::FoundationLesson(_)
+                        | Command::FoundationLessonHistory { .. }
+                        | Command::FoundationSession(_)
+                        | Command::FoundationSessionHistory { .. }
+                        | Command::FoundationCoverage(_)
+                        | Command::FoundationProcess(_)
+                )
+            {
+                return Err(store::ApiError::conflict(
+                    "页面版本与新模型不匹配，请保留填写后刷新页面",
+                ));
+            }
+            if !prd
+                && matches!(
+                    &*command,
+                    Command::FoundationQueued { .. }
+                        | Command::FoundationExportSnapshot
+                        | Command::FoundationState
+                        | Command::FoundationHistory { .. }
+                        | Command::FoundationWrite(_)
+                        | Command::FoundationLesson(_)
+                        | Command::FoundationLessonHistory { .. }
+                        | Command::FoundationSession(_)
+                        | Command::FoundationSessionHistory { .. }
+                        | Command::FoundationCoverage(_)
+                        | Command::FoundationProcess(_)
+                )
+            {
+                return Err(store::ApiError(
+                    axum::http::StatusCode::NOT_FOUND,
+                    "尚未启用新模型".into(),
+                ));
+            }
             match *command {
+                Command::DataTransfer(request) => {
+                    foundation::transfer::command(db, &actor, request)?
+                }
+                Command::FoundationQueued { user_id, write } => {
+                    if actor.id != user_id {
+                        return Err(store::ApiError::conflict(
+                            "账号已变更，原账号的待上传记录已暂停",
+                        ));
+                    }
+                    match write {
+                        foundation::lesson_model::QueuedWrite::Catalog(request) => {
+                            if !matches!(request.mutation, foundation::model::Mutation::Catalog(_))
+                                || request.expected_version.is_some()
+                            {
+                                return Err(store::ApiError::invalid(
+                                    "上传队列仅支持新增课程或老师",
+                                ));
+                            }
+                            serde_json::to_value(foundation::write(db, &actor, request)?)?
+                        }
+                        foundation::lesson_model::QueuedWrite::Lesson(request) => {
+                            if !matches!(
+                                request.action,
+                                foundation::lesson_model::LessonAction::Observation(_)
+                            ) || request.expected_version.is_some()
+                            {
+                                return Err(store::ApiError::invalid("上传队列仅支持新增基础课记"));
+                            }
+                            serde_json::to_value(foundation::lessons::write(db, &actor, request)?)?
+                        }
+                    }
+                }
+                Command::FoundationProcess(request) => {
+                    foundation::followups::command(db, &actor, request)?
+                }
+                Command::FoundationExportSnapshot => {
+                    serde_json::to_value(foundation::export::snapshot(db)?)?
+                }
+                Command::FoundationState => serde_json::to_value(foundation::snapshot(db)?)?,
+                Command::FoundationHistory { id } => {
+                    serde_json::to_value(foundation::history(db, &id)?)?
+                }
+                Command::FoundationLesson(request) => {
+                    serde_json::to_value(foundation::lessons::write(db, &actor, request)?)?
+                }
+                Command::FoundationLessonHistory { id } => {
+                    serde_json::to_value(foundation::lessons::history(db, &id)?)?
+                }
+                Command::FoundationSession(request) => {
+                    serde_json::to_value(foundation::sessions::write(db, &actor, request)?)?
+                }
+                Command::FoundationSessionHistory { id } => {
+                    serde_json::to_value(foundation::sessions::history(db, &id)?)?
+                }
+                Command::FoundationCoverage(request) => {
+                    serde_json::to_value(foundation::coverage::report(db, request)?)?
+                }
+                Command::FoundationWrite(request) => {
+                    serde_json::to_value(foundation::write(db, &actor, request)?)?
+                }
                 Command::DeleteRecord { kind, id, request } => {
                     if actor.role != auth::AccountRole::Admin {
                         return Err(store::ApiError(
@@ -99,6 +280,21 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
                 command => execute(db, command)?,
             }
         }
+        Command::DataTransfer(_) => return Err(auth::unauthorized()),
+        Command::RuntimeInfo => {
+            serde_json::json!({"model":if prd {"prd_v1"} else {"legacy"},"contract":if prd {"skarmar.prd.v1"} else {"legacy"}})
+        }
+        Command::FoundationQueued { .. }
+        | Command::FoundationExportSnapshot
+        | Command::FoundationState
+        | Command::FoundationHistory { .. }
+        | Command::FoundationWrite(_)
+        | Command::FoundationLesson(_)
+        | Command::FoundationLessonHistory { .. }
+        | Command::FoundationSession(_)
+        | Command::FoundationSessionHistory { .. }
+        | Command::FoundationCoverage(_)
+        | Command::FoundationProcess(_) => return Err(auth::unauthorized()),
         Command::Auth(command) => auth::execute(db, command)?,
         Command::ImportAuthorize | Command::ImportPreview(_) | Command::ImportCommit(_) => {
             return Err(auth::unauthorized());

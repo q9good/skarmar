@@ -108,3 +108,108 @@ pub fn recover_admin(db: &mut Connection, username: &str, password: &str) -> Res
         skarma_core::auth::recover_admin(sql, username, password)
     })
 }
+
+/// Explicit PRD development entry: rejects legacy databases, never called by startup.
+pub fn initialize_foundation(db: &Connection) -> Result<()> {
+    db.execute_batch("PRAGMA foreign_keys = ON;")
+        .map_err(|_| ApiError::storage())?;
+    let tx = rusqlite::Transaction::new_unchecked(db, TransactionBehavior::Immediate)
+        .map_err(|_| ApiError::storage())?;
+    skarma_core::foundation::initialize(&Sqlite(&tx))?;
+    tx.commit().map_err(|_| ApiError::storage())
+}
+pub fn write_foundation(
+    db: &mut Connection,
+    actor: &skarma_core::auth::User,
+    request: skarma_core::foundation::model::Write,
+) -> Result<skarma_core::foundation::model::Saved> {
+    transaction(db, |sql| {
+        skarma_core::foundation::write(sql, actor, request)
+    })
+}
+pub fn foundation_snapshot(
+    db: &mut Connection,
+) -> Result<skarma_core::foundation::model::Snapshot> {
+    transaction(db, skarma_core::foundation::snapshot)
+}
+pub fn foundation_history(
+    db: &mut Connection,
+    id: &str,
+) -> Result<Vec<skarma_core::foundation::model::Revision>> {
+    transaction(db, |sql| skarma_core::foundation::history(sql, id))
+}
+pub fn foundation_catalog_snapshot(
+    db: &mut Connection,
+    id: &str,
+    kind: skarma_core::foundation::model::CatalogKind,
+) -> Result<skarma_core::foundation::model::CatalogSnapshot> {
+    transaction(db, |sql| {
+        skarma_core::foundation::catalog_snapshot(sql, id, kind)
+    })
+}
+
+/// Explicitly selected by configuration. Never migrates a legacy domain database.
+pub fn initialize_prd_runtime(db: &Connection) -> Result<()> {
+    db.execute_batch("PRAGMA foreign_keys=ON;")
+        .map_err(|_| ApiError::storage())?;
+    let tx = rusqlite::Transaction::new_unchecked(db, TransactionBehavior::Immediate)
+        .map_err(|_| ApiError::storage())?;
+    skarma_core::foundation::initialize_authenticated(&Sqlite(&tx))?;
+    tx.commit().map_err(|_| ApiError::storage())
+}
+
+pub fn write_foundation_lesson(
+    db: &mut Connection,
+    actor: &skarma_core::auth::User,
+    request: skarma_core::foundation::lesson_model::LessonWrite,
+) -> Result<skarma_core::foundation::lesson_model::Lesson> {
+    transaction(db, |sql| {
+        skarma_core::foundation::lessons::write(sql, actor, request)
+    })
+}
+pub fn foundation_lesson_history(
+    db: &mut Connection,
+    id: &str,
+) -> Result<Vec<skarma_core::foundation::lesson_model::LessonRevision>> {
+    transaction(db, |sql| skarma_core::foundation::lessons::history(sql, id))
+}
+
+pub fn write_foundation_session(
+    db: &mut Connection,
+    actor: &skarma_core::auth::User,
+    request: skarma_core::foundation::session_model::Write,
+) -> Result<skarma_core::foundation::session_model::Session> {
+    transaction(db, |sql| {
+        skarma_core::foundation::sessions::write(sql, actor, request)
+    })
+}
+pub fn foundation_coverage_at(
+    db: &mut Connection,
+    request: skarma_core::foundation::coverage::Request,
+    day: &str,
+) -> Result<skarma_core::foundation::coverage::Report> {
+    transaction(db, |sql| {
+        skarma_core::foundation::coverage::report_at(sql, request, day)
+    })
+}
+
+pub fn foundation_process(
+    db: &mut Connection,
+    actor: &skarma_core::auth::User,
+    request: skarma_core::foundation::process_model::Command,
+) -> Result<serde_json::Value> {
+    transaction(db, |sql| {
+        skarma_core::foundation::followups::command(sql, actor, request)
+    })
+}
+
+/// Offline maintenance/testing entry. Public HTTP always uses authenticated Command.
+pub fn data_transfer(
+    db: &mut Connection,
+    actor: &skarma_core::auth::User,
+    request: skarma_core::foundation::transfer::Command,
+) -> Result<serde_json::Value> {
+    transaction(db, |sql| {
+        skarma_core::foundation::transfer::command(sql, actor, request)
+    })
+}

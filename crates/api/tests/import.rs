@@ -13,6 +13,7 @@ fn signed(db: &mut Connection, token: &str, command: Command) -> serde_json::Val
     store::execute(
         db,
         Command::Authenticated {
+            expected_actor: None,
             token: token.into(),
             command: Box::new(command),
         },
@@ -71,6 +72,7 @@ fn denied(db: &mut Connection, token: &str, command: Command) -> axum::http::Sta
     store::execute(
         db,
         Command::Authenticated {
+            expected_actor: None,
             token: token.into(),
             command: Box::new(command),
         },
@@ -101,6 +103,7 @@ fn source(observation: &str) -> ImportPreviewInput {
                     "状态".into(),
                 ],
                 rows: vec![ImportRow {
+                    formulas: Default::default(),
                     row: 2,
                     cells: vec![
                         "主动表达需求".into(),
@@ -121,6 +124,7 @@ fn source(observation: &str) -> ImportPreviewInput {
                     "下一步计划".into(),
                 ],
                 rows: vec![ImportRow {
+                    formulas: Default::default(),
                     row: 2,
                     cells: vec![
                         "2026-10-17".into(),
@@ -405,6 +409,7 @@ fn unknown_sheet_blocks_the_whole_batch_instead_of_silently_archiving_it() {
         // Familiar column names cannot authorize an unverified table mapping.
         headers: vec!["目标名称".into()],
         rows: vec![ImportRow {
+            formulas: Default::default(),
             row: 2,
             cells: vec!["不可丢失的合成原文".into()],
         }],
@@ -494,6 +499,7 @@ fn oversized_serialized_preview_is_rejected_before_storage() {
     let row = input.sheets[1].rows[0].clone();
     input.sheets[1].rows = (2..62)
         .map(|index| ImportRow {
+            formulas: Default::default(),
             row: index,
             cells: row.cells.clone(),
         })
@@ -501,6 +507,7 @@ fn oversized_serialized_preview_is_rejected_before_storage() {
     let result = store::execute(
         &mut db,
         Command::Authenticated {
+            expected_actor: None,
             token,
             command: Box::new(Command::ImportPreview(input)),
         },
@@ -537,6 +544,7 @@ fn repeated_large_headers_are_bounded_before_source_archive_expansion() {
     }
     sheet.rows = (2..12)
         .map(|index| ImportRow {
+            formulas: Default::default(),
             row: index,
             cells: vec![
                 format!("合成目标{index}"),
@@ -550,6 +558,7 @@ fn repeated_large_headers_are_bounded_before_source_archive_expansion() {
     let result = store::execute(
         &mut db,
         Command::Authenticated {
+            expected_actor: None,
             token,
             command: Box::new(Command::ImportPreview(input)),
         },

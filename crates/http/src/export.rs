@@ -530,6 +530,15 @@ pub fn workbook(snapshot: ExportSnapshot) -> Result<Vec<u8>> {
     })
 }
 
+/// Internal typed snapshot dispatch, shared by SQLite and the private DO exporter.
+pub fn workbook_value(value: serde_json::Value) -> Result<Vec<u8>> {
+    if value["schema"] == "skarmar.prd.export.v1" {
+        crate::prd_export::workbook(serde_json::from_value(value)?)
+    } else {
+        workbook(serde_json::from_value(value)?)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

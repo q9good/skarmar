@@ -47,11 +47,9 @@ impl Repository for Database {
     async fn export(&self, command: Command) -> Result<Vec<u8>> {
         let snapshot = self.execute(command).await?;
         // The transaction has committed. Compression never blocks the DB mutex or Tokio workers.
-        tokio::task::spawn_blocking(move || {
-            skarma_http::export::workbook(serde_json::from_value(snapshot)?)
-        })
-        .await
-        .map_err(|_| ApiError::storage())?
+        tokio::task::spawn_blocking(move || skarma_http::export::workbook_value(snapshot))
+            .await
+            .map_err(|_| ApiError::storage())?
     }
 }
 
@@ -81,6 +79,9 @@ pub fn router_with_auth(
                 .allow_headers([
                     axum::http::header::CONTENT_TYPE,
                     axum::http::HeaderName::from_static("x-skarma-request"),
+                    axum::http::HeaderName::from_static("x-skarma-contract"),
+                    axum::http::HeaderName::from_static("x-skarma-transfer"),
+                    axum::http::HeaderName::from_static("x-skarma-space"),
                 ])
                 .allow_credentials(true),
         )

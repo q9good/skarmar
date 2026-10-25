@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use skarma_api::{Database, router_with_auth, store};
 use skarma_core::{
     auth::{AccountRole, NewUser},
-    config::{Config, Runtime},
+    config::{Config, DataModel, Runtime},
 };
 use skarma_http::auth::AuthConfig;
 use std::{
@@ -51,7 +51,7 @@ fn healthcheck() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn restore_stdin(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn restore_stdin(path: &str, model: DataModel) -> Result<(), Box<dyn std::error::Error>> {
     let parent = Path::new(path)
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -86,13 +86,18 @@ fn restore_stdin(path: &str) -> Result<(), Box<dyn std::error::Error>> {
         if check != "ok" {
             return Err("恢复文件检查失败，当前数据库未修改".into());
         }
-        let tables:i64=source.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('goals','sessions')",[],|row|row.get(0))?;
+        let tables:i64=source.query_row(if model==DataModel::Legacy {"SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('goals','sessions')"} else {"SELECT count(*) FROM sqlite_master WHERE type='table' AND name IN ('prd_schema','prd_entities')"},[],|row|row.get(0))?;
         if tables != 2 {
             return Err("恢复文件缺少应用数据表，当前数据库未修改".into());
         }
         // Migrate and validate the private copy before replacing the real database.
-        store::initialize(&source)?;
-        store::state(&source)?;
+        match model {
+            DataModel::Legacy => {
+                store::initialize(&source)?;
+                store::state(&source)?;
+            }
+            DataModel::PrdV1 => store::initialize_prd_runtime(&source)?,
+        }
         source.execute("DELETE FROM auth_sessions", [])?;
         source.backup("main", path, None)?;
         #[cfg(unix)]
@@ -116,9 +121,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     if !matches!(
         command,
-        "serve" | "admin-init" | "admin-reset" | "backup" | "restore-stdin"
+        "serve" | "admin-init" | "admin-reset" | "backup" | "restore-stdin" | "data-transfer-stdin"
     ) {
-        return Err("命令: serve / admin-init --username USER --name NAME / admin-reset --username USER / backup PATH".into());
+        return Err("命令: serve / admin-init --username USER --name NAME / admin-reset --username USER / backup PATH / restore-stdin --offline / data-transfer-stdin --username USER --offline".into());
     }
     let config = Config::load(Runtime::Local, |key| env::var(key).ok())?;
     let auth = if command == "serve" {
@@ -131,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if !args.iter().any(|arg| arg == "--offline") {
             return Err("恢复前必须停止服务，并明确传入 --offline".into());
         }
-        restore_stdin(&path)?;
+        restore_stdin(&path, config.model)?;
         eprintln!("恢复完成；所有会话已撤销，请重新登录");
         return Ok(());
     }
@@ -167,6 +172,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("数据库一致性备份完成");
         return Ok(());
     }
+    if command == "data-transfer-stdin" && !Path::new(&path).is_file() {
+        return Err("维护命令要求已有数据库，拒绝创建空库".into());
+    }
     if let Some(parent) = Path::new(&path)
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -181,7 +189,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     connection.busy_timeout(std::time::Duration::from_secs(5))?;
     connection.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL;")?;
-    store::initialize(&connection)?;
+    if command == "data-transfer-stdin" {
+        if !args.iter().any(|a| a == "--offline") {
+            return Err("数据转换命令仅供停止服务后的离线维护，请传入 --offline".into());
+        }
+        let username = option(&args, "--username").ok_or("请指定已有管理员 --username")?;
+        let actor = connection.query_row(
+            "SELECT id,username,display_name,role,active FROM auth_users WHERE username=?1",
+            [username],
+            |r| {
+                Ok(skarma_core::auth::User {
+                    id: r.get(0)?,
+                    username: r.get(1)?,
+                    display_name: r.get(2)?,
+                    role: if r.get::<_, String>(3)? == "admin" {
+                        AccountRole::Admin
+                    } else {
+                        AccountRole::Member
+                    },
+                    active: r.get::<_, i64>(4)? == 1,
+                })
+            },
+        )?;
+        let mut input = String::new();
+        std::io::stdin()
+            .take(1_000_001)
+            .read_to_string(&mut input)?;
+        if input.len() > 1_000_000 {
+            return Err("维护输入超过1MB".into());
+        }
+        let command = serde_json::from_str(&input)?;
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&store::data_transfer(&mut connection, &actor, command)?)?
+        );
+        return Ok(());
+    }
+    match config.model {
+        DataModel::Legacy => store::initialize(&connection)?,
+        DataModel::PrdV1 => store::initialize_prd_runtime(&connection)?,
+    }
     if matches!(command, "admin-init" | "admin-reset") {
         let username = option(&args, "--username").ok_or("请用 --username 指定账号")?;
         let password = password(args.iter().any(|arg| arg == "--password-stdin"))?;

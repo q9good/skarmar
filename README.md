@@ -53,6 +53,8 @@ separate network recovery before its data can be migrated.
 
 - [Product research, alternatives and design decisions (中文)](docs/product-discovery-2026-10-23.md)
 - [Family intervention PRD — research-informed review draft (中文)](docs/prd-family-intervention.md)
+- [PRD implementation, current validation and local startup (中文)](docs/prd-implementation-2026-10-25.md)
+- [PRD data conversion and workbook import boundaries (中文)](docs/prd-data-transition.md)
 - [PRD / current implementation gap analysis (中文)](docs/prd-implementation-gap-2026-10-23.md)
 - [Earlier product plan and research history (中文)](docs/product-plan.md)
 - [Development and validation (中文)](docs/development.md)

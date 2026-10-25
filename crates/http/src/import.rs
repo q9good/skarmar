@@ -11,12 +11,30 @@ use skarma_core::{
 /// Only a verified import-authorize command can become a preview command.
 pub fn preview_command(authorization: Command, input: ImportPreviewInput) -> Result<Command> {
     match authorization {
-        Command::Authenticated { token, command }
-            if matches!(*command, Command::ImportAuthorize) =>
+        Command::Authenticated {
+            token,
+            command,
+            expected_actor,
+        } if matches!(*command, Command::ImportAuthorize) => Ok(Command::Authenticated {
+            token,
+            expected_actor,
+            command: Box::new(Command::ImportPreview(input)),
+        }),
+        Command::Authenticated {
+            token,
+            command,
+            expected_actor,
+        } if matches!(
+            *command,
+            Command::DataTransfer(skarma_core::foundation::transfer::Command::AuthorizeUpload)
+        ) =>
         {
             Ok(Command::Authenticated {
                 token,
-                command: Box::new(Command::ImportPreview(input)),
+                expected_actor,
+                command: Box::new(Command::DataTransfer(
+                    skarma_core::foundation::transfer::Command::Workbook(input),
+                )),
             })
         }
         _ => Err(skarma_core::auth::unauthorized()),
@@ -58,7 +76,11 @@ fn checked_sheet(name: String, rows: Vec<(usize, Vec<String>)>) -> Result<Import
     let data = rows
         .into_iter()
         .filter(|(row, cells)| *row > header_row && cells.iter().any(|v| !v.is_empty()))
-        .map(|(row, cells)| ImportRow { row, cells })
+        .map(|(row, cells)| ImportRow {
+            row,
+            cells,
+            formulas: Default::default(),
+        })
         .collect::<Vec<_>>();
     if data.len() > MAX_ROWS {
         return Err(ApiError::invalid("文件记录数超过 10000 行限制，请分批导入"));
@@ -198,9 +220,54 @@ fn parse_xlsx(bytes: &[u8]) -> Result<Vec<ImportSheet>> {
             }
             cells.push((col, value));
         }
+        drop(reader);
+        // Read formulas sparsely as well. A dense worksheet_formula() could
+        // allocate a hostile sparse rectangle. Never execute or follow them.
+        let mut formula_reader = workbook
+            .worksheet_cells_reader(&name)
+            .map_err(|_| ApiError::invalid("Excel公式无法读取"))?;
+        let mut formulas = BTreeMap::<(u32, u32), String>::new();
+        while let Some(cell) = formula_reader
+            .next_formula()
+            .map_err(|_| ApiError::invalid("Excel公式无法读取"))?
+        {
+            if cell.get_value().is_empty() {
+                continue;
+            }
+            let (row, col) = cell.get_position();
+            first_row = first_row.min(row);
+            last_row = last_row.max(row);
+            first_col = first_col.min(col);
+            last_col = last_col.max(col);
+            if u64::from(last_col) - u64::from(first_col) + 1 > MAX_COLUMNS as u64
+                || u64::from(last_row) - u64::from(first_row) + 1 > (MAX_ROWS + MAX_SHEETS) as u64
+            {
+                return Err(ApiError::invalid("Excel公式范围超过导入行列限制"));
+            }
+            let formula = format!("={}", cell.get_value());
+            total_chars += formula.chars().count();
+            if formula.chars().count() > MAX_CELL_CHARS || total_chars > MAX_TOTAL_CHARS {
+                return Err(ApiError::invalid("Excel公式正文超过导入限制"));
+            }
+            if formulas.insert((row, col), formula.clone()).is_some() {
+                return Err(ApiError::invalid("Excel公式单元格重复"));
+            }
+            let cells = sparse_rows.entry(row).or_default();
+            if let Some((_, cached)) = cells.iter_mut().find(|(c, _)| *c == col) {
+                if cached.is_empty() {
+                    *cached = formula;
+                }
+            } else {
+                if cells.len() >= MAX_COLUMNS {
+                    return Err(ApiError::invalid("Excel公式单行超过列数限制"));
+                }
+                cells.push((col, formula));
+            }
+        }
         if sparse_rows.is_empty() {
             continue;
         }
+
         total_rows += (u64::from(last_row) - u64::from(first_row) + 1) as usize;
         if total_rows > MAX_ROWS + MAX_SHEETS {
             return Err(ApiError::invalid("文件记录数超过 10000 行限制，请分批导入"));
@@ -218,7 +285,24 @@ fn parse_xlsx(bytes: &[u8]) -> Result<Vec<ImportSheet>> {
                 (row as usize + 1, values)
             })
             .collect();
-        sheets.push(checked_sheet(name, rows)?);
+        let mut sheet = checked_sheet(name, rows)?;
+        let header_row = sheet.rows.first().map(|r| r.row).unwrap_or(usize::MAX);
+        let row_indices: BTreeMap<usize, usize> = sheet
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(i, r)| (r.row, i))
+            .collect();
+        for ((row, col), formula) in formulas {
+            if let Some(index) = row_indices.get(&(row as usize + 1)) {
+                sheet.rows[*index]
+                    .formulas
+                    .insert((col - first_col) as usize, formula);
+            } else if (row as usize + 1) < header_row {
+                return Err(ApiError::invalid("表头含公式，请先将表头粘贴为纯文字"));
+            }
+        }
+        sheets.push(sheet);
     }
     if sheets.is_empty() {
         return Err(ApiError::invalid("Excel 没有可导入的工作表"));
@@ -321,5 +405,20 @@ mod tests {
         let mac = DataRef::DateTime(ExcelDateTime::new(0.5, ExcelDateTimeType::DateTime, true));
         assert_eq!(cell_text(&legacy), "1904-01-01T12:00:00.000");
         assert_eq!(cell_text(&mac), "1904-01-01T12:00:00.000");
+    }
+    #[test]
+    fn formulas_keep_cached_values_and_inert_source_text() {
+        let mut workbook = rust_xlsxwriter::Workbook::new();
+        let sheet = workbook.add_worksheet();
+        sheet.set_name("原文").unwrap();
+        sheet.write_string(0, 0, "内容").unwrap();
+        sheet.write_string(0, 1, "计算值").unwrap();
+        sheet.write_string(1, 0, "=SUM(A1:A3)").unwrap();
+        sheet.write_formula(1, 1, "=1+2").unwrap();
+        let parsed = parse("合成公式.xlsx", &workbook.save_to_buffer().unwrap()).unwrap();
+        let r = &parsed.sheets[0].rows[0];
+        assert_eq!(r.cells[0], "=SUM(A1:A3)");
+        assert_eq!(r.formulas.get(&1).unwrap(), "=1+2");
+        assert!(!r.cells[1].is_empty());
     }
 }

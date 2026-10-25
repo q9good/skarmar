@@ -10,9 +10,16 @@ pub enum Storage {
     DurableObject,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DataModel {
+    Legacy,
+    PrdV1,
+}
+
 #[derive(Clone, Debug)]
 pub struct Config {
     pub storage: Storage,
+    pub model: DataModel,
     pub demo: bool,
     pub space: String,
 }
@@ -41,12 +48,21 @@ impl Config {
             "1" => true,
             _ => return Err("SKARMA_DEMO 必须是 0 或 1".into()),
         };
+        let model = match lookup("SKARMA_MODEL").as_deref().unwrap_or("legacy") {
+            "legacy" => DataModel::Legacy,
+            "prd_v1" => DataModel::PrdV1,
+            _ => return Err("SKARMA_MODEL 必须是 legacy 或 prd_v1".into()),
+        };
+        if model == DataModel::PrdV1 && demo {
+            return Err("新模型使用独立空库和真实登录，不加载旧版示例数据".into());
+        }
         let space = lookup("SKARMA_SPACE").unwrap_or_else(|| "default".into());
         if space.trim().is_empty() || space.len() > 128 {
             return Err("SKARMA_SPACE 不能为空或超过 128 字节".into());
         }
         Ok(Self {
             storage,
+            model,
             demo,
             space,
         })
@@ -71,6 +87,33 @@ mod tests {
         assert!(
             Config::load(Runtime::Cloudflare, |key| (key == "SKARMA_STORAGE")
                 .then(|| "sqlite".into()))
+            .is_err()
+        );
+    }
+    #[test]
+    fn new_model_is_explicit_and_does_not_load_legacy_demo() {
+        assert_eq!(
+            Config::load(Runtime::Local, |_| None).unwrap().model,
+            DataModel::Legacy
+        );
+        assert_eq!(
+            Config::load(Runtime::Cloudflare, |key| (key == "SKARMA_MODEL")
+                .then(|| "prd_v1".into()))
+            .unwrap()
+            .model,
+            DataModel::PrdV1
+        );
+        assert!(
+            Config::load(Runtime::Local, |key| (key == "SKARMA_MODEL")
+                .then(|| "unknown".into()))
+            .is_err()
+        );
+        assert!(
+            Config::load(Runtime::Local, |key| match key {
+                "SKARMA_MODEL" => Some("prd_v1".into()),
+                "SKARMA_DEMO" => Some("1".into()),
+                _ => None,
+            })
             .is_err()
         );
     }

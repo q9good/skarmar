@@ -93,6 +93,11 @@ pub(crate) fn valid_date(date: &str) -> Result<()> {
 }
 
 pub fn initialize(db: &dyn Sql) -> Result<()> {
+    if crate::foundation::enabled(db)? {
+        return Err(ApiError::conflict(
+            "此为新模型数据库，请明确设置 SKARMA_MODEL=prd_v1",
+        ));
+    }
     const MIGRATIONS: &[(i64, &str)] = &[
         (1, include_str!("../migrations/001_initial.sql")),
         (2, include_str!("../migrations/002_goal_revisions.sql")),

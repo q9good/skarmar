@@ -1,0 +1,17 @@
+ALTER TABLE prd_schema RENAME TO prd_schema_v2;
+CREATE TABLE prd_schema(version INTEGER NOT NULL CHECK(version=3));
+INSERT INTO prd_schema VALUES(3);
+DROP TABLE prd_schema_v2;
+CREATE TABLE prd_sessions(id TEXT PRIMARY KEY,version INTEGER NOT NULL,data TEXT NOT NULL);
+CREATE TABLE prd_session_revisions(session_id TEXT NOT NULL REFERENCES prd_sessions(id),version INTEGER NOT NULL,operation_id TEXT NOT NULL UNIQUE REFERENCES prd_operations(id),data TEXT NOT NULL,PRIMARY KEY(session_id,version));
+CREATE TABLE prd_knowledge_v3(id TEXT PRIMARY KEY,source_lesson_id TEXT REFERENCES prd_lessons(id),source_session_id TEXT REFERENCES prd_sessions(id),data TEXT NOT NULL,CHECK((source_lesson_id IS NULL)<>(source_session_id IS NULL)));
+INSERT INTO prd_knowledge_v3 SELECT id,source_lesson_id,NULL,data FROM prd_knowledge;
+DROP TABLE prd_knowledge;
+ALTER TABLE prd_knowledge_v3 RENAME TO prd_knowledge;
+CREATE TABLE prd_actions_v3(id TEXT PRIMARY KEY,source_lesson_id TEXT REFERENCES prd_lessons(id),source_session_id TEXT REFERENCES prd_sessions(id),data TEXT NOT NULL,CHECK((source_lesson_id IS NULL)<>(source_session_id IS NULL)));
+INSERT INTO prd_actions_v3 SELECT id,source_lesson_id,NULL,data FROM prd_actions;
+DROP TABLE prd_actions;
+ALTER TABLE prd_actions_v3 RENAME TO prd_actions;
+CREATE TABLE prd_output_revisions(kind TEXT NOT NULL,id TEXT NOT NULL,version INTEGER NOT NULL,data TEXT NOT NULL,PRIMARY KEY(kind,id,version));
+INSERT INTO prd_output_revisions SELECT 'knowledge',id,1,data FROM prd_knowledge;
+INSERT INTO prd_output_revisions SELECT 'action',id,1,data FROM prd_actions;

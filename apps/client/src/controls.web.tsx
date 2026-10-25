@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import {DetailOverlay} from './overlay';
+import {GuidedField} from './guided-field';
+import React, { useState,useId } from 'react';
 import { View } from 'react-native';
 import { Text, TextInput, Pressable, useReadability } from './readability';
 import type { DateProps, SelectProps } from './controls';
 const input: React.CSSProperties = { width: '100%', minWidth: 0, minHeight: 46, boxSizing: 'border-box', padding: '10px 12px', border: '1px solid #E0E6DD', borderRadius: 10, background: '#FCFCF9', color: '#243D36' };
 export function Select({ label, value, options, onChange, disabled }: SelectProps) {
-  const { large } = useReadability();
-  return <View style={{ gap: 6, marginTop: 8 }}><Text style={{ fontSize: 17 }}>{label}</Text>
-    <select aria-label={label} value={value} disabled={disabled} onChange={event => onChange(event.target.value)}
-      style={{ ...input, fontSize: large ? 18 : 16, minHeight: large ? 56 : 46 }}>
-      {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-    </select></View>;
+  const { large } = useReadability(),id=useId();const [open,setOpen]=useState(false),[search,setSearch]=useState('');
+  return <View style={{ gap: 6, marginTop: 8 }}><Text style={{ fontSize: 17 }}>{label}</Text><Text nativeID={id+'-description'} style={{fontSize:14,color:'#53665A'}}>选择符合本次情况的一项。</Text>
+    {options.length<=15?<select aria-label={label} aria-describedby={id+'-description'} value={value} disabled={disabled} onChange={event => onChange(event.target.value)} style={{ ...input, fontSize: large ? 18 : 16, minHeight: large ? 56 : 46 }}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>:<Pressable accessibilityRole="combobox" accessibilityLabel={label} accessibilityState={{expanded:open,disabled}} disabled={disabled} onPress={()=>{setSearch('');setOpen(true);}} style={{padding:12,borderWidth:1,borderColor:'#A6B5A8',borderRadius:10,backgroundColor:'#FCFCF9'}}><Text>{options.find(o=>o.value===value)?.label??'请选择'} ▾</Text></Pressable>}
+    {open&&<DetailOverlay title={'选择'+label} close={()=>setOpen(false)}><GuidedField label={'搜索'+label} value={search} change={setSearch} multiline={false}/>{options.filter(o=>o.label.includes(search)).map(o=><Pressable key={o.value} accessibilityRole="button" accessibilityLabel={'选择：'+o.label} onPress={()=>{onChange(o.value);setOpen(false);}} style={{padding:12,backgroundColor:'#E9F2E9',borderRadius:8}}><Text>{o.label}{o.value===value?'（当前选择）':''}</Text></Pressable>)}{!options.some(o=>o.label.includes(search))&&<Text>没有匹配项，原选择仍保留。</Text>}</DetailOverlay>}
+  </View>;
 }
 export function DateField({ label, value, onChange, disabled }: DateProps) {
   const { large } = useReadability();

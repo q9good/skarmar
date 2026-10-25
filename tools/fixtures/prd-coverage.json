@@ -1,0 +1,21 @@
+{
+  "today": "2026-10-24",
+  "records": [
+    {"id": "F1","source": "family","day": "2026-09-20","status": "completed","targets": [["S1","M1"]],"methods": ["A"],"tags": ["生活自理"]},
+    {"id": "F2","source": "family","day": "2026-09-30","status": "completed","targets": [["S2","M1"]],"planned_methods": ["A"],"methods": ["B"],"tags": ["阅读"]},
+    {"id": "F3","source": "family","day": "2026-10-18","status": "completed","targets": [["S1","M1"],["S2","M2"]],"methods": ["B"],"tags": ["游戏","阅读"]},
+    {"id": "F4","source": "family","day": "2026-10-24","status": "completed","version": 2,"targets": [["S1","M1"],["M1",null],["S3","M2"]],"planned_methods": ["A"],"methods": ["A"],"method_versions": {"A": 2},"tags": ["游戏"],"focus": ["LG"],"signals": {"LG": ["主动表达或分享"]}},
+    {"id": "F5","source": "family","day": "2026-10-24","status": "draft","targets": [["S2","M2"]],"planned_methods": ["A"],"methods": null},
+    {"id": "F6","source": "family","day": "2026-10-25","status": "draft","targets": [["S2","M2"]],"methods": null},
+    {"id": "F7","source": "family","day": "2026-10-24","status": "completed","targets": [["S3","M2"]],"methods": null,"tags": []},
+    {"id": "F8","source": "family","day": "2026-07-26","status": "completed","targets": [["S4",null]],"methods": ["A"],"tags": ["生活自理"]},
+    {"id": "F9","source": "family","day": "2026-10-23","status": "deleted","targets": [["S1","M1"]],"methods": ["B"]},
+    {"id": "L1","source": "lesson","day": "2026-09-30","status": "recorded","course": "C1","teacher": "T1","teacher_name": "测试甲","targets": [["S2","M1"]],"methods": ["A"]},
+    {"id": "L2","source": "lesson","day": "2026-10-24","status": "recorded","course": "C1","teacher": "T1","teacher_name": "测试甲新名","targets": [["S1","M1"]],"methods": ["B"],"focus": ["LG"]},
+    {"id": "L3","source": "lesson","day": "2026-10-24","status": "recorded","course": "C1","teacher": "T1","teacher_name": "测试甲新名","targets": [["S1","M1"]],"methods": ["B"]},
+    {"id": "L4","source": "lesson","day": "2026-10-24","status": "recorded","course": "C2","teacher": "T2","teacher_name": "测试乙","targets": [],"methods": null},
+    {"id": "L5","source": "lesson","day": "2026-10-24","status": "withdrawn","course": "C1","teacher": "T1","teacher_name": "测试甲新名","targets": [["S2","M2"]],"methods": ["A"]},
+    {"id": "L6","source": "lesson","day": "2026-10-24","status": "recorded","course": "C2","teacher": "T2","teacher_name": "测试乙","marked_error": true,"targets": [["S3","M2"]],"methods": ["B"]},
+    {"id": "I1","source": "moment","day": "2026-10-24","status": "recorded","targets": [["S2","M2"]],"focus": ["LG"],"methods": null}
+  ]
+}

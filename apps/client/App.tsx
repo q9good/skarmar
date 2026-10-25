@@ -1,5 +1,6 @@
 import { Pressable, Text, TextInput, ReadabilityProvider } from './src/readability';
 import { DetailOverlay } from './src/overlay';
+import { FoundationWorkspace } from './src/foundation-view';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View, useWindowDimensions, StatusBar, AppState as NativeAppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -87,7 +88,22 @@ function inputOf(session: Session): SessionInput {
 }
 
 export default function App() {
-  return <ReadabilityProvider><AuthBoundary><Workspace /></AuthBoundary></ReadabilityProvider>;
+  return <ReadabilityProvider><AuthBoundary><WorkspaceRouter /></AuthBoundary></ReadabilityProvider>;
+}
+
+function WorkspaceRouter() {
+  const auth = useAuth();
+  const [model, setModel] = useState<'legacy' | 'prd_v1' | null>(null);
+  const [error, setError] = useState('');
+  const load = useCallback(async () => {
+    try { const value = await request<{ model: string }>('/runtime');
+      if (value.model !== 'legacy' && value.model !== 'prd_v1') throw new Error('页面与服务版本不匹配，请保留填写后更新页面。');
+      setModel(value.model); setError('');
+    } catch (e) { setError(e instanceof Error ? e.message : '暂时无法连接'); }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+  if (!model) return <View style={{ padding: 24, gap: 16 }}>{error ? <><Text accessibilityRole="alert">{error}</Text><Button title="重试连接" onPress={() => void load()} /></> : <ActivityIndicator accessibilityLabel="正在读取服务信息" />}</View>;
+  return model === 'prd_v1' ? <FoundationWorkspace key={`${auth.identity.space}:${auth.identity.user.id}`} /> : <Workspace />;
 }
 
 function Workspace() {

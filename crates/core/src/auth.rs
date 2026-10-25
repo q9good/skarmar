@@ -12,6 +12,7 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 pub const SESSION_SECONDS: i64 = 7 * 24 * 60 * 60;
+pub const TRUSTED_SESSION_SECONDS: i64 = 365 * 24 * 60 * 60;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -80,6 +81,16 @@ pub enum AuthCommand {
         username: String,
         password: String,
     },
+    LoginTrusted {
+        username: String,
+        password: String,
+    },
+    SessionDetails {
+        token: String,
+    },
+    RevokeOtherSessions {
+        token: String,
+    },
     Session {
         token: String,
     },
@@ -120,7 +131,10 @@ pub struct LoginOutcome {
     pub user: Option<User>,
     pub token: Option<String>,
     pub rate_limited: bool,
+    pub session_seconds: i64,
 }
+
+pub const SCOPE_CHANGED: &str = "登录账号与当前填写不一致，请重新登录原账号后继续。";
 
 pub fn unauthorized() -> ApiError {
     ApiError(StatusCode::UNAUTHORIZED, "请登录后继续".into())
@@ -464,7 +478,12 @@ fn failure(db: &dyn Sql, key: &str, time: i64, window: i64, max: i64) -> Result<
     let lock = if count >= max { time + window } else { 0 };
     db.execute("INSERT INTO auth_login_attempts(key,failures,window_start,locked_until) VALUES (?1,?2,?3,?4) ON CONFLICT(key) DO UPDATE SET failures=excluded.failures,window_start=excluded.window_start,locked_until=excluded.locked_until", params![key,count,start,lock])
 }
-fn login(db: &dyn Sql, username: &str, password: &str) -> Result<LoginOutcome> {
+fn login(
+    db: &dyn Sql,
+    username: &str,
+    password: &str,
+    session_seconds: i64,
+) -> Result<LoginOutcome> {
     let name = normalize(username)?;
     if password.len() > 128 {
         return Err(ApiError::invalid("密码最多 128 字节"));
@@ -476,6 +495,7 @@ fn login(db: &dyn Sql, username: &str, password: &str) -> Result<LoginOutcome> {
             user: None,
             token: None,
             rate_limited: true,
+            session_seconds: 0,
         });
     }
     let rows = db.query(
@@ -501,6 +521,7 @@ fn login(db: &dyn Sql, username: &str, password: &str) -> Result<LoginOutcome> {
             user: None,
             token: None,
             rate_limited: false,
+            session_seconds: 0,
         });
     }
     let user = user(&rows[0])?;
@@ -513,12 +534,13 @@ fn login(db: &dyn Sql, username: &str, password: &str) -> Result<LoginOutcome> {
     db.execute("DELETE FROM auth_sessions WHERE token_hash IN (SELECT token_hash FROM auth_sessions WHERE user_id=?1 ORDER BY created_at DESC,token_hash LIMIT -1 OFFSET 9)", params![user.id])?;
     db.execute(
         "INSERT INTO auth_sessions(token_hash,user_id,created_at,expires_at) VALUES (?1,?2,?3,?4)",
-        params![token_hash(&token), user.id, time, time + SESSION_SECONDS],
+        params![token_hash(&token), user.id, time, time + session_seconds],
     )?;
     Ok(LoginOutcome {
         user: Some(user),
         token: Some(token),
         rate_limited: false,
+        session_seconds,
     })
 }
 
@@ -526,7 +548,31 @@ pub fn execute(db: &dyn Sql, command: AuthCommand) -> Result<serde_json::Value> 
     use AuthCommand::*;
     Ok(match command {
         Register { input } => serde_json::to_value(register(db, input)?)?,
-        Login { username, password } => serde_json::to_value(login(db, &username, &password)?)?,
+        Login { username, password } => {
+            serde_json::to_value(login(db, &username, &password, SESSION_SECONDS)?)?
+        }
+        LoginTrusted { username, password } => {
+            serde_json::to_value(login(db, &username, &password, TRUSTED_SESSION_SECONDS)?)?
+        }
+        SessionDetails { token } => {
+            let user = session(db, &token)?;
+            let rows = db.query(
+                "SELECT CAST(expires_at AS TEXT),CAST(expires_at-created_at AS TEXT) FROM auth_sessions WHERE token_hash=?1",
+                params![token_hash(&token)],
+            )?;
+            let row = rows.first().ok_or_else(unauthorized)?;
+            let expires_at = row[0].parse::<i64>().map_err(|_| ApiError::storage())?;
+            let duration = row[1].parse::<i64>().map_err(|_| ApiError::storage())?;
+            serde_json::json!({"user":user,"session":{"expires_at":expires_at,"trusted_device":duration>SESSION_SECONDS}})
+        }
+        RevokeOtherSessions { token } => {
+            let actor = session(db, &token)?;
+            db.execute(
+                "DELETE FROM auth_sessions WHERE user_id=?1 AND token_hash!=?2",
+                params![actor.id, token_hash(&token)],
+            )?;
+            serde_json::json!({"ok":true})
+        }
         Session { token } => serde_json::to_value(session(db, &token)?)?,
         Logout { token } => {
             db.execute(

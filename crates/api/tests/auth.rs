@@ -1018,3 +1018,236 @@ async fn queued_business_request_is_rechecked_after_session_revocation() {
 async fn queued_export_is_rechecked_after_session_revocation() {
     queued_request("/api/export.xlsx").await;
 }
+
+#[tokio::test]
+async fn trusted_device_login_is_opt_in_and_expires_in_server_storage() {
+    let (db, app) = fixture();
+    let normal = login(&app, "owner", PASSWORD).await;
+    let (status, headers, body) = send(
+        &app,
+        "POST",
+        "/api/auth/login",
+        None,
+        Some(json!({"username":"owner","password":PASSWORD,"trusted_device":true})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.get("token").is_none());
+    let cookie = headers["set-cookie"].to_str().unwrap();
+    assert!(cookie.contains("Max-Age=31536000"));
+    assert!(
+        cookie.contains("Secure")
+            && cookie.contains("HttpOnly")
+            && cookie.contains("SameSite=Strict")
+    );
+    let trusted = cookie.split(';').next().unwrap().to_owned();
+    {
+        let c = db.0.lock().unwrap();
+        let mut q = c
+            .prepare(
+                "SELECT expires_at-created_at FROM auth_sessions ORDER BY expires_at-created_at",
+            )
+            .unwrap();
+        let durations = q
+            .query_map([], |r| r.get::<_, i64>(0))
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(durations, vec![604800, 31536000]);
+        // No clock sleeps: expire only the trusted token's database row.
+        c.execute(
+            "UPDATE auth_sessions SET expires_at=0 WHERE expires_at-created_at=31536000",
+            [],
+        )
+        .unwrap();
+    }
+    assert_eq!(
+        send(&app, "GET", "/api/auth/me", Some(&trusted), None)
+            .await
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/me", Some(&normal), None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    let (_, headers, _) = send(
+        &app,
+        "POST",
+        "/api/auth/login",
+        None,
+        Some(json!({"username":"owner","password":PASSWORD,"trusted_device":false})),
+    )
+    .await;
+    assert!(
+        headers["set-cookie"]
+            .to_str()
+            .unwrap()
+            .contains("Max-Age=604800")
+    );
+}
+
+#[tokio::test]
+async fn revoking_other_devices_keeps_current_session_and_other_users() {
+    let (_, app) = fixture();
+    let current = login(&app, "owner", PASSWORD).await;
+    let (_, headers, _) = send(
+        &app,
+        "POST",
+        "/api/auth/login",
+        None,
+        Some(json!({"username":"owner","password":PASSWORD,"trusted_device":true})),
+    )
+    .await;
+    let other = headers["set-cookie"]
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let (created, _, _) = send(
+        &app,
+        "POST",
+        "/api/auth/users",
+        Some(&current),
+        Some(json!({"username":"member","display_name":"家人","password":"s","role":"member"})),
+    )
+    .await;
+    assert_eq!(created, StatusCode::OK);
+    let member = login(&app, "member", "s").await;
+    assert_eq!(
+        send(&app, "POST", "/api/auth/sessions/revoke-others", None, None)
+            .await
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/sessions/revoke-others",
+            Some(&current),
+            None
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/me", Some(&current), None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/me", Some(&other), None)
+            .await
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/me", Some(&member), None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    // Revocation is safe to repeat and cannot revoke a different user's sessions.
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            "/api/auth/sessions/revoke-others",
+            Some(&current),
+            None
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/me", Some(&member), None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+}
+
+#[tokio::test]
+async fn stale_forms_cannot_read_write_export_or_log_out_as_a_different_cookie_actor() {
+    let (db, app) = fixture();
+    let owner = login(&app, "owner", PASSWORD).await;
+    let owner_id = send(&app, "GET", "/api/auth/me", Some(&owner), None)
+        .await
+        .2["user"]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    send(&app,"POST","/api/auth/users",Some(&owner),Some(json!({"username":"guard-member","display_name":"合成家人","password":"s","role":"member"}))).await;
+    let member = login(&app, "guard-member", "s").await;
+    let member_id = send(&app, "GET", "/api/auth/me", Some(&member), None)
+        .await
+        .2["user"]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let gid = uuid::Uuid::new_v4().to_string();
+    let goal = json!({"id":gid,"title":"原账号的草稿不可串号","level":"short","parent_id":null,"area":"","criteria":""});
+    for (method, path, body) in [
+        ("GET", "/api/state", None),
+        ("POST", "/api/goals", Some(goal.clone())),
+        ("GET", "/api/export.xlsx", None),
+        ("POST", "/api/auth/logout", None),
+        ("POST", "/api/auth/sessions/revoke-others", None),
+    ] {
+        let request = Request::builder()
+            .method(method)
+            .uri(path)
+            .header("cookie", &member)
+            .header("origin", "https://app.example.test")
+            .header("x-skarma-request", "1")
+            .header("x-skarma-actor", &owner_id)
+            .header("x-skarma-space", "family")
+            .header("content-type", "application/json")
+            .body(Body::from(body.map(|v| v.to_string()).unwrap_or_default()))
+            .unwrap();
+        let response = app.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::CONFLICT, "{path}");
+    }
+    assert_eq!(
+        db.0.lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM goals WHERE id=?1", [&gid], |r| r
+                .get::<_, i64>(0))
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        send(&app, "GET", "/api/auth/me", Some(&member), None)
+            .await
+            .0,
+        StatusCode::OK,
+        "wrong-actor logout revoked the current actor"
+    );
+    let request = Request::builder()
+        .method("POST")
+        .uri("/api/goals")
+        .header("cookie", &member)
+        .header("origin", "https://app.example.test")
+        .header("x-skarma-request", "1")
+        .header("x-skarma-actor", &member_id)
+        .header("x-skarma-space", "family")
+        .header("content-type", "application/json")
+        .body(Body::from(goal.to_string()))
+        .unwrap();
+    assert!(
+        app.clone()
+            .oneshot(request)
+            .await
+            .unwrap()
+            .status()
+            .is_success()
+    );
+}

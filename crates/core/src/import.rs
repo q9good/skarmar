@@ -25,6 +25,9 @@ pub struct ImportRow {
     /// One-based row number in the original worksheet.
     pub row: usize,
     pub cells: Vec<String>,
+    /// Source formula text, never evaluated. Values retain the saved cached result.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub formulas: std::collections::BTreeMap<usize, String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -309,7 +312,7 @@ fn value(row: &ImportRow, index: Option<usize>) -> &str {
         .trim()
 }
 
-fn date(raw: &str) -> Result<Option<String>> {
+pub(crate) fn date(raw: &str) -> Result<Option<String>> {
     if raw.is_empty() {
         return Ok(None);
     }
@@ -580,7 +583,11 @@ fn analyze(db: &dyn Sql, input: &ImportPreviewInput) -> Result<(ImportPreview, V
                     .push(warn(&sheet.name, Some(row.row), "来源记录 ID 重复"));
                 continue;
             }
-            let raw_json = serde_json::to_string(&(&sheet.headers, &row.cells))?;
+            let raw_json = if row.formulas.is_empty() {
+                serde_json::to_string(&(&sheet.headers, &row.cells))?
+            } else {
+                serde_json::to_string(&(&sheet.headers, &row.cells, &row.formulas))?
+            };
             // Headers are retained with every source row. Bound their expanded
             // archive size as well as the compact, once-per-sheet input size.
             archive_bytes = archive_bytes.saturating_add(raw_json.len());

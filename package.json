@@ -22,7 +22,10 @@
     "test:relations": "node tools/check-relations.mjs",
     "test:demo-restore": "node tools/check-relations.mjs --restore-demo",
     "test:lesson-links": "node tools/check-relations.mjs --lessons",
-    "test:mutations": "node tools/check-relations.mjs --mutations"
+    "test:mutations": "node tools/check-relations.mjs --mutations",
+    "test:prd-client": "node tools/test-prd-client.mjs",
+    "test:prd-web": "node tools/check-prd-web.mjs",
+    "test:prd-runtimes": "node tools/check-prd-runtimes.mjs"
   },
   "devDependencies": {
     "miniflare": "4.20260730.0",

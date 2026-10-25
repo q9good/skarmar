@@ -12,8 +12,8 @@ use serde_json::{Value, json};
 use skarma_core::{
     Command,
     auth::{
-        AuthCommand, LoginOutcome, NewUser, RegistrationInput, RegistrationOutcome,
-        SESSION_SECONDS, UserUpdate, unauthorized,
+        AuthCommand, LoginOutcome, NewUser, RegistrationInput, RegistrationOutcome, UserUpdate,
+        unauthorized,
     },
     config::Config,
     store::{ApiError, Result},
@@ -159,13 +159,30 @@ fn identity(user: Value, config: &AuthConfig) -> Value {
 }
 
 #[derive(Clone)]
-pub(crate) struct SessionProof(pub String);
+pub(crate) struct SessionProof {
+    pub token: String,
+    pub expected_actor: Option<String>,
+}
 
 pub(crate) async fn require_session<R: Repository>(
     State(state): State<AuthState<R>>,
     mut request: Request,
     next: Next,
 ) -> Response {
+    if request.uri().path().ends_with("/prd/queue")
+        && (state.config.demo
+            || request
+                .headers()
+                .get("x-skarma-space")
+                .and_then(|v| v.to_str().ok())
+                != Some(state.config.space.as_str()))
+    {
+        return ApiError(
+            StatusCode::FORBIDDEN,
+            "上传空间不匹配，请用原账号重新打开".into(),
+        )
+        .into_response();
+    }
     if !state.config.demo {
         let token = match token(request.headers(), &state.config) {
             Ok(token) => token,
@@ -173,7 +190,21 @@ pub(crate) async fn require_session<R: Repository>(
         };
         // Validate in the same SQL transaction as the business operation, so a
         // queued request cannot outlive a committed account/session revocation.
-        request.extensions_mut().insert(SessionProof(token));
+        let expected_actor = request
+            .headers()
+            .get("x-skarma-actor")
+            .map(|v| v.to_str().unwrap_or("").to_owned());
+        if request
+            .headers()
+            .get("x-skarma-space")
+            .is_some_and(|v| v.to_str().ok() != Some(state.config.space.as_str()))
+        {
+            return ApiError::conflict(skarma_core::auth::SCOPE_CHANGED).into_response();
+        }
+        request.extensions_mut().insert(SessionProof {
+            token,
+            expected_actor,
+        });
     }
     next.run(request).await
 }
@@ -217,6 +248,45 @@ pub(crate) async fn protect_requests<R: Repository>(
             return response;
         }
     }
+    // Account-management routes execute Auth commands directly. A request's
+    // cookie token has an immutable user binding; revalidate the same token in
+    // the command too so revocation remains effective after this preflight.
+    let path = request.uri().path();
+    if !state.config.demo
+        && path.contains("/auth/")
+        && !["/auth/login", "/auth/me", "/auth/register"]
+            .iter()
+            .any(|p| path.ends_with(p))
+        && request.headers().contains_key("x-skarma-actor")
+    {
+        let expected = request
+            .headers()
+            .get("x-skarma-actor")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_owned();
+        let wrong_space = request
+            .headers()
+            .get("x-skarma-space")
+            .is_some_and(|v| v.to_str().ok() != Some(state.config.space.as_str()));
+        let request_token = match token(request.headers(), &state.config) {
+            Ok(v) => v,
+            Err(e) => return e.into_response(),
+        };
+        let details = match state
+            .repo
+            .execute(Command::Auth(AuthCommand::SessionDetails {
+                token: request_token,
+            }))
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => return e.into_response(),
+        };
+        if details["user"]["id"].as_str() != Some(expected.as_str()) || wrong_space {
+            return ApiError::conflict(skarma_core::auth::SCOPE_CHANGED).into_response();
+        }
+    }
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
@@ -232,6 +302,8 @@ pub(crate) async fn protect_requests<R: Repository>(
 struct Login {
     username: String,
     password: String,
+    #[serde(default)]
+    trusted_device: bool,
 }
 async fn register<R: Repository>(
     State(state): State<AuthState<R>>,
@@ -276,9 +348,16 @@ async fn login<R: Repository>(
     let result: LoginOutcome = serde_json::from_value(
         state
             .repo
-            .execute(Command::Auth(AuthCommand::Login {
-                username: input.username,
-                password: input.password,
+            .execute(Command::Auth(if input.trusted_device {
+                AuthCommand::LoginTrusted {
+                    username: input.username,
+                    password: input.password,
+                }
+            } else {
+                AuthCommand::Login {
+                    username: input.username,
+                    password: input.password,
+                }
             }))
             .await?,
     )?;
@@ -300,7 +379,7 @@ async fn login<R: Repository>(
     let mut response = Json(identity(serde_json::to_value(user)?, &state.config)).into_response();
     response.headers_mut().insert(
         header::SET_COOKIE,
-        state.config.cookie(&token, SESSION_SECONDS),
+        state.config.cookie(&token, result.session_seconds),
     );
     Ok(response)
 }
@@ -308,17 +387,21 @@ async fn me<R: Repository>(
     State(state): State<AuthState<R>>,
     headers: HeaderMap,
 ) -> Result<Json<Value>> {
-    let user = if state.config.demo {
-        json!({"id":"demo","username":"demo","display_name":"示例体验","role":"member","active":true})
-    } else {
-        state
-            .repo
-            .execute(Command::Auth(AuthCommand::Session {
-                token: token(&headers, &state.config)?,
-            }))
-            .await?
-    };
-    Ok(Json(identity(user, &state.config)))
+    if state.config.demo {
+        return Ok(Json(identity(
+            json!({"id":"demo","username":"demo","display_name":"示例体验","role":"member","active":true}),
+            &state.config,
+        )));
+    }
+    let details = state
+        .repo
+        .execute(Command::Auth(AuthCommand::SessionDetails {
+            token: token(&headers, &state.config)?,
+        }))
+        .await?;
+    let mut value = identity(details["user"].clone(), &state.config);
+    value["session"] = details["session"].clone();
+    Ok(Json(value))
 }
 async fn logout<R: Repository>(
     State(state): State<AuthState<R>>,
@@ -335,6 +418,19 @@ async fn logout<R: Repository>(
         .headers_mut()
         .insert(header::SET_COOKIE, state.config.cookie("", 0));
     Ok(response)
+}
+async fn revoke_other_sessions<R: Repository>(
+    State(state): State<AuthState<R>>,
+    headers: HeaderMap,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        state
+            .repo
+            .execute(Command::Auth(AuthCommand::RevokeOtherSessions {
+                token: token(&headers, &state.config)?,
+            }))
+            .await?,
+    ))
 }
 async fn users<R: Repository>(
     State(state): State<AuthState<R>>,
@@ -457,6 +553,10 @@ pub(crate) fn routes<R: Repository>(state: AuthState<R>) -> Router {
         )
         .route("/auth/me", get(me::<R>))
         .route("/auth/logout", post(logout::<R>))
+        .route(
+            "/auth/sessions/revoke-others",
+            post(revoke_other_sessions::<R>),
+        )
         .route("/auth/password", put(password::<R>))
         .route("/auth/users", get(users::<R>).post(create_user::<R>))
         .route("/auth/users/{id}", put(update_user::<R>))
