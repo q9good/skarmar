@@ -2,6 +2,17 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { acceptSaved, decodeDrafts, emptySnapshot, mergeSnapshot, newGoal, newMethod } from '../apps/client/src/foundation.ts';
 import {sessionExpiresSoon,TRUSTED_RENEWAL_NOTICE_SECONDS} from '../apps/client/src/session-renewal.ts';
+import {businessDateLabel,todayRecords} from '../apps/client/src/prd-today.ts';
+test('today records use the Shanghai business date, authors, time slots and sync recency',()=>{
+ const now=Date.parse('2026-10-25T12:05:00Z'),today='2026-10-25';
+ const lesson={id:'lesson',status:'recorded',created_at:'2026-10-25T12:04:00Z',creator_name:'奶奶',observation:{business_date:today},course:{name:'语言课'},teacher:{name:'王老师'}};
+ const session={id:'session',status:'completed',created_at:'2026-10-25T12:00:00Z',creator_name:'爸爸',input:{business_date:today,time_slot:'晚上',plan:'',summary:{targets:[{performed:true,observation:'主动表达两次'}]}}};
+ const moment={id:'moment',kind:'moment',version:1,created_at:'2026-10-25T11:00:00Z',creator_name:'妈妈',deleted:false,input:{business_date:today,text:'拿书给家人看'},audit:{actor_name:'妈妈',at:'2026-10-25T11:00:00Z'}};
+ const rows=todayRecords({...emptySnapshot,lessons:[lesson],sessions:[session]},[moment],today,now);
+ assert.equal(businessDateLabel(today),'2026-10-25 周日');assert.deepEqual(rows.map(row=>row.kind),['lesson','session','moment']);
+ assert.deepEqual(rows.map(row=>row.author),['奶奶','爸爸','妈妈']);assert.deepEqual(rows.map(row=>row.timing),['20:04','晚上','19:00']);
+ assert.deepEqual(rows.map(row=>row.sync),['刚保存 · 已同步','刚保存 · 已同步','已同步']);
+});
 test('trusted renewal prompt starts at fourteen days while standard sessions retain the one-day window',()=>{
  const now=1000,day=86400;
  assert.equal(sessionExpiresSoon({expires_at:now+TRUSTED_RENEWAL_NOTICE_SECONDS+1,trusted_device:true},now),false);

@@ -19,6 +19,8 @@ import type {Coverage} from './prd-sessions';
 import {HistoryPanel} from './prd-history-view';
 import {measurementSeries} from './prd-progress';
 import type {EvidenceRecord} from './prd-observations';
+import {TodayRecords} from './prd-today-view';
+import {businessDateLabel} from './prd-today';
 import {LessonOutboxProvider,LessonQueueStatus} from './prd-outbox-view';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, ScrollView, StyleSheet, View } from 'react-native';
@@ -110,6 +112,8 @@ export function FoundationWorkspace() {
   const scope = `${auth.identity.space}:${auth.identity.user.id}`;
   const key = `skarmar:${scope}:prd-drafts:v1`;
   const [data, setData] = useState<Snapshot>(emptySnapshot);
+  const [todayMoments,setTodayMoments]=useState<EvidenceRecord[]>([]);
+  const reportTodayMoments=useCallback((records:EvidenceRecord[])=>setTodayMoments(records),[]);
   const [goalLevel,setGoalLevel]=useState('all'),[goalView,setGoalView]=useState('coverage'),[progressNonce,setProgressNonce]=useState(0),[progress,setProgress]=useState<{as_of:string;goals:{id:string;measurement_count:number;segment_count:number;latest:EvidenceRecord[]}[]}|null>(null),[progressError,setProgressError]=useState('');
   const progressSequence=useRef(0);
   const [goalSearch,setGoalSearch]=useState(''),[methodSearch,setMethodSearch]=useState(''),[goalSource,setGoalSource]=useState<'family'|'lesson'|'combined'>('family'),[goalDays,setGoalDays]=useState(30),[goalReport,setGoalReport]=useState<Coverage|null>(null);
@@ -221,16 +225,18 @@ export function FoundationWorkspace() {
   const detail = detailId ? findSaved(data, detailId) : undefined;
   const relatedKnowledge = (goalId?: string, methodId?: string) => goalId?knowledgeForGoal(data,goalId).map(r=>r.knowledge):data.knowledge.filter(k=>!k.deleted&&!!methodId&&k.input.method_ids.includes(methodId));
   const knowledgeCard=(k:Snapshot['knowledge'][number],goalId?:string,methodId?:string)=><View key={k.input.id} style={{gap:6}}><Text>{k.input.kind==='difficulty'?'关联困难':'关联经验'}：{k.input.content}</Text><Text style={s.hint}>{knowledgeRelation(data,k,goalId,methodId)}</Text><Text style={s.hint}>{knowledgeSource(data,k)}</Text><Action title={`查看关联知识：${k.details?.title||k.input.content}`} secondary press={()=>setRequestedFollowup({kind:'knowledge',id:k.input.id,nonce:uuid()})}/></View>;
+  const today=localDate();
   const goals = data.goals.filter(g => (goalLevel==='all'||g.input.level===goalLevel)&&(showHidden || !g.input.archived)&&[g.input.title,g.input.meaning,g.input.criteria].some(v=>v.includes(goalSearch)));
   const longDirections = data.goals.filter(g => g.input.level === 'long' && !g.input.archived);
   const methods = [...data.methods].filter(m => (showHidden || m.input.state === 'active')&&[m.input.title,m.input.description,m.input.steps].some(v=>v.includes(methodSearch))).sort((a,b)=>(methodOrder.findIndex(r=>r.id===a.id)<0?999:methodOrder.findIndex(r=>r.id===a.id))-(methodOrder.findIndex(r=>r.id===b.id)<0?999:methodOrder.findIndex(r=>r.id===b.id)));
   const followupHub=(mode:'today'|'full'|'hidden')=><FollowupHub planActions={ids=>setRequestedPlanActions({ids,nonce:uuid()})} data={data} mode={mode} openLesson={id=>void refresh().then(()=>setRequestedLesson({id,nonce:uuid()})).catch(e=>setSyncError(messageOf(e)))} refresh={refresh} adjustMethod={(mid,kid,version)=>{const method=data.methods.find(m=>m.id===mid);if(!method)return;if(draftsRef.current[mid]){setEditor(mid);setError('先核对已有方法填写，再根据这条知识调整。');return;}begin({kind:'method',value:{...method.input,basis:[...(method.input.basis??[]).filter(b=>b.id!==kid),{id:kid,version}]}},{kind:'method',value:method});}} requested={requestedFollowup} onRequested={()=>setRequestedFollowup(null)}/>;
-  const sessionHub=(mode:'today'|'records'|'drafts')=><SessionHub data={data} mode={mode} refresh={refresh} accepted={session=>setData(current=>mergeSnapshot(current,{...emptySnapshot,sessions:[session]}))} acceptMethod={saved=>setData(current=>acceptSaved(current,saved))} openGoal={id=>void openDetail(id)} openAction={id=>setRequestedFollowup({kind:'action',id,nonce:uuid()})} requested={requestedSession} onRequested={()=>setRequestedSession(null)} requestedActions={requestedPlanActions} onRequestedActions={()=>setRequestedPlanActions(null)}/>;
+  const todayRecords=<TodayRecords data={data} moments={todayMoments} today={today} open={(kind,id)=>kind==='lesson'?setRequestedLesson({id,nonce:uuid(),view:'detail'}):setRequestedSession({id,nonce:uuid()})}/>;
+  const sessionHub=(mode:'today'|'records'|'drafts')=><SessionHub data={data} mode={mode} afterPrimary={mode==='today'?todayRecords:undefined} refresh={refresh} accepted={session=>setData(current=>mergeSnapshot(current,{...emptySnapshot,sessions:[session]}))} acceptMethod={saved=>setData(current=>acceptSaved(current,saved))} openGoal={id=>void openDetail(id)} openAction={id=>setRequestedFollowup({kind:'action',id,nonce:uuid()})} requested={requestedSession} onRequested={()=>setRequestedSession(null)} requestedActions={requestedPlanActions} onRequestedActions={()=>setRequestedPlanActions(null)}/>;
   return <LessonOutboxProvider data={data} cacheLoaded={snapshot=>setData(current=>mergeSnapshot(snapshot,current))} accepted={receipt=>setData(current=>'kind' in receipt?acceptSaved(current,receipt):mergeSnapshot(current,{...emptySnapshot,lessons:[receipt]}))}><View style={s.root}>
     <View style={s.header}><Text style={s.brand}>✦ skarmar</Text><Action title="我的账号" secondary press={() => setAccount(true)} /></View>
     <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {account ? <><AccountPanel businessTools={false} prdExport back={() => setAccount(false)} onImported={refresh} logout={async () => { await persistence.current; await auth.logout(); }} /><HelpButton title="使用说明与手机桌面入口"/><Action title="共享需要与帮助说明" secondary press={()=>setRequestedObservation({kind:'needs',id:'',nonce:uuid()})}/><Action title="维护课程和老师选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /></> : <>
-        <View style={s.header}><Text accessibilityRole="header" style={s.title}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程和老师' }[tab]}</Text></View>
+        <View style={s.header}><Text accessibilityRole="header" style={s.title}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程和老师' }[tab]}</Text>{tab==='today'&&<Text accessibilityLabel="家庭业务日期" style={s.hint}>{businessDateLabel(today)}</Text>}</View>
         <LessonQueueStatus/>
         {syncError ? <View style={s.card}><Text accessibilityRole="alert">{syncError}</Text><Action title="重试同步" secondary press={() => {setProgressNonce(n=>n+1);void refresh().catch(e => setSyncError(messageOf(e)));}} /></View> : null}
         {notice ? <Text role="status">{notice}</Text> : null}
@@ -285,7 +291,7 @@ export function FoundationWorkspace() {
           </>}
         </>}
       </>}
-      <ObservationHub changed={()=>setProgressNonce(n=>n+1)} data={data} mode={account?'hidden':tab==='today'?'today':tab==='records'&&recordKind==='family'?'records':'hidden'} requested={requestedObservation} onRequested={()=>setRequestedObservation(null)}/>
+      <ObservationHub changed={()=>setProgressNonce(n=>n+1)} reported={reportTodayMoments} data={data} mode={account?'hidden':tab==='today'?'today':tab==='records'&&recordKind==='family'?'records':'hidden'} requested={requestedObservation} onRequested={()=>setRequestedObservation(null)}/>
       {tab!=='today'&&!(tab==='records'&&recordKind==='family')&&sessionHub('drafts')}
       {tab!=='today'&&!(tab==='records'&&recordKind==='lessons')&&<LessonHub openKnowledge={id=>setRequestedFollowup({kind:'knowledge',id,nonce:uuid()})} inboxManaged requested={requestedLesson} onRequested={()=>setRequestedLesson(null)} data={data} actorId={auth.identity.user.id} actorName={auth.identity.user.display_name} admin={auth.identity.user.role==='admin'} mode="drafts" refresh={refresh} savedLesson={lesson=>setData(current=>mergeSnapshot(current,{...emptySnapshot,lessons:[lesson]}))} catalogSaved={saved=>setData(current=>acceptSaved(current,saved))} openGoal={id=>void openDetail(id)} openMethod={id=>void openDetail(id)} scrollTop={()=>scroll.current?.scrollTo({y:0,animated:false})}/>}
 

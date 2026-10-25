@@ -239,9 +239,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
         {data.actions.some(a=>a.status==='pending'&&a.input.assignee_id&&a.input.assignee_id!==actorId)&&<Action title={`其他家人的待做（${data.actions.filter(a=>a.status==='pending'&&a.input.assignee_id&&a.input.assignee_id!==actorId).length}）`} press={()=>setOtherTasks(v=>!v)}/>}
         {otherTasks&&data.actions.filter(a=>a.status==='pending'&&a.input.assignee_id&&a.input.assignee_id!==actorId).map(a=><View key={a.input.id} style={{gap:5}}><Text>{a.assignee_name}的下一步：{a.input.content}</Text>{openAction&&<Action title={`维护下一步：${a.input.content}`} press={()=>openAction(a.input.id)}/>}</View>)}
         </>}
-        <Text style={{fontSize:18,fontWeight:'600'}}>今天的上课记录</Text>
-        {active.filter(l=>l.observation.business_date===today).map(l=><LessonCard key={l.id} lesson={l} open={()=>setDetail(l.id)} />)}
-        {!active.some(l=>l.observation.business_date===today)&&<Text>今天还没有上课记录。</Text>}
+
       </>:mode==='records'?<>
         <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}><Action title="课堂记录" secondary={section!=='classroom'} press={()=>{setSection('classroom');setSelectedTeacher(null);}}/><Action title="课时核对" secondary={section!=='totals'} press={()=>{setSection('totals');setSelectedTeacher(null);}}/></View>
         <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:8}}><Action title="上个月" press={()=>{setCustomRange(false);section==='totals'?setCountMonth(v=>shiftMonth(v,-1)):setMonth(v=>shiftMonth(v,-1));}}/><Text>{section==='totals'?countMonth:month}</Text><Action title="下个月" press={()=>{setCustomRange(false);section==='totals'?setCountMonth(v=>shiftMonth(v,1)):setMonth(v=>shiftMonth(v,1));}}/></View>
