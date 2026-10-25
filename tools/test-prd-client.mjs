@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { readFileSync } from 'node:fs';
 import { acceptSaved, decodeDrafts, emptySnapshot, mergeSnapshot, newGoal, newMethod } from '../apps/client/src/foundation.ts';
 import {sessionExpiresSoon,TRUSTED_RENEWAL_NOTICE_SECONDS} from '../apps/client/src/session-renewal.ts';
 import {businessDateLabel,todayRecords} from '../apps/client/src/prd-today.ts';
@@ -40,13 +41,42 @@ test('multiple drafts and exact pending operations survive serialization; malfor
   assert.deepEqual(decodeDrafts(null),{});
 });
 
-import { commonChoices, decodeLessonDrafts, emptyObservation, monthRange, shiftMonth, teacherTotals } from '../apps/client/src/prd-lessons.ts';
+import { commonChoices, decodeLessonDrafts, emptyObservation, lessonSearchSources, monthRange, shiftMonth, teacherTotals } from '../apps/client/src/prd-lessons.ts';
 const lesson=(id,day,teacher='t',course='c',status='recorded')=>({id,version:1,observation_version:1,organization_version:1,created_at:day+'T00:00:00Z',creator_id:'u',creator_name:'测试',acknowledgements:[],request_generation:0,requested_by:null,request_name:null,request_message:'',status,marked_error:false,observation:{...emptyObservation(day),course_id:course,teacher_id:teacher},teacher:{id:teacher,name:'旧名称',kind:'teacher',version:1},course:{id:course,name:'课程',kind:'course',version:1},organization:{seen_observation_version:0,targets:[],methods:[],focus_goals:[],processed_request_generation:0,state:'pending',claimed_by:null,claimed_name:null,outcome:''}});
 test('lesson totals use stable teacher identity, include marked errors, exclude tombstones and respect calendar bounds',()=>{
   const rows=[lesson('one','2024-02-01'),{...lesson('two','2024-02-29'),marked_error:true,teacher:{id:'t',name:'新名称'}},lesson('three','2024-02-20','t','c','withdrawn'),lesson('four','2024-02-20','t','c','deleted'),lesson('five','2024-03-01')];
   const {start,end}=monthRange('2024-02');assert.equal(end,'2024-02-29');assert.equal(monthRange('2025-02').end,'2025-02-28');
   const groups=teacherTotals(rows,start,end);assert.equal(groups.length,1);assert.equal(groups[0].count,2);assert.equal(groups[0].marked,1);
   assert.equal(shiftMonth('2024-01',-1),'2023-12');assert.equal(shiftMonth('2023-12',1),'2024-01');
+});
+test('Appendix D lesson settlement uses stable teacher IDs, historical names and every countability boundary',()=>{
+  const fixture=JSON.parse(readFileSync(new URL('./fixtures/prd-coverage.json',import.meta.url),'utf8'));
+  const rows=fixture.records.filter(row=>row.source==='lesson').map(row=>{
+    const value=lesson(row.id,row.day,row.teacher,row.course,row.status);
+    return {...value,marked_error:Boolean(row.marked_error),teacher:{...value.teacher,name:row.teacher_name},organization:{...value.organization,targets:row.targets.map(([goal_id])=>({target:{goal_id,note:''}}))}};
+  });
+  const summary=groups=>groups.sort((a,b)=>a.id.localeCompare(b.id)).map(({id,name,count,marked})=>({id,name,count,marked}));
+  assert.deepEqual(summary(teacherTotals(rows,'2026-10-01','2026-10-31','2026-10-24')),[
+    {id:'T1',name:'测试甲新名',count:2,marked:0},
+    {id:'T2',name:'测试乙',count:2,marked:1},
+  ]);
+  assert.deepEqual(summary(teacherTotals(rows,'2026-09-01','2026-09-30','2026-10-24')),[{id:'T1',name:'测试甲',count:1,marked:0}]);
+  assert.equal(rows.find(row=>row.id==='L4').organization.targets.length,0);
+  assert.equal(rows.find(row=>row.id==='L5').status,'withdrawn');
+});
+test('lesson search reports each exact source and never guesses teacher advice from free text',()=>{
+  const row={...lesson('l','2026-10-24'),course:{id:'c',name:'语言课'},teacher:{id:'t',name:'王老师'},observation:{...emptyObservation('2026-10-24'),notes:'玩轮流游戏',teacher_notes:'先等待再示范',difficulty_notes:'离开座位'}};
+  const knowledge=[
+    {deleted:false,source_lesson_id:'l',input:{kind:'difficulty',content:'等待时需要支持'}},
+    {deleted:false,source_lesson_id:'l',input:{kind:'experience',content:'视觉提示有帮助'}},
+    {deleted:false,source_lesson_id:'other',input:{kind:'difficulty',content:'不应匹配'}},
+  ];
+  assert.deepEqual(lessonSearchSources(row,knowledge,'语言'),['课程']);
+  assert.deepEqual(lessonSearchSources(row,knowledge,'王老师'),['老师']);
+  assert.deepEqual(lessonSearchSources(row,knowledge,'等待'),['老师建议','关联困难']);
+  assert.deepEqual(lessonSearchSources(row,knowledge,'轮流'),['课堂观察']);
+  assert.deepEqual(lessonSearchSources(row,knowledge,'视觉'),['关联经验']);
+  assert(!lessonSearchSources(row,knowledge,'轮流').includes('老师建议'));
 });
 test('course shortcuts favor recent same weekday, teacher shortcuts rank independently and inactive or old records do not suggest',()=>{
   const catalog=[['c','course'],['x','course'],['t','teacher'],['u','teacher'],['off','teacher']].map(([id,kind])=>({id,version:1,input:{kind,name:id,active:id!=='off'}}));

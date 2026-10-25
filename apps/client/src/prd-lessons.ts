@@ -45,6 +45,18 @@ export const organizationOf = (l: Lesson): OrganizationInput => ({ seen_observat
 export const needsReview = (l: Lesson) => l.status === 'recorded' && l.request_generation > 0 && (l.organization.processed_request_generation < l.request_generation || l.organization.state !== 'done');
 export const countable = (l: Lesson) => l.status === 'recorded';
 export const observationText = (v: Observation) => [v.notes,v.teacher_notes,v.progress_notes,v.interest_notes,v.difficulty_notes,v.cause_guess].filter(Boolean).join('\n');
+export function lessonSearchSources(lesson: Lesson, knowledge: Knowledge[], query: string) {
+  const needle=query.trim();
+  if(!needle)return [];
+  const sources:string[]=[];
+  const add=(source:string)=>{if(!sources.includes(source))sources.push(source);};
+  if(lesson.course.name.includes(needle))add('课程');
+  if(lesson.teacher.name.includes(needle))add('老师');
+  if(lesson.observation.teacher_notes.includes(needle))add('老师建议');
+  if([lesson.observation.notes,lesson.observation.progress_notes,lesson.observation.interest_notes,lesson.observation.difficulty_notes,lesson.observation.cause_guess].some(value=>value.includes(needle)))add('课堂观察');
+  for(const item of knowledge)if(!item.deleted&&item.source_lesson_id===lesson.id&&item.input.content.includes(needle))add(item.input.kind==='difficulty'?'关联困难':'关联经验');
+  return sources;
+}
 export function monthRange(month: string) { const [y,m] = month.split('-').map(Number); return { start: `${month}-01`, end: `${month}-${new Date(Date.UTC(y,m,0)).getUTCDate()}` }; }
 export function shiftMonth(month: string, offset: number) { const [y,m] = month.split('-').map(Number); return new Date(Date.UTC(y,m-1+offset,1)).toISOString().slice(0,7); }
 export function teacherTotals(lessons: Lesson[], start: string, end: string, today='9999-12-31') {

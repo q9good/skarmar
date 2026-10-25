@@ -69,6 +69,10 @@ with sync_playwright() as p:
     nav(b,'今天');lesson_detail(b);nav(b,'查看关联目标：测试自己穿鞋');expect(b.get_by_role('dialog')).to_have_count(1);expect(b.get_by_role('dialog').get_by_text('测试自己穿鞋',exact=True).first).to_be_visible()
     b.go_back();expect(b.get_by_role('dialog')).to_have_count(0)
     print('PASS goal/method/followup links and replacement detail Back behavior',flush=True)
+    nav(b,'记录');search_box=b.get_by_role('textbox',name='搜索课堂观察和老师建议',exact=True)
+    search_box.fill('等待时需要支持');expect(b.get_by_text('匹配来源：关联困难',exact=True)).to_be_visible();lesson_detail(b);expect(b.get_by_role('dialog',name='课记详情',exact=True).get_by_text('测试：后来补充观察',exact=True).first).to_be_visible();dismiss(b,'课记详情')
+    search_box.fill('老师建议先等待');expect(b.get_by_text('匹配来源：老师建议',exact=True)).to_be_visible();search_box.fill('')
+    print('PASS lesson keyword search returns to the original record and labels teacher advice and linked knowledge separately',flush=True)
     # Same-partition concurrency preserves unsaved input and requires explicit reconciliation.
     a.reload();lesson_detail(a);expect(button(a,'撤销这条课记')).to_have_count(0);expect(button(a,'标记记错，请管理员处理')).to_be_visible();nav(a,'补充／修改课堂观察');a.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：未提交的观察')
     lesson_detail(b);nav(b,'补充／修改课堂观察');b.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：家人新观察');submit(b)

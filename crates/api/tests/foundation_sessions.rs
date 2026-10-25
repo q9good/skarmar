@@ -657,6 +657,11 @@ fn prd_appendix_d_golden_coverage_preserves_boundaries_lineage_and_unknowns() {
         (90, "lesson", vec![5, 2, 1, 1, 0, 3, 1]),
         (90, "combined", vec![10, 5, 3, 3, 0, 7, 4]),
     ];
+    let selected = |family, lesson, source: &str| match source {
+        "family" => family,
+        "lesson" => lesson,
+        _ => family + lesson,
+    };
     for (days, source, want) in expected {
         let r = store::foundation_coverage_at(
             &mut db,
@@ -667,39 +672,149 @@ fn prd_appendix_d_golden_coverage_preserves_boundaries_lineage_and_unknowns() {
             "2026-10-24",
         )
         .unwrap();
+        assert_eq!(
+            r.start,
+            match days {
+                7 => "2026-10-18",
+                30 => "2026-09-25",
+                _ => "2026-07-27",
+            }
+        );
+        assert_eq!(r.end, "2026-10-24");
         let mut got = vec![r.records.selected];
         for id in ["S1", "S2", "S3", "S4", "M1", "M2"] {
             got.push(r.goals.iter().find(|g| g.id == id).unwrap().counts.selected);
         }
-        assert_eq!(got, want, "{days} {source}");
+        assert_eq!(got, want, "D.1 coverage row: {days} {source}");
+
+        for (id, family, lesson, combined) in [
+            (
+                "S1",
+                Some("2026-10-24"),
+                Some("2026-10-24"),
+                Some("2026-10-24"),
+            ),
+            (
+                "S2",
+                Some("2026-10-18"),
+                Some("2026-09-30"),
+                Some("2026-10-18"),
+            ),
+            (
+                "S3",
+                Some("2026-10-24"),
+                Some("2026-10-24"),
+                Some("2026-10-24"),
+            ),
+            ("S4", Some("2026-07-26"), None, Some("2026-07-26")),
+            (
+                "M1",
+                Some("2026-10-24"),
+                Some("2026-10-24"),
+                Some("2026-10-24"),
+            ),
+            (
+                "M2",
+                Some("2026-10-24"),
+                Some("2026-10-24"),
+                Some("2026-10-24"),
+            ),
+        ] {
+            let want = match source {
+                "family" => family,
+                "lesson" => lesson,
+                _ => combined,
+            };
+            assert_eq!(
+                r.goals
+                    .iter()
+                    .find(|goal| goal.id == id)
+                    .unwrap()
+                    .last_date
+                    .as_deref(),
+                want,
+                "D.1 last date: {id} {source}"
+            );
+        }
+
+        let (a_family, a_lesson, b_family, b_lesson, below_family, below_lesson) = match days {
+            7 => (1, 0, 1, 3, 3, 3),
+            30 => (1, 1, 2, 3, 4, 4),
+            _ => (2, 1, 2, 3, 5, 4),
+        };
+        let a = &r.methods["A"];
+        let b = &r.methods["B"];
         assert_eq!(
-            r.goals.iter().find(|g| g.id == "S4").unwrap().last_date,
-            if source == "lesson" {
-                None
-            } else {
-                Some("2026-07-26".into())
-            }
+            (a.family, a.lesson, a.selected),
+            (a_family, a_lesson, selected(a_family, a_lesson, source)),
+            "D.2 method A: {days} {source}"
         );
-        let lg = r.goals.iter().find(|g| g.id == "LG").unwrap();
-        assert_eq!(lg.focus.selected, if source == "combined" { 2 } else { 1 });
-        assert_eq!(r.method_unknown.family, 1);
-        assert_eq!(r.method_unknown.lesson, 1);
-        assert_eq!(r.heatmap.get("2026-10-24"), Some(&2));
-        assert_eq!(r.heatmap.get("2026-10-18"), Some(&1));
-        assert_eq!(r.unclassified, 1);
         assert_eq!(
-            r.methods["A"].selected,
-            match (days, source) {
-                (7, "family") => 1,
-                (7, "lesson") => 0,
-                (7, _) => 1,
-                (30, "family") => 1,
-                (30, "lesson") => 1,
-                (30, _) => 2,
-                (90, "family") => 2,
-                (90, "lesson") => 1,
-                _ => 3,
-            }
+            (b.family, b.lesson, b.selected),
+            (b_family, b_lesson, selected(b_family, b_lesson, source)),
+            "D.2 method B: {days} {source}"
+        );
+        assert_eq!(
+            (
+                r.method_unknown.family,
+                r.method_unknown.lesson,
+                r.method_unknown.selected
+            ),
+            (1, 1, selected(1, 1, source)),
+            "D.2 unknown methods: {days} {source}"
+        );
+
+        let lg = r.goals.iter().find(|g| g.id == "LG").unwrap();
+        assert_eq!(
+            (lg.focus.family, lg.focus.lesson, lg.focus.selected),
+            (1, 1, selected(1, 1, source)),
+            "D.2 explicit long focus: {days} {source}"
+        );
+        assert_eq!(
+            (
+                lg.descendants.family,
+                lg.descendants.lesson,
+                lg.descendants.selected
+            ),
+            (
+                below_family,
+                below_lesson,
+                selected(below_family, below_lesson, source)
+            ),
+            "D.2 long descendant evidence: {days} {source}"
+        );
+
+        assert_eq!(r.tags.get("游戏"), Some(&2), "D.2 game tags: {days}");
+        assert_eq!(
+            r.tags.get("阅读"),
+            Some(if days == 7 { &1 } else { &2 }),
+            "D.2 reading tags: {days}"
+        );
+        assert_eq!(
+            r.tags.get("生活自理").copied().unwrap_or(0),
+            if days == 90 { 1 } else { 0 },
+            "D.2 self-care tags: {days}"
+        );
+        assert_eq!(r.unclassified, 1, "D.2 unclassified: {days}");
+
+        let heatmap: Vec<_> = r
+            .heatmap
+            .iter()
+            .map(|(day, count)| (day.as_str(), *count))
+            .collect();
+        assert_eq!(
+            heatmap,
+            match days {
+                7 => vec![("2026-10-18", 1), ("2026-10-24", 2)],
+                30 => vec![("2026-09-30", 1), ("2026-10-18", 1), ("2026-10-24", 2),],
+                _ => vec![
+                    ("2026-09-20", 1),
+                    ("2026-09-30", 1),
+                    ("2026-10-18", 1),
+                    ("2026-10-24", 2),
+                ],
+            },
+            "D.2 family heatmap: {days}"
         );
     }
 }

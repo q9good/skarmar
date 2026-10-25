@@ -21,7 +21,7 @@ import { useAuth } from './auth';
 import { DetailOverlay } from './overlay';
 import { Pressable, Text, TextInput } from './readability';
 import type { Catalog, Saved, Snapshot } from './foundation';
-import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, needsReview, monthRange, shiftMonth, teacherTotals, commonChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
+import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, monthRange, shiftMonth, teacherTotals, commonChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
 const queues = new Map<string, Promise<void>>();
 const labelsForFeedback=(v:string)=>({helpful:'有帮助',uncertain:'不确定',unhelpful:'没帮上'} as Record<string,string>)[v]??v;
 const note = (e: unknown) => e instanceof Error ? e.message : '操作未完成，请保留填写后重试';
@@ -226,7 +226,8 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   const monthBounds=monthRange(section==='totals'?countMonth:month);
   const {start,end}=section==='totals'&&customRange?{start:rangeFrom,end:rangeTo}:monthBounds;
   const validRange=[start,end].every(v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v)&&start<=end;
-  const records=active.filter(l=>l.observation.business_date>=start&&l.observation.business_date<=end&&(!teachersOnly||Boolean(l.observation.teacher_notes))&&(!search||[l.course.name,l.teacher.name,observationText(l.observation),...data.knowledge.filter(k=>!k.deleted&&k.source_lesson_id===l.id).map(k=>k.input.content)].join('\n').includes(search))).sort((a,b)=>b.observation.business_date.localeCompare(a.observation.business_date)||b.created_at.localeCompare(a.created_at));
+  const searchSources=(lesson:Lesson)=>lessonSearchSources(lesson,data.knowledge,search);
+  const records=active.filter(l=>l.observation.business_date>=start&&l.observation.business_date<=end&&(!teachersOnly||Boolean(l.observation.teacher_notes))&&(!search||searchSources(l).length>0)).sort((a,b)=>b.observation.business_date.localeCompare(a.observation.business_date)||b.created_at.localeCompare(a.created_at));
   const totals=validRange?teacherTotals(data.lessons,start,end,today):[];
   const draftName=(d:LessonDraft)=>{const a=d.request.action;if(a.kind!=='observation')return '整理或核对';const courseId=a.value.course_id;return data.catalog.find(c=>c.id===courseId)?.input.name??'未选课程';};
   const observe=draft?.request.action.kind==='observation'?draft.request.action.value:undefined;
@@ -259,7 +260,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
           {totals.find(g=>g.id===selectedTeacher)?.records.map(l=><LessonCard key={l.id} lesson={l} open={()=>setDetail(l.id)}/>)}
         </>:<>
           <Field label="搜索课堂观察和老师建议" value={search} change={setSearch} multiline={false} placeholder="输入课程、老师或观察中的词"/><Check title="只看老师建议" checked={teachersOnly} press={()=>setTeachersOnly(!teachersOnly)}/>
-          {[...new Set(records.map(l=>l.course.id))].map(courseId=><View key={courseId} style={{gap:10}}><Text style={{fontSize:18,fontWeight:'600'}}>{data.catalog.find(c=>c.id===courseId)?.input.name??records.find(l=>l.course.id===courseId)?.course.name}</Text>{records.filter(l=>l.course.id===courseId).map(l=><LessonCard key={l.id} lesson={l} matchSource={search||teachersOnly?(l.observation.teacher_notes.includes(search)&&Boolean(l.observation.teacher_notes)?'老师建议':observationText(l.observation).includes(search)?'课堂观察':'课程／老师或关联知识'):undefined} open={()=>setDetail(l.id)}/>)}</View>)}
+          {[...new Set(records.map(l=>l.course.id))].map(courseId=><View key={courseId} style={{gap:10}}><Text style={{fontSize:18,fontWeight:'600'}}>{data.catalog.find(c=>c.id===courseId)?.input.name??records.find(l=>l.course.id===courseId)?.course.name}</Text>{records.filter(l=>l.course.id===courseId).map(l=><LessonCard key={l.id} lesson={l} matchSource={search?searchSources(l).join('、'):teachersOnly?'老师建议':undefined} open={()=>setDetail(l.id)}/>)}</View>)}
           {!records.length&&<Text>这个月没有匹配的课记。</Text>}
         </>}
       </>:null}

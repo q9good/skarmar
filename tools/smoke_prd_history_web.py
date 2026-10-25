@@ -23,7 +23,7 @@ with sync_playwright() as p:
  # Reparenting today must not move any historical evidence to the new parent.
  call('PUT','/prd/records/'+child['id'],{'id':child['id'],'operation_id':str(uuid4()),'expected_version':1,'change_note':'测试修改层级','mutation':{'kind':'goal','value':{**child['input'],'parent_id':other['id']}}})
  page.reload();expect(button('记录上课')).to_be_enabled();click('记录');click('家庭干预');click('按目标查看时间分布')
- expect(button('查看时间分布：轮流游戏')).to_be_visible();expect(page.get_by_text('覆盖 3 次 · 最近 '+today+'（0天前）',exact=True)).to_be_visible();click('查看时间分布：轮流游戏');expect(page.get_by_text('轮流游戏的记录',exact=True)).to_be_visible()
+ expect(button('查看时间分布：轮流游戏')).to_be_visible();expect(page.get_by_text('最近一次 '+today+'（0天前） · 近90天 3 次',exact=True)).to_be_visible();click('查看时间分布：轮流游戏');expect(page.get_by_text('轮流游戏的记录',exact=True)).to_be_visible()
  page.get_by_role('combobox',name='时间明细范围',exact=True).select_option('30');old=sessions[-1]['input']['business_date'];expect(page.get_by_text(f'最近4次，实际跨度 {old} 至 {today}',exact=True)).to_be_visible()
  button(re.compile('^查看记录依据：')).first.click();expect(page.get_by_role('dialog',name='时间分布记录依据',exact=True)).to_be_visible();expect(page.get_by_text('实际方法：示范后等待（第1版）',exact=True)).to_be_visible();page.go_back();expect(page.get_by_role('dialog',name='记录时间分布',exact=True)).to_be_visible();expect(page.get_by_role('combobox',name='时间明细范围',exact=True)).to_have_value('30')
  page.get_by_role('combobox',name='并列目标层级',exact=True).select_option('medium');click('查看时间分布：旧中期');expect(page.get_by_text('旧中期的记录',exact=True)).to_be_visible();expect(button(re.compile('^查看记录依据：'))).to_have_count(4)
