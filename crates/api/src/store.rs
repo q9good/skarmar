@@ -173,6 +173,15 @@ pub fn foundation_lesson_history(
 ) -> Result<Vec<skarma_core::foundation::lesson_model::LessonRevision>> {
     transaction(db, |sql| skarma_core::foundation::lessons::history(sql, id))
 }
+pub fn foundation_lesson_withdrawal_capability(
+    db: &mut Connection,
+    actor: &skarma_core::auth::User,
+    id: &str,
+) -> Result<skarma_core::foundation::lesson_model::WithdrawalCapability> {
+    transaction(db, |sql| {
+        skarma_core::foundation::lessons::withdrawal_capability(sql, actor, id)
+    })
+}
 
 pub fn write_foundation_session(
     db: &mut Connection,

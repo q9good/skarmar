@@ -48,10 +48,10 @@ with sync_playwright() as p:
     assert len(state()['lessons'])==1 and state()['lessons'][0]['observation_version']==2 and not state()['actions']
     print('PASS basic record, shared options created and independently selected; optional observations preserve text and do not add lessons/actions',flush=True)
     # Nested selector Back closes the selector only and preserves the observation draft.
-    lesson_detail(a);nav(a,'补充／修改课堂观察');nav(a,'课程名称（必填）：测试语言课');a.go_back();expect(a.get_by_role('dialog')).to_have_count(1)
+    lesson_detail(a);expect(button(a,'撤销这条课记')).to_be_visible();expect(button(a,'标记记错，请管理员处理')).to_have_count(0);nav(a,'补充／修改课堂观察');nav(a,'课程名称（必填）：测试语言课');a.go_back();expect(a.get_by_role('dialog')).to_have_count(1)
     expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_value('测试：玩轮流游戏');dismiss(a,'记录上课')
     login(b,'family','s')
-    lesson_detail(b);nav(b,'整理这条记录');b.get_by_role('checkbox',name='测试自己穿鞋',exact=True).click();b.get_by_role('checkbox',name='实际方法：测试等待示范',exact=True).click()
+    lesson_detail(b);expect(button(b,'撤销这条课记')).to_have_count(0);expect(button(b,'标记记错，请管理员处理')).to_be_visible();nav(b,'整理这条记录');b.get_by_role('checkbox',name='测试自己穿鞋',exact=True).click();b.get_by_role('checkbox',name='实际方法：测试等待示范',exact=True).click()
     # Cross-partition update: observation changes while another member is organizing old observation.
     lesson_detail(a);nav(a,'补充／修改课堂观察');a.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：后来补充观察');submit(a)
     nav(b,'记一条困难');b.get_by_role('textbox',name='困难内容 1',exact=True).fill('测试：等待时需要支持')
@@ -70,7 +70,7 @@ with sync_playwright() as p:
     b.go_back();expect(b.get_by_role('dialog')).to_have_count(0)
     print('PASS goal/method/followup links and replacement detail Back behavior',flush=True)
     # Same-partition concurrency preserves unsaved input and requires explicit reconciliation.
-    a.reload();lesson_detail(a);nav(a,'补充／修改课堂观察');a.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：未提交的观察')
+    a.reload();lesson_detail(a);expect(button(a,'撤销这条课记')).to_have_count(0);expect(button(a,'标记记错，请管理员处理')).to_be_visible();nav(a,'补充／修改课堂观察');a.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：未提交的观察')
     lesson_detail(b);nav(b,'补充／修改课堂观察');b.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：家人新观察');submit(b)
     a.evaluate("window.dispatchEvent(new Event('focus'))")
     expect(a.get_by_text('这一部分已有新版本，当前填写仍保留。',exact=True)).to_be_visible();expect(button(a,'提交记录')).to_be_disabled()
@@ -91,7 +91,7 @@ with sync_playwright() as p:
     print('PASS lost response reload/retry creates exactly one lesson/revision; real second lesson is allowed',flush=True)
     # Counting, error flag and protected withdrawal/deletion are exercised via UI.
     nav(a,'记录');nav(a,'课时核对');nav(a,'下个月');nav(a,'测试王老师：2 节');expect(a.get_by_role('button',name=re.compile(r'^查看课记：'))).to_have_count(2)
-    nav(a,'课堂记录');lesson_detail(a);nav(a,'标记记错，请管理员核对');submit(a,'确认操作')
+    nav(a,'课堂记录');a.get_by_role('button',name=re.compile(r'^查看课记：')).last.click();expect(a.get_by_role('dialog')).to_have_count(1);nav(a,'标记记错，请管理员处理');submit(a,'确认操作');expect(a.get_by_text('标记记错，等待管理员处理 · 本节仍计入课时',exact=True)).to_be_visible()
     nav(a,'课时核对');expect(button(a,'测试王老师：2 节 · 待核对 1')).to_be_visible()
     nav(b,'记录');nav(b,'课时核对');nav(b,'下个月');nav(b,'测试王老师：2 节 · 待核对 1');lesson_detail(b)
     assert button(b,'删除课记（管理员）').count()==0 and button(b,'撤销这条课记').count()==0;dismiss(b,'课记详情')
@@ -101,6 +101,15 @@ with sync_playwright() as p:
     nav(a,'课堂记录');lesson_detail(a);nav(a,'查看课记修改记录');expect(a.get_by_text('观察第 1 版 · 整理第 1 版',exact=True)).to_be_visible();nav(a,'删除课记（管理员）');nav(a,'确认操作');expect(a.get_by_role('alert')).to_be_visible();assert next(l for l in state()['lessons'] if l['id']==lesson_id)['status']=='recorded'
     dismiss(a,'核对课记操作')
     print('PASS month totals, duplicate lessons, marked errors still counted, creator withdrawal, member/admin permissions and source protection',flush=True)
+    # Capability preflight is advisory: a concurrent plan reference after the read still blocks the transaction.
+    concurrent_course=str(uuid4());call('PUT','/prd/records/'+concurrent_course,{'id':concurrent_course,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'catalog','value':{'kind':'course','name':'并发引用课','active':True}}})
+    concurrent_id=str(uuid4());concurrent=call('PUT','/prd/lessons/'+concurrent_id,{'id':concurrent_id,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':{**l['observation'],'course_id':concurrent_course,'teacher_id':l['teacher']['id'],'notes':'并发引用前可撤销','teacher_notes':'','request_review':False}}})
+    a.evaluate("window.dispatchEvent(new Event('focus'))");nav(a,'今天');button(a,'查看课记：并发引用课 · 测试王老师').click();expect(button(a,'撤销这条课记')).to_be_visible()
+    plan_id=str(uuid4());call('PUT','/prd/sessions/'+plan_id,{'id':plan_id,'operation_id':str(uuid4()),'expected_version':None,'action':'save_draft','input':{'business_date':today,'time_slot':'晚上','lesson_sources':[{'id':concurrent_id,'version':concurrent['version']}]}})
+    nav(a,'撤销这条课记');nav(a,'确认操作');expect(a.get_by_role('alert')).to_contain_text('课记已被整理、回应或其他记录引用')
+    dismiss(a,'核对课记操作');button(a,'查看课记：并发引用课 · 测试王老师').click();expect(button(a,'撤销这条课记')).to_have_count(0);expect(button(a,'标记记错，请管理员处理')).to_be_visible();dismiss(a,'课记详情')
+    assert next(l for l in state()['lessons'] if l['id']==concurrent_id)['status']=='recorded'
+    print('PASS concurrent reference after allowed capability is rejected transactionally, then preflight exposes only mark-error',flush=True)
     for page in [a,b]:
         if page.get_by_role('dialog').count():raise AssertionError('Unexpected overlay')
         page.set_viewport_size({'width':320,'height':740});assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')

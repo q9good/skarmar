@@ -503,6 +503,20 @@ async fn foundation_lesson_history<R: Repository>(
         execute(&repo, proof, Command::FoundationLessonHistory { id }).await?,
     ))
 }
+async fn foundation_lesson_withdrawal_capability<R: Repository>(
+    State(repo): State<R>,
+    Path(id): Path<String>,
+    proof: Option<Extension<auth::SessionProof>>,
+) -> Result<Json<Value>> {
+    Ok(Json(
+        execute(
+            &repo,
+            proof,
+            Command::FoundationLessonWithdrawalCapability { id },
+        )
+        .await?,
+    ))
+}
 
 async fn foundation_session<R: Repository>(
     State(repo): State<R>,
@@ -654,6 +668,10 @@ pub fn router_with_auth<R: Repository>(repo: R, config: auth::AuthConfig) -> Rou
         .route(
             "/prd/lessons/{id}/history",
             get(foundation_lesson_history::<R>),
+        )
+        .route(
+            "/prd/lessons/{id}/withdrawal-capability",
+            get(foundation_lesson_withdrawal_capability::<R>),
         )
         .route("/prd/records/{id}", put(foundation_write::<R>))
         .route("/prd/records/{id}/history", get(foundation_history::<R>))

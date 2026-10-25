@@ -50,6 +50,9 @@ pub enum Command {
     FoundationLessonHistory {
         id: String,
     },
+    FoundationLessonWithdrawalCapability {
+        id: String,
+    },
     State,
     ExportSnapshot,
     GoalHistory {
@@ -109,6 +112,7 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
                 | Command::FoundationWrite(_)
                 | Command::FoundationLesson(_)
                 | Command::FoundationLessonHistory { .. }
+                | Command::FoundationLessonWithdrawalCapability { .. }
                 | Command::FoundationSession(_)
                 | Command::FoundationSessionHistory { .. }
                 | Command::FoundationCoverage(_)
@@ -129,6 +133,7 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
                 | Command::FoundationWrite(_)
                 | Command::FoundationLesson(_)
                 | Command::FoundationLessonHistory { .. }
+                | Command::FoundationLessonWithdrawalCapability { .. }
                 | Command::FoundationSession(_)
                 | Command::FoundationSessionHistory { .. }
                 | Command::FoundationCoverage(_)
@@ -165,6 +170,7 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
                         | Command::FoundationWrite(_)
                         | Command::FoundationLesson(_)
                         | Command::FoundationLessonHistory { .. }
+                        | Command::FoundationLessonWithdrawalCapability { .. }
                         | Command::FoundationSession(_)
                         | Command::FoundationSessionHistory { .. }
                         | Command::FoundationCoverage(_)
@@ -185,6 +191,7 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
                         | Command::FoundationWrite(_)
                         | Command::FoundationLesson(_)
                         | Command::FoundationLessonHistory { .. }
+                        | Command::FoundationLessonWithdrawalCapability { .. }
                         | Command::FoundationSession(_)
                         | Command::FoundationSessionHistory { .. }
                         | Command::FoundationCoverage(_)
@@ -245,6 +252,9 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
                 Command::FoundationLessonHistory { id } => {
                     serde_json::to_value(foundation::lessons::history(db, &id)?)?
                 }
+                Command::FoundationLessonWithdrawalCapability { id } => serde_json::to_value(
+                    foundation::lessons::withdrawal_capability(db, &actor, &id)?,
+                )?,
                 Command::FoundationSession(request) => {
                     serde_json::to_value(foundation::sessions::write(db, &actor, request)?)?
                 }
@@ -291,6 +301,7 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         | Command::FoundationWrite(_)
         | Command::FoundationLesson(_)
         | Command::FoundationLessonHistory { .. }
+        | Command::FoundationLessonWithdrawalCapability { .. }
         | Command::FoundationSession(_)
         | Command::FoundationSessionHistory { .. }
         | Command::FoundationCoverage(_)

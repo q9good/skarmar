@@ -14,6 +14,8 @@ export async function lessonContract(label,send,admin){
  let lesson=(await call('PUT','/prd/lessons/'+id,original,memberCookie)).data;
  await call('PUT','/prd/lessons/'+id,original,memberCookie);
  assert.equal(lesson.observation_version,1);assert.equal(lesson.request_generation,1);
+ let capability=(await call('GET','/prd/lessons/'+id+'/withdrawal-capability',undefined,memberCookie)).data;assert.equal(capability.allowed,true);assert.equal(capability.reason_code,'allowed');
+ capability=(await call('GET','/prd/lessons/'+id+'/withdrawal-capability')).data;assert.equal(capability.allowed,false);assert.equal(capability.reason_code,'not_creator');
  const organization={seen_observation_version:1,targets:[{goal_id:goal,note:'测试一次课堂表现'}],method_ids:[method],focus_goal_ids:[],processing:'keep',request_generation:1,outcome:'',new_knowledge:[],new_actions:[]};
  const changed=command(id,1,'observation',{...observation,notes:'家人后来补充的观察',request_review:false});
  await call('PUT','/prd/lessons/'+id,changed,memberCookie);
@@ -28,6 +30,7 @@ export async function lessonContract(label,send,admin){
  assert.equal(snapshot.knowledge.filter(k=>k.source_lesson_id===id).length,1);assert.equal(snapshot.actions.filter(a=>a.source_lesson_id===id).length,1);
  assert.equal(snapshot.knowledge.find(k=>k.input.id===source.id).source_observation.notes,'原始课堂观察');
  assert.equal(lesson.organization.state,'done');
+ capability=(await call('GET','/prd/lessons/'+id+'/withdrawal-capability',undefined,memberCookie)).data;assert.equal(capability.allowed,false);assert.equal(capability.reason_code,'referenced');assert(capability.references.includes('knowledge')&&capability.references.includes('action'));
  await call('PUT','/prd/lessons/'+id,command(id,lesson.version,'withdraw'),memberCookie,409);
  await call('PUT','/prd/lessons/'+id,command(id,lesson.version,'delete'),memberCookie,403);
  await call('PUT','/prd/lessons/'+id,command(id,lesson.version,'delete'),admin,409);

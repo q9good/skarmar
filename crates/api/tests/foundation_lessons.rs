@@ -265,6 +265,11 @@ fn organizer_outputs_are_atomic_idempotent_and_block_withdrawal() {
         "原始观察"
     );
     assert!(state.knowledge[0].input.next_review_date.is_some());
+    let capability =
+        store::foundation_lesson_withdrawal_capability(&mut db, &u, &identifier).unwrap();
+    assert!(!capability.allowed);
+    assert!(capability.references.contains(&"knowledge".into()));
+    assert!(capability.references.contains(&"action".into()));
     assert_eq!(
         store::write_foundation_lesson(
             &mut db,
@@ -275,6 +280,119 @@ fn organizer_outputs_are_atomic_idempotent_and_block_withdrawal() {
         .0,
         StatusCode::CONFLICT
     );
+}
+#[test]
+fn withdrawal_capability_matches_preflight_and_rechecks_concurrent_plan_references() {
+    let (mut db, u, input, _, _) = fixture();
+    let removable_id = id();
+    let removable = store::write_foundation_lesson(
+        &mut db,
+        &u,
+        cmd(
+            &removable_id,
+            None,
+            LessonAction::Observation(input.clone()),
+        ),
+    )
+    .unwrap();
+    let capability =
+        store::foundation_lesson_withdrawal_capability(&mut db, &u, &removable_id).unwrap();
+    assert!(capability.allowed);
+    assert_eq!(capability.reason_code, "allowed");
+    assert!(capability.references.is_empty());
+    let withdrawn = store::write_foundation_lesson(
+        &mut db,
+        &u,
+        cmd(
+            &removable_id,
+            Some(removable.version),
+            LessonAction::Withdraw,
+        ),
+    )
+    .unwrap();
+    assert_eq!(withdrawn.status, "withdrawn");
+
+    let referenced_id = id();
+    let referenced = store::write_foundation_lesson(
+        &mut db,
+        &u,
+        cmd(&referenced_id, None, LessonAction::Observation(input)),
+    )
+    .unwrap();
+    assert!(
+        store::foundation_lesson_withdrawal_capability(&mut db, &u, &referenced_id)
+            .unwrap()
+            .allowed
+    );
+    let session_id = id();
+    store::write_foundation_session(
+        &mut db,
+        &u,
+        serde_json::from_value(serde_json::json!({
+            "id":session_id,
+            "operation_id":id(),
+            "expected_version":null,
+            "action":"save_draft",
+            "input":{
+                "business_date":"2020-01-01",
+                "time_slot":"晚上",
+                "lesson_sources":[{"id":referenced_id,"version":referenced.version}]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let capability =
+        store::foundation_lesson_withdrawal_capability(&mut db, &u, &referenced_id).unwrap();
+    assert!(!capability.allowed);
+    assert_eq!(capability.reason_code, "referenced");
+    assert_eq!(capability.references, vec!["plan"]);
+    assert_eq!(
+        store::write_foundation_lesson(
+            &mut db,
+            &u,
+            cmd(
+                &referenced_id,
+                Some(referenced.version),
+                LessonAction::Withdraw,
+            ),
+        )
+        .unwrap_err()
+        .0,
+        StatusCode::CONFLICT
+    );
+
+    let evidence_id = id();
+    let evidence = store::write_foundation_lesson(
+        &mut db,
+        &u,
+        cmd(
+            &evidence_id,
+            None,
+            LessonAction::Observation(ObservationInput {
+                business_date: "2020-01-02".into(),
+                course_id: referenced.course.id.clone(),
+                teacher_id: referenced.teacher.id.clone(),
+                ..Default::default()
+            }),
+        ),
+    )
+    .unwrap();
+    db.execute(
+        "INSERT INTO prd_reviews(id,object_kind,object_id,generation,due_date,version,data) VALUES(?1,'goal',?2,1,'2020-01-01',1,?3)",
+        rusqlite::params![id(), id(), serde_json::json!({"evidence":[{"kind":"lesson","id":evidence_id,"version":evidence.version}]}).to_string()],
+    )
+    .unwrap();
+    db.execute(
+        "INSERT INTO prd_observations(id,kind,unique_key,version,data) VALUES(?1,'measurement',?2,1,?3)",
+        rusqlite::params![id(), id(), serde_json::json!({"input":{"source":{"kind":"lesson","id":evidence_id,"version":evidence.version}}}).to_string()],
+    )
+    .unwrap();
+    let capability =
+        store::foundation_lesson_withdrawal_capability(&mut db, &u, &evidence_id).unwrap();
+    assert!(!capability.allowed);
+    assert!(capability.references.contains(&"review".into()));
+    assert!(capability.references.contains(&"measurement".into()));
 }
 #[test]
 fn creator_today_withdraw_and_admin_delete_are_distinct_from_marking_error() {
@@ -412,6 +530,10 @@ fn creation_day_not_business_day_controls_withdrawal_and_admin_can_delete_old_un
     )
     .unwrap();
     db.execute("UPDATE prd_lessons SET data=json_set(data,'$.created_at','2000-01-01T16:00:00Z') WHERE id=?1",[&identifier]).unwrap();
+    let capability =
+        store::foundation_lesson_withdrawal_capability(&mut db, &u, &identifier).unwrap();
+    assert!(!capability.allowed);
+    assert_eq!(capability.reason_code, "outside_creation_day");
     assert_eq!(
         store::write_foundation_lesson(
             &mut db,

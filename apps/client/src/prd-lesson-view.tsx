@@ -21,9 +21,8 @@ import { useAuth } from './auth';
 import { DetailOverlay } from './overlay';
 import { Pressable, Text, TextInput } from './readability';
 import type { Catalog, Saved, Snapshot } from './foundation';
-import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, needsReview, monthRange, shiftMonth, teacherTotals, commonChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge } from './prd-lessons';
+import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, needsReview, monthRange, shiftMonth, teacherTotals, commonChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
 const queues = new Map<string, Promise<void>>();
-const localDateOf = (stamp:string) => new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(stamp));
 const labelsForFeedback=(v:string)=>({helpful:'有帮助',uncertain:'不确定',unhelpful:'没帮上'} as Record<string,string>)[v]??v;
 const note = (e: unknown) => e instanceof Error ? e.message : '操作未完成，请保留填写后重试';
 function Action({ title, press, disabled, secondary = true }: { title: string; press: () => void; disabled?: boolean; secondary?: boolean }) {
@@ -135,6 +134,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   useEffect(()=>{void AsyncStorage.getItem(storageKey+':introduced').then(v=>{if(!v)setIntro(true);}).catch(()=>undefined);},[storageKey]);
   const [discard,setDiscard]=useState(false), [historyOpen,setHistoryOpen]=useState(false), [history,setHistory]=useState<import('./prd-lessons').LessonRevision[]>([]), [historyError,setHistoryError]=useState('');
   const [section,setSection]=useState<'classroom'|'totals'>('classroom'), [month,setMonth]=useState(()=>localDate().slice(0,7)), [countMonth,setCountMonth]=useState(()=>shiftMonth(localDate().slice(0,7),-1)), [selectedTeacher,setSelectedTeacher]=useState<string|null>(null), [search,setSearch]=useState(''), [teachersOnly,setTeachersOnly]=useState(false);
+  const [withdrawal,setWithdrawal]=useState<WithdrawalCapability|null>(null),[withdrawalLoading,setWithdrawalLoading]=useState(false),[withdrawalError,setWithdrawalError]=useState('');
   const refs=useRef(drafts), alive=useRef(true), inFlight=useRef(false);
   useEffect(()=>{
     alive.current=true;
@@ -213,6 +213,13 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
     void loadLessonHistory(selected.id);
     return()=>{++historySequence.current;};
   },[historyOpen,selected?.id,selected?.version]);
+  useEffect(()=>{
+    let current=true;setWithdrawal(null);setWithdrawalError('');
+    if(!selected){setWithdrawalLoading(false);return()=>{current=false;};}
+    setWithdrawalLoading(true);
+    void request<WithdrawalCapability>(`/prd/lessons/${selected.id}/withdrawal-capability`).then(value=>{if(!current)return;if(value.lesson_version!==selected.version){setWithdrawalError('课记已有新版本，请刷新后核对可撤销条件。');return;}setWithdrawal(value);}).catch(e=>{if(current)setWithdrawalError(note(e));}).finally(()=>{if(current)setWithdrawalLoading(false);});
+    return()=>{current=false;};
+  },[selected?.id,selected?.version]);
   async function loadLessonHistory(id:string,page=0){const seq=++historySequence.current;setHistoryLoading(true);setHistoryError('');try{const v=await request<{items:import('./prd-lessons').LessonRevision[];has_more:boolean}>(`/prd/process?view=lesson_history&id=${id}&page=${page}`);if(seq!==historySequence.current)return;setHistory(old=>page?[...old,...v.items].filter((r,i,all)=>all.findIndex(v=>v.lesson.version===r.lesson.version)===i):v.items);setHistoryPage(page);setHistoryMore(v.has_more);}catch(e){if(seq===historySequence.current)setHistoryError(note(e));}finally{if(seq===historySequence.current)setHistoryLoading(false);}}
   const confirmed=receipt?data.lessons.find(l=>l.id===receipt):undefined;
   const today=localDate(), active=data.lessons.filter(l=>l.status==='recorded');
@@ -292,8 +299,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
       {historyOpen&&<View style={{gap:10}}>{historyError&&<Text accessibilityRole="alert">{historyError}</Text>}{history.map(h=><View key={h.lesson.version} style={{gap:6}}><Text>{new Date(h.recorded_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})} · {h.actor_name} · {({observation:'基础与观察',organization:'整理与关联',withdrawn:'撤销',deleted:'管理员删除',marked_error:'待核对标记',acknowledged:'回应'} as Record<string,string>)[h.event]??h.event}</Text><Text>观察第 {h.lesson.observation_version} 版 · 整理第 {h.lesson.organization_version} 版</Text><ReadObservation value={h.lesson.observation}/></View>)}{historyMore&&<Action title='更早的课记版本' disabled={historyLoading} press={()=>void loadLessonHistory(selected.id,historyPage+1)}/>}</View>}
       <Text>看到了：{selected.acknowledgements.length} 位家人。轻量回应不等于已整理。</Text>
       <Action title={selected.acknowledgements.includes(actorId)?'已回应：看到了，谢谢':'看到了，谢谢'} disabled={selected.acknowledgements.includes(actorId)} press={()=>perform(selected,'acknowledge')}/>
-      <Action title="标记记错，请管理员核对" press={()=>perform(selected,'mark_error')}/>
-      {selected.creator_id===actorId&&localDateOf(selected.created_at)===today&&<Action title="撤销这条课记" press={()=>perform(selected,'withdraw')}/>}
+      {withdrawalLoading?<Text>正在核对这条课记是否可撤销…</Text>:withdrawal?.allowed?<><Text>{withdrawal.reason}</Text><Action title="撤销这条课记" press={()=>perform(selected,'withdraw')}/></>:<><Text>{withdrawal?.reason||withdrawalError||'暂未能核对撤销条件；可标记记错，请管理员处理。'}</Text>{selected.marked_error?<Text accessibilityRole="alert" style={{color:'#8A2D1D',fontWeight:'600'}}>已标记记错，等待管理员处理；本节仍计入课时。</Text>:<Action title="标记记错，请管理员处理" press={()=>perform(selected,'mark_error')}/>}</>}
       {admin&&<><Action title="删除课记（管理员）" press={()=>perform(selected,'delete')}/>{selected.marked_error&&<Action title="取消待核对标记（管理员）" press={()=>perform(selected,'mark_error',false)}/>}</>}
     </DetailOverlay>}
   </>;
@@ -306,4 +312,4 @@ function LessonDate({value,today,disabled,change}:{value:string;today:string;dis
     <Action title="其他日期" disabled={disabled} secondary={!other} press={()=>setOther(true)}/></View>
     {other&&<DateField label="上课日期" value={value} disabled={disabled} onChange={change}/>}</View>;
 }
-function LessonCard({lesson:l,open,matchSource}:{lesson:Lesson;open:()=>void;matchSource?:string}) {return <View style={{gap:8,padding:14,borderRadius:12,backgroundColor:'#FFFFFF'}}><Text>{l.observation.business_date} · {l.course.name} · {l.teacher.name}</Text>{matchSource&&<Text>匹配来源：{matchSource}</Text>}<Text>记录者：{l.creator_name}{l.marked_error?' · 待核对':''}</Text><Text>{l.observation.notes||l.observation.teacher_notes||'尚未补充观察'}</Text><Action title={`查看课记：${l.course.name} · ${l.observation.business_date}`} press={open}/></View>;}
+function LessonCard({lesson:l,open,matchSource}:{lesson:Lesson;open:()=>void;matchSource?:string}) {return <View style={{gap:8,padding:14,borderRadius:12,backgroundColor:'#FFFFFF'}}><Text>{l.observation.business_date} · {l.course.name} · {l.teacher.name}</Text>{matchSource&&<Text>匹配来源：{matchSource}</Text>}<Text>记录者：{l.creator_name}</Text>{l.marked_error&&<Text accessibilityRole="alert" style={{color:'#8A2D1D',fontWeight:'600'}}>标记记错，等待管理员处理 · 本节仍计入课时</Text>}<Text>{l.observation.notes||l.observation.teacher_notes||'尚未补充观察'}</Text><Action title={`查看课记：${l.course.name} · ${l.observation.business_date}`} press={open}/></View>;}

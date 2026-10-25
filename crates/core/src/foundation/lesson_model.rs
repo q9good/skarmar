@@ -175,6 +175,14 @@ pub struct Lesson {
     pub request_message: String,
     pub acknowledgements: Vec<String>,
 }
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct WithdrawalCapability {
+    pub allowed: bool,
+    pub reason_code: String,
+    pub reason: String,
+    pub lesson_version: u64,
+    pub references: Vec<String>,
+}
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct LessonRevision {
     pub lesson: Lesson,

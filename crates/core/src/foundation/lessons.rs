@@ -116,13 +116,113 @@ fn admin(actor: &User) -> Result<()> {
     }
     Ok(())
 }
-fn inbound(db: &dyn Sql, id: &str) -> Result<bool> {
-    Ok(!db
+fn value_references_lesson(value: &serde_json::Value, id: &str) -> bool {
+    value["evidence"].as_array().is_some_and(|sources| {
+        sources
+            .iter()
+            .any(|source| source["kind"] == "lesson" && source["id"] == id)
+    }) || value
+        .pointer("/input/source")
+        .is_some_and(|source| source["kind"] == "lesson" && source["id"] == id)
+}
+fn inbound_references(db: &dyn Sql, id: &str) -> Result<Vec<String>> {
+    let mut references = db
         .query(
-            "SELECT source_id FROM prd_lesson_refs WHERE lesson_id=?1 LIMIT 1",
+            "SELECT source_kind FROM prd_lesson_refs WHERE lesson_id=?1",
             params![id],
         )?
-        .is_empty())
+        .into_iter()
+        .map(|row| row[0].clone())
+        .collect::<Vec<_>>();
+    for (table, kind) in [
+        ("prd_reviews", "review"),
+        ("prd_review_revisions", "review"),
+        ("prd_observations", "measurement"),
+        ("prd_observation_revisions", "measurement"),
+    ] {
+        for row in db.query(&format!("SELECT data FROM {table}"), &[])? {
+            let value: serde_json::Value = serde_json::from_str(&row[0])?;
+            if value_references_lesson(&value, id) {
+                references.push(kind.into());
+            }
+        }
+    }
+    references.sort();
+    references.dedup();
+    Ok(references)
+}
+fn capability_for(
+    db: &dyn Sql,
+    actor: &User,
+    lesson: &Lesson,
+    now: DateTime<Utc>,
+) -> Result<WithdrawalCapability> {
+    let denied = |code: &str, reason: &str, references: Vec<String>| WithdrawalCapability {
+        allowed: false,
+        reason_code: code.into(),
+        reason: reason.into(),
+        lesson_version: lesson.version,
+        references,
+    };
+    if lesson.status != "recorded" {
+        return Ok(denied(
+            "not_recorded",
+            "课记已撤销或删除，不能再次撤销",
+            vec![],
+        ));
+    }
+    if lesson.creator_id != actor.id {
+        return Ok(denied(
+            "not_creator",
+            "只有记录者可以撤销；可标记记错，请管理员处理",
+            vec![],
+        ));
+    }
+    let created = DateTime::parse_from_rfc3339(&lesson.created_at)
+        .map_err(|_| ApiError::storage())?
+        .with_timezone(&offset())
+        .date_naive();
+    if created != now.with_timezone(&offset()).date_naive() {
+        return Ok(denied(
+            "outside_creation_day",
+            "已超过服务器创建时间所属的家庭业务日；可标记记错，请管理员处理",
+            vec![],
+        ));
+    }
+    let mut references = inbound_references(db, &lesson.id)?;
+    if lesson.organization.claimed_by.is_some() {
+        references.push("organization".into());
+    }
+    if !lesson.acknowledgements.is_empty() {
+        references.push("acknowledgement".into());
+    }
+    references.sort();
+    references.dedup();
+    if !references.is_empty() {
+        return Ok(denied(
+            "referenced",
+            "课记已被整理、回应或其他记录引用；请标记记错，由管理员核对处理",
+            references,
+        ));
+    }
+    Ok(WithdrawalCapability {
+        allowed: true,
+        reason_code: "allowed".into(),
+        reason: "记录者可在创建当天撤销这条未被引用的课记".into(),
+        lesson_version: lesson.version,
+        references: vec![],
+    })
+}
+pub fn withdrawal_capability(db: &dyn Sql, actor: &User, id: &str) -> Result<WithdrawalCapability> {
+    valid_id(id)?;
+    if !actor.active {
+        return Err(crate::auth::unauthorized());
+    }
+    let lesson = get_lesson(db, id)?.ok_or_else(ApiError::missing)?;
+    capability_for(db, actor, &lesson, Utc::now())
+}
+fn inbound(db: &dyn Sql, id: &str) -> Result<bool> {
+    Ok(!inbound_references(db, id)?.is_empty())
 }
 pub(super) fn source_observation(
     db: &dyn Sql,
@@ -477,23 +577,16 @@ pub(crate) fn write_at(
         }
         LessonAction::Withdraw => {
             let mut l = old.clone().ok_or_else(ApiError::missing)?;
-            let created = DateTime::parse_from_rfc3339(&l.created_at)
-                .map_err(|_| ApiError::storage())?
-                .with_timezone(&offset())
-                .date_naive();
-            if l.creator_id != actor.id || created != today {
-                return Err(ApiError(
-                    axum::http::StatusCode::FORBIDDEN,
-                    "只有记录者可在创建当天撤销；其他情况请标记核对".into(),
-                ));
-            }
-            if inbound(db, &l.id)?
-                || l.organization.claimed_by.is_some()
-                || !l.acknowledgements.is_empty()
-            {
-                return Err(ApiError::conflict(
-                    "课记已被整理或引用，无法撤销，请管理员核对",
-                ));
+            let capability = capability_for(db, actor, &l, now)?;
+            if !capability.allowed {
+                let status = if ["not_creator", "outside_creation_day"]
+                    .contains(&capability.reason_code.as_str())
+                {
+                    axum::http::StatusCode::FORBIDDEN
+                } else {
+                    axum::http::StatusCode::CONFLICT
+                };
+                return Err(ApiError(status, capability.reason));
             }
             l.status = "withdrawn".into();
             (l, "withdrawn")
