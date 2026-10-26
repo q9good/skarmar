@@ -16,6 +16,11 @@ on:
         description: Optional active version UUID to verify without uploading or deploying
         required: false
         type: string
+      activate_prd_empty:
+        description: One-time empty PRD domain, preserving original accounts and legacy tables
+        required: false
+        type: boolean
+        default: false
   push:
     branches: [feat/tencent-informed-web]
 
@@ -62,12 +67,16 @@ jobs:
           RESTORE_DEMO: ${{ inputs.restore_demo || contains(github.event.head_commit.message, '[restore-demo:20261023]') }}
           VERIFY_VERSION: ${{ inputs.verify_version }}
           HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          ACTIVATE_PRD_EMPTY: ${{ inputs.activate_prd_empty || contains(github.event.head_commit.message, '[activate-prd-empty]') }}
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing repository secret CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$SKARMA_WRANGLER_TOML" || { echo '::error::Missing repository secret SKARMA_WRANGLER_TOML (existing private production configuration)'; exit 1; }
           if [ "$RESTORE_DEMO" = 'true' ]; then
             test -z "$VERIFY_VERSION" && [[ "$HEAD_MESSAGE" != *"[verify-cloudflare:"* ]] || { echo '::error::Restore cannot run in verify-only mode'; exit 1; }
             test -n "$SKARMA_TEST_LOGIN" || { echo '::error::Missing repository secret SKARMA_TEST_LOGIN (existing approved application login)'; exit 1; }
+          fi
+          if [ "$ACTIVATE_PRD_EMPTY" = 'true' ]; then
+            test "$RESTORE_DEMO" != 'true' && test -z "$VERIFY_VERSION" && [[ "$HEAD_MESSAGE" != *"[verify-cloudflare:"* ]] || { echo '::error::PRD cutover cannot restore legacy demo data or run verify-only'; exit 1; }
           fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -107,12 +116,19 @@ jobs:
           remote_sha=$(git ls-remote origin refs/heads/feat/tencent-informed-web | cut -f1)
           test "$remote_sha" = "$GITHUB_SHA" || { echo '::error::Branch moved before restore'; exit 1; }
           python3 tools/restore_demo_batch.py --phase base --confirm-append skarma-demo-20261023
+      - name: Rehearse empty PRD baseline on synthetic local stores
+        if: inputs.activate_prd_empty || contains(github.event.head_commit.message, '[activate-prd-empty]')
+        run: |
+          cargo build -p skarma-api --locked -j 4
+          (cd crates/worker && worker-build --release)
+          node tools/check-prd-empty-baseline.mjs
       - name: Verify existing target, upload version, promote and check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           SKARMA_WRANGLER_TOML: ${{ secrets.SKARMA_WRANGLER_TOML }}
           VERIFY_VERSION: ${{ inputs.verify_version }}
           HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          ACTIVATE_PRD_EMPTY: ${{ inputs.activate_prd_empty || contains(github.event.head_commit.message, '[activate-prd-empty]') }}
         run: |
           remote_sha=$(git ls-remote origin refs/heads/feat/tencent-informed-web | cut -f1)
           test "$remote_sha" = "$GITHUB_SHA" || { echo '::error::Branch moved; release the latest reviewed commit instead'; exit 1; }
@@ -121,6 +137,9 @@ jobs:
             mode_args=(--verify-version "$VERIFY_VERSION")
           elif [[ "$HEAD_MESSAGE" == *"[verify-cloudflare:"* ]]; then
             mode_args=(--verify-from-event)
+          fi
+          if [ "$ACTIVATE_PRD_EMPTY" = 'true' ]; then
+            mode_args+=(--activate-prd-empty)
           fi
           python3 tools/cloudflare_release.py "${mode_args[@]}" --source-sha "$GITHUB_SHA"
       - name: Link the synthetic courses after confirmed activation

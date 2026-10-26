@@ -20,6 +20,7 @@ pub enum DataModel {
 pub struct Config {
     pub storage: Storage,
     pub model: DataModel,
+    pub initialize_empty_prd: bool,
     pub demo: bool,
     pub space: String,
 }
@@ -56,6 +57,11 @@ impl Config {
         if model == DataModel::PrdV1 && demo {
             return Err("新模型使用独立空库和真实登录，不加载旧版示例数据".into());
         }
+        let initialize_empty_prd = match lookup("SKARMA_PRD_BASELINE").as_deref() {
+            None => false,
+            Some("empty_preserve_legacy_v1") if model == DataModel::PrdV1 && !demo => true,
+            _ => return Err("SKARMA_PRD_BASELINE 仅支持新模型的 empty_preserve_legacy_v1".into()),
+        };
         let space = lookup("SKARMA_SPACE").unwrap_or_else(|| "default".into());
         if space.trim().is_empty() || space.len() > 128 {
             return Err("SKARMA_SPACE 不能为空或超过 128 字节".into());
@@ -63,6 +69,7 @@ impl Config {
         Ok(Self {
             storage,
             model,
+            initialize_empty_prd,
             demo,
             space,
         })
@@ -116,6 +123,30 @@ mod tests {
             })
             .is_err()
         );
+    }
+    #[test]
+    fn empty_baseline_is_an_explicit_prd_only_setting() {
+        assert!(
+            !Config::load(Runtime::Local, |_| None)
+                .unwrap()
+                .initialize_empty_prd
+        );
+        assert!(
+            Config::load(Runtime::Local, |key| match key {
+                "SKARMA_MODEL" => Some("prd_v1".into()),
+                "SKARMA_PRD_BASELINE" => Some("empty_preserve_legacy_v1".into()),
+                _ => None,
+            })
+            .unwrap()
+            .initialize_empty_prd
+        );
+        for value in ["empty_preserve_legacy_v1", "delete", ""] {
+            assert!(
+                Config::load(Runtime::Cloudflare, |key| (key == "SKARMA_PRD_BASELINE")
+                    .then(|| value.into()))
+                .is_err()
+            );
+        }
     }
     #[test]
     fn defaults_and_sample_data_are_explicit() {

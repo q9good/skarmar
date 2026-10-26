@@ -158,6 +158,15 @@ pub fn initialize_prd_runtime(db: &Connection) -> Result<()> {
     tx.commit().map_err(|_| ApiError::storage())
 }
 
+pub fn initialize_empty_prd_baseline(db: &Connection) -> Result<()> {
+    db.execute_batch("PRAGMA foreign_keys=ON;")
+        .map_err(|_| ApiError::storage())?;
+    let tx = rusqlite::Transaction::new_unchecked(db, TransactionBehavior::Immediate)
+        .map_err(|_| ApiError::storage())?;
+    skarma_core::foundation::transfer::initialize_empty_preserving_legacy(&Sqlite(&tx))?;
+    tx.commit().map_err(|_| ApiError::storage())
+}
+
 pub fn write_foundation_lesson(
     db: &mut Connection,
     actor: &skarma_core::auth::User,

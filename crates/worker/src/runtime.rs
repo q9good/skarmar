@@ -289,7 +289,11 @@ impl DurableObject for SkarmaSpace {
                     match cfg.model {
                         DataModel::Legacy => skarma_core::store::initialize(&sql)?,
                         DataModel::PrdV1 => {
-                            skarma_core::foundation::initialize_authenticated(&sql)?
+                            if cfg.initialize_empty_prd {
+                                skarma_core::foundation::transfer::initialize_empty_preserving_legacy(&sql)?;
+                            } else {
+                                skarma_core::foundation::initialize_authenticated(&sql)?;
+                            }
                         }
                     }
                     if let Some(input) = initial_admin

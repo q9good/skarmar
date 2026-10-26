@@ -4,6 +4,7 @@ import {DraftRecovery} from './draft-recovery';
 import {createDraftStore} from './draft-store-native';
 import type {DraftStore} from './draft-store';
 import {ObjectContext} from './object-context-view';
+import {objectEvidence} from './object-context';
 import {MethodUsage} from './method-usage-view';
 import {useStableOptions,OptionsUpdate} from './stable-options';
 import {RelationPicker} from './relation-picker';
@@ -16,7 +17,7 @@ import {fieldMatrix} from './field-guidance';
 import {HelpButton} from './product-help';
 import {ObservationHub} from './prd-observation-view';
 import {prioritizeMethods} from './prd-history';
-import type {Coverage} from './prd-sessions';
+import type {Coverage,Session} from './prd-sessions';
 import {HistoryPanel} from './prd-history-view';
 import {measurementSeries} from './prd-progress';
 import type {EvidenceRecord} from './prd-observations';
@@ -349,12 +350,17 @@ export function FoundationWorkspace() {
     </ScrollView>
     {!account && <View style={s.navigation}>{(['today', 'goals', 'methods', 'records', 'followups'] as const).map(kind => <Action key={kind} title={{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进' }[kind]} secondary={tab !== kind} press={() => { setTab(kind); setShowHidden(false); }} />)}</View>}
     {showDirections && <DetailOverlay title="长期关注" close={()=>setShowDirections(false)}>
-      {longDirections.map(g=><View key={g.id} style={s.card}><Text style={s.heading}>{g.input.title}</Text><Text>{g.input.meaning||g.input.criteria||'可以在目标页补充想支持的方向。'}</Text>
-        {data.sessions.filter(s=>s.status==='completed'&&s.input.business_date<=localDate()&&(s.focus_goals.some(f=>f.id===g.id)||s.actual_targets.some(t=>t.ancestors.some(a=>a.id===g.id)))).sort((a,b)=>b.input.business_date.localeCompare(a.input.business_date)).slice(0,3).map(s=><View key={s.id} style={{gap:5}}><Text>最近家庭观察：{s.input.business_date} · {s.input.summary?.targets.filter(t=>t.performed).map(t=>t.observation).join('；')}</Text>{s.input.summary?.signals.filter(signal=>signal.goal_ids.includes(g.id)).map(signal=><Text key={signal.kind}>明确关联的参与信号：{signal.kind}</Text>)}</View>)}
-        {data.lessons.filter(l=>l.status==='recorded'&&l.observation.business_date<=localDate()&&(l.organization.focus_goals.some(f=>f.id===g.id)||l.organization.targets.some(t=>t.ancestors.some(a=>a.id===g.id)))).sort((a,b)=>b.observation.business_date.localeCompare(a.observation.business_date)).slice(0,2).map(l=><Text key={l.id}>最近课堂观察：{l.observation.business_date} · {l.observation.notes||l.observation.teacher_notes||'未补充文字'}</Text>)}
+      {longDirections.map(g=>{
+        const evidence=objectEvidence(data,{kind:'goal',id:g.id},today);
+        return <View key={g.id} style={s.card}><Text style={s.heading}>{g.input.title}</Text><Text>{g.input.meaning||g.input.criteria||'可以在目标页补充想支持的方向。'}</Text>
+        {evidence.filter(e=>e.kind==='family').slice(0,3).map(e=>{
+          const session=e.record as Session;
+          return <View key={e.id} style={{gap:5}}><Text>最近家庭观察：{e.date} · {e.note}</Text>{session.input.summary?.signals.filter(signal=>signal.goal_ids.includes(g.id)).map(signal=><Text key={signal.kind}>明确关联的参与信号：{signal.kind}</Text>)}</View>;
+        })}
+        {evidence.filter(e=>e.kind==='lesson').slice(0,2).map(e=><Text key={e.id}>最近课堂观察：{e.date} · {e.note}</Text>)}
         {relatedKnowledge(g.id).map(k=>knowledgeCard(k,g.id))}
         <Action title={`查看目标：${g.input.title}`} secondary press={()=>{setShowDirections(false);void openDetail(g.id);}}/>
-      </View>)}
+      </View>;})}
       {!longDirections.length&&<Action title="新建长期方向" press={()=>{setShowDirections(false);setTab('goals');begin({kind:'goal',value:{...newGoal(),level:'long'}});}}/>}
     </DetailOverlay>}
     {draft && <DetailOverlay title={draft.mutation.kind === 'goal' ? '填写目标' : draft.mutation.kind === 'method' ? '填写方法' : '维护选项'} close={() => { if (!busy) setEditor(null); }} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy ? '正在保存…' : draft.pending ? '重试同一次保存' : '保存'} disabled={busy || methodStepsMissing || (conflict && !draft.pending)} press={() => void submit()} /></>}>

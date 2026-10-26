@@ -296,5 +296,121 @@ class VerificationTests(unittest.TestCase):
                 self.assertEqual(release.verification_version_from_event(), OLD)
 
 
+class EmptyPrdReleaseTests(unittest.TestCase):
+    def candidate(self, value):
+        for key, text in release.PRD_VARS.items():
+            value["resources"]["bindings"].append({"type": "plain_text", "name": key, "text": text})
+        return value
+
+    def test_original_secret_accepts_only_exact_reviewed_live_overlay(self):
+        release.validate_live(config(), self.candidate(version()))
+        for key in release.PRD_VARS:
+            bad = self.candidate(version())
+            next(b for b in bad["resources"]["bindings"] if b["name"] == key)["text"] = "wrong"
+            with self.assertRaises(release.ReleaseError):
+                release.validate_live(config(), bad)
+        bad = self.candidate(version())
+        bad["resources"]["bindings"].pop()
+        with self.assertRaises(release.ReleaseError):
+            release.validate_live(config(), bad)
+
+    def test_config_must_have_both_exact_model_vars_or_neither(self):
+        good = config()
+        good["vars"].update(release.PRD_VARS)
+        release.validate_config(good)
+        good["vars"]["SKARMA_PRD_BASELINE"] = "reset"
+        with self.assertRaises(release.ReleaseError):
+            release.validate_config(good)
+        good["vars"].pop("SKARMA_PRD_BASELINE")
+        with self.assertRaises(release.ReleaseError):
+            release.validate_config(good)
+
+    def run_cutover(self, api, receipt, activate=True):
+        def wrangler(args, label):
+            if activate:
+                for key, value in release.PRD_VARS.items():
+                    index = args.index(key + ":" + value)
+                    self.assertEqual(args[index - 1], "--var")
+            if label == "upload":
+                return [{"type": "version-upload", "version_id": NEW}]
+            return []
+        with patch.object(release, "wrangler", side_effect=wrangler), \
+                patch.object(release, "smoke", return_value={"prd_database": "startup_completed"}) as smoke:
+            release.run_release(config(), SOURCE, api, receipt, activate_prd_empty=activate)
+            smoke.assert_called_once_with(initialize_prd=True)
+
+    def test_cutover_allows_exact_two_vars_and_preserves_namespace(self):
+        api = FakeAPI()
+        self.candidate(api.candidate)
+        receipt = {}
+        self.run_cutover(api, receipt)
+        self.assertEqual(receipt["state"], "deployed_and_verified")
+        self.assertEqual(receipt["model"], "prd_v1")
+        self.assertEqual(api.commands, ["promote"])
+
+    def test_cutover_does_not_allow_any_additional_binding_change(self):
+        for mutation in [lambda v: v["resources"]["bindings"][0].update(text="other"),
+                         lambda v: v["resources"]["bindings"][-3].update(namespace_id="other")]:
+            api = FakeAPI()
+            self.candidate(api.candidate)
+            mutation(api.candidate)
+            with self.assertRaises(release.ReleaseError):
+                self.run_cutover(api, {})
+            self.assertEqual(api.active, OLD)
+            self.assertEqual(api.commands, [])
+
+    def test_ordinary_release_cannot_silently_activate_new_model(self):
+        api = FakeAPI()
+        self.candidate(api.candidate)
+        with patch.object(release, "wrangler", side_effect=lambda args, label: [{"type":"version-upload","version_id":NEW}] if label == "upload" else []):
+            with self.assertRaises(release.ReleaseError):
+                release.run_release(config(), SOURCE, api, {})
+        self.assertEqual(api.active, OLD)
+
+    def test_future_ordinary_release_retains_new_model_from_live(self):
+        api = FakeAPI()
+        self.candidate(api.old)
+        self.candidate(api.candidate)
+        receipt = {}
+        self.run_cutover(api, receipt, activate=False)
+        self.assertEqual(receipt["model"], "prd_v1")
+        self.assertEqual(receipt["state"], "deployed_and_verified")
+
+    def test_repeated_explicit_cutover_refused_before_build_or_upload(self):
+        api = FakeAPI()
+        self.candidate(api.old)
+        with patch.object(release, "wrangler") as wrangler:
+            with self.assertRaises(release.ReleaseError):
+                release.run_release(config(), SOURCE, api, {}, activate_prd_empty=True)
+            wrangler.assert_not_called()
+
+    def test_database_probe_uses_unissued_cookie_and_checks_response(self):
+        # Reuse the normal public checks, but isolate the additional DB startup
+        # probe so its cookie is never an existing user session or a login.
+        with TemporaryDirectory() as folder:
+            root=Path(folder)
+            dist=root / "apps/client/dist"
+            dist.mkdir(parents=True)
+            (dist / "index.html").write_bytes(b'<script src="/app.js"></script>')
+            (dist / "app.js").write_bytes(b'synthetic')
+            observed=[]
+            def request(path, headers=None, method="GET"):
+                if path=="/": return 200,(dist / "index.html").read_bytes()
+                if path=="/app.js": return 200,b'synthetic'
+                if path=="/api/health": return 200,b'{"status":"ok"}'
+                if path=="/api/nonexistent-release-check": return 404,b'{}'
+                if path=="/api/auth/logout":
+                    if headers.get("Cookie"):
+                        observed.append(headers["Cookie"])
+                        return 200,b'{"ok":true}'
+                    allowed=headers.get("Origin")==release.ORIGIN and headers.get("x-skarma-request")=="1"
+                    return (200 if allowed else 403),b'{}'
+                return 401,b'{}'
+            with patch.object(release,"ROOT",root),patch.object(release,"public_request",side_effect=request):
+                self.assertEqual(release.smoke(initialize_prd=True)["prd_database"],"startup_completed")
+            self.assertEqual(len(observed),1)
+            self.assertRegex(observed[0],r'^__Host-skarma_session=[0-9a-f]{64}$')
+
+
 if __name__ == "__main__":
     unittest.main()

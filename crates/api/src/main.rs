@@ -227,6 +227,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     match config.model {
         DataModel::Legacy => store::initialize(&connection)?,
+        DataModel::PrdV1 if config.initialize_empty_prd => {
+            store::initialize_empty_prd_baseline(&connection)?
+        }
         DataModel::PrdV1 => store::initialize_prd_runtime(&connection)?,
     }
     if matches!(command, "admin-init" | "admin-reset") {

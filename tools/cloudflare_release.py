@@ -5,10 +5,12 @@ are supplied by environment bindings; private config/logs stay in ignored paths.
 """
 
 import argparse
+import copy
 import json
 import os
 from pathlib import Path
 import re
+import secrets
 import subprocess
 import sys
 import time
@@ -25,6 +27,7 @@ WORKER = "skarma-web"
 ORIGIN = "https://skarma.vip"
 SHA = re.compile(r"[0-9a-f]{40}")
 UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+PRD_VARS = {"SKARMA_MODEL": "prd_v1", "SKARMA_PRD_BASELINE": "empty_preserve_legacy_v1"}
 
 
 class ReleaseError(Exception):
@@ -69,6 +72,9 @@ def validate_config(config):
     require(all(isinstance(v, str) for v in variables.values()), "Only plain-text application vars are supported.")
     require(not any(re.search(r"password|secret|token|cookie", k, re.I) for k in variables),
             "Credentials/bootstrap passwords must not appear in config vars.")
+    model_vars = {k: variables[k] for k in PRD_VARS if k in variables}
+    require(not model_vars or model_vars == PRD_VARS,
+            "Only the reviewed empty PRD baseline is supported by this release flow.")
     allowed = {"name", "account_id", "main", "compatibility_date", "compatibility_flags", "build",
                "assets", "vars", "durable_objects", "migrations", "routes", "workers_dev", "preview_urls",
                "keep_vars", "observability", "limits", "placement", "send_metrics"}
@@ -99,7 +105,13 @@ def invariant(version):
 def validate_live(config, version):
     preserved = invariant(version)
     variables = {b["name"]: b.get("text") for b in preserved["bindings"] if b["type"] == "plain_text"}
-    require(variables == config["vars"], "Private configuration vars differ from the live version; refresh it safely.")
+    # The original private Secret can remain unchanged after the explicitly
+    # reviewed cutover. Accept ONLY these exact added model vars; all other
+    # live settings must still equal the private original configuration.
+    expected = config["vars"]
+    matches_prd_overlay = not any(k in expected for k in PRD_VARS) and variables == {**expected, **PRD_VARS}
+    require(variables == expected or matches_prd_overlay,
+            "Private configuration vars differ from the live version; refresh it safely.")
     runtime = preserved["runtime"]
     require(config.get("compatibility_date") == runtime.get("compatibility_date"),
             "Compatibility date must match the live version.")
@@ -215,7 +227,7 @@ def normalize_homepage(body):
     return normalized, count
 
 
-def smoke():
+def smoke(initialize_prd=False):
     status, body = public_request("/")
     codes = re.findall(rb"(?:error code[: ]+|Error\s+)(\d{4})", body, re.I)
     require(status == 200, f"Public homepage returned HTTP {status} (edge codes: "
@@ -242,41 +254,64 @@ def smoke():
             headers["x-skarma-request"] = "1"
         require(public_request("/api/auth/logout", headers, "POST")[0] == expected,
                 "Exact-origin verification failed.")
-    return {"homepage": "matched" if not beacon_count else "matched_except_known_cf_analytics",
+    checks = {"homepage": "matched" if not beacon_count else "matched_except_known_cf_analytics",
             "javascript": "matched", "cf_analytics_tags": beacon_count,
             "health": 200, "anonymous": "passed", "origins": "passed"}
+    if initialize_prd:
+        # An unissued random session's logout enters the DO transaction without
+        # logging in, reading business data, or modifying anyone's session.
+        # Anonymous logout alone never calls the repository and cannot prove DB startup.
+        status, body = public_request("/api/auth/logout", {
+            "Origin": ORIGIN, "Content-Type": "application/json", "x-skarma-request": "1",
+            "Cookie": "__Host-skarma_session=" + secrets.token_hex(32)}, "POST")
+        require(status == 200 and json.loads(body).get("ok") is True,
+                "PRD database startup did not complete; do not claim the new model is usable.")
+        checks["prd_database"] = "startup_completed"
+    return checks
 
 
-def run_release(config, source_sha, api, receipt):
+def run_release(config, source_sha, api, receipt, activate_prd_empty=False):
     deployment_id, previous_id, previous = api.current()
     preserved = validate_live(config, previous)
+    expected = copy.deepcopy(preserved)
+    extra_args = []
+    live_vars = {b["name"]: b.get("text") for b in preserved["bindings"] if b["type"] == "plain_text"}
+    if activate_prd_empty:
+        require(not any(k in live_vars for k in PRD_VARS),
+                "PRD model is already configured; use an ordinary release, never reinitialize.")
+        for key, value in PRD_VARS.items():
+            expected["bindings"].append({"type": "plain_text", "name": key, "text": value})
+            extra_args.extend(["--var", key + ":" + value])
+        expected["bindings"].sort(key=lambda b: b["name"])
+    prd = all({b["name"]: b.get("text") for b in expected["bindings"]}.get(k) == v for k, v in PRD_VARS.items())
+    receipt["model"] = "prd_v1" if prd else "legacy"
     routing = api.routing()
     receipt.update(previous_version=previous_id, state="preflight_passed")
-    wrangler(["versions", "upload", "--dry-run", "--keep-vars"], "dry-run")
+    wrangler(["versions", "upload", "--dry-run", "--keep-vars", *extra_args], "dry-run")
     # Recheck after a slow build; concurrent Dashboard/Mac releases must not be overwritten.
     require(api.current()[0] == deployment_id and api.routing() == routing,
             "Production changed during preparation; refusing to overwrite another release.")
-    events = wrangler(["versions", "upload", "--keep-vars", "--message", f"GitHub {source_sha}"], "upload")
+    events = wrangler(["versions", "upload", "--keep-vars", "--message", f"GitHub {source_sha}", *extra_args], "upload")
     uploads = [e for e in events if e.get("type") == "version-upload"]
     require(len(uploads) == 1 and UUID.fullmatch(uploads[0].get("version_id", "")) is not None,
             "Upload version ID was not confirmed; no traffic switch attempted.")
     new_id = uploads[0]["version_id"]
     receipt.update(uploaded_version=new_id, state="uploaded_not_promoted")
     candidate = api.get(f"/scripts/{WORKER}/versions/{new_id}")
-    require(invariant(candidate) == preserved,
+    require(invariant(candidate) == expected,
             "Uploaded version changes storage, variables or runtime settings; no traffic switch attempted.")
     require(api.current()[0] == deployment_id and api.routing() == routing,
             "Production changed before promotion; uploaded version remains inactive.")
     receipt["state"] = "promotion_attempted"
     api.promote(new_id, source_sha)
     _, active_id, active = api.current()
-    require(active_id == new_id and invariant(active) == preserved and api.routing() == routing,
+    require(active_id == new_id and invariant(active) == expected and api.routing() == routing,
             "Post-deploy metadata differs; investigate before any further release (no automatic rollback).")
     receipt.update(deployed_version=new_id, state="deployed_public_checks_pending")
     last_error = None
     for attempt in range(3):
         try:
-            receipt["checks"] = smoke()
+            receipt["checks"] = smoke(initialize_prd=prd)
             receipt["state"] = "deployed_and_verified"
             return
         except ReleaseError as error:
@@ -298,7 +333,10 @@ def verify_existing(config, expected_version, api, receipt):
     source = re.fullmatch(r"GitHub ([0-9a-f]{40})", message)
     if source:
         receipt["deployed_source_sha"] = source[1]
-    receipt["checks"] = smoke()
+    live_vars = {b["name"]: b.get("text") for b in preserved["bindings"] if b["type"] == "plain_text"}
+    prd = all(live_vars.get(k) == v for k, v in PRD_VARS.items())
+    receipt["model"] = "prd_v1" if prd else "legacy"
+    receipt["checks"] = smoke(initialize_prd=prd)
     final_deployment, final_id, final = api.current()
     require(final_deployment == deployment_id and final_id == active_id
             and invariant(final) == preserved and api.routing() == routing,
@@ -322,6 +360,7 @@ def main():
     mode.add_argument("--deploy", action="store_true", help="Explicitly upload and promote the existing Worker.")
     mode.add_argument("--verify-version", help="Only verify this active version; never upload or promote.")
     mode.add_argument("--verify-from-event", action="store_true", help="Read an explicit verify version marker from the GitHub event.")
+    parser.add_argument("--activate-prd-empty", action="store_true", help="Explicit one-time empty PRD domain; preserve original auth and legacy tables.")
     args = parser.parse_args()
     receipt = {"worker": WORKER, "origin": ORIGIN, "source_sha": args.source_sha, "state": "not_deployed"}
     os.umask(0o077)
@@ -343,6 +382,8 @@ def main():
         CONFIG.write_text(raw)
         wrote_config = True
         expected_version = verification_version_from_event() if args.verify_from_event else args.verify_version
+        require(not args.activate_prd_empty or args.deploy,
+                "PRD cutover requires explicit deploy mode; verification cannot change the model.")
         if not args.deploy and not expected_version:
             receipt["state"] = "config_validated_only"
             return
@@ -352,7 +393,7 @@ def main():
         if expected_version:
             verify_existing(config, expected_version, api, receipt)
         else:
-            run_release(config, args.source_sha, api, receipt)
+            run_release(config, args.source_sha, api, receipt, activate_prd_empty=args.activate_prd_empty)
     except (ReleaseError, OSError, ValueError, KeyError) as error:
         # Unexpected exceptions/JSON/OS errors can contain private paths or API values.
         receipt["error"] = str(error) if isinstance(error, ReleaseError) else "Release failed; inspect private runner diagnostics."

@@ -133,6 +133,79 @@ fn drafts_do_not_count_and_completion_requires_actual_targets_and_method_confirm
     assert_eq!(report.records.family, 1);
     assert_eq!(report.method_unknown.family, 1);
 }
+
+#[test]
+fn planning_suggestions_use_expected_intervals_and_exclude_non_actionable_goals() {
+    let mut db = Connection::open_in_memory().unwrap();
+    store::initialize_foundation(&db).unwrap();
+    let u = actor();
+    let mut ids = vec![];
+    for (title, state, frequency, level, archived) in [
+        ("重点九天未记", "active", Value::Null, "short", false),
+        (
+            "维持二十天未记",
+            "maintaining",
+            Value::Null,
+            "medium",
+            false,
+        ),
+        ("明确不设频率", "active", json!("none"), "short", false),
+        ("暂停目标", "paused", json!("weekly"), "short", false),
+        ("收起目标", "active", json!("weekly"), "short", true),
+        ("已达成目标", "achieved", json!("weekly"), "short", false),
+        ("未开始目标", "not_started", json!("weekly"), "short", false),
+        ("长期关注", "active", json!("weekly"), "long", false),
+    ] {
+        let g = put(
+            &mut db,
+            &u,
+            Mutation::Goal(
+                serde_json::from_value(json!({
+                    "title":title,"level":level,"state":state,"frequency":frequency,
+                    "archived":archived,"attention_start":"2019-01-01"
+                }))
+                .unwrap(),
+            ),
+        );
+        ids.push(g.id().to_owned());
+    }
+    for (goal, day) in [(&ids[0], "2020-01-22"), (&ids[1], "2020-01-11")] {
+        let input: Input = serde_json::from_value(json!({
+            "business_date":day,"time_slot":"晚上",
+            "summary":{"targets":[{"goal_id":goal,"performed":true,"observation":"合成实际表现"}],"confirmation":"none"}
+        })).unwrap();
+        store::write_foundation_session(
+            &mut db,
+            &u,
+            cmd(&id(), None, Action::Complete, Some(input)),
+        )
+        .unwrap();
+    }
+    for days in [7, 30] {
+        let report = store::foundation_coverage_at(
+            &mut db,
+            coverage::Request {
+                days,
+                source: "family".into(),
+            },
+            "2020-01-31",
+        )
+        .unwrap();
+        assert_eq!(report.suggested_ids, ids[..2]);
+        for (i, ratio, last) in [(0, 9.0 / 7.0, "2020-01-22"), (1, 20.0 / 30.0, "2020-01-11")] {
+            let goal = report.goals.iter().find(|g| g.id == ids[i]).unwrap();
+            assert!((goal.ratio.unwrap() - ratio).abs() < 1e-12);
+            assert_eq!(goal.last_date.as_deref(), Some(last));
+            assert_eq!(goal.counts.selected, u32::from(days == 30));
+        }
+        for id in &ids[2..] {
+            assert_eq!(
+                report.goals.iter().find(|g| &g.id == id).unwrap().ratio,
+                None
+            );
+        }
+    }
+}
 #[test]
 fn outputs_retry_edit_and_failure_are_atomic_and_admin_delete_preserves_knowledge() {
     let (mut db, u, input, g, _) = fixture();

@@ -58,8 +58,9 @@ with sync_playwright() as p:
  teacher=entity(member_context,'catalog',{'kind':'teacher','name':'合成王老师','active':True})
  lesson_id=str(uuid4())
  call(member_context,'PUT','/prd/lessons/'+lesson_id,{'id':lesson_id,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':{'business_date':today,'course_id':course['id'],'teacher_id':teacher['id'],'notes':'合成课堂观察'}}})
+ call(member_context,'PUT','/prd/lessons/'+lesson_id,{'id':lesson_id,'operation_id':str(uuid4()),'expected_version':1,'action':{'kind':'organization','value':{'seen_observation_version':1,'targets':[{'goal_id':goal['id'],'note':'属于其他目标的课堂表现'}],'focus_goal_ids':[long_goals[0]['id']]}}})
  session_id=str(uuid4())
- call(member_context,'PUT','/prd/sessions/'+session_id,{'id':session_id,'operation_id':str(uuid4()),'expected_version':None,'action':'complete','input':{'business_date':today,'time_slot':'晚上','summary':{'targets':[{'goal_id':goal['id'],'performed':True,'observation':'合成家庭观察'}],'confirmation':'none'}}})
+ call(member_context,'PUT','/prd/sessions/'+session_id,{'id':session_id,'operation_id':str(uuid4()),'expected_version':None,'action':'complete','input':{'business_date':today,'time_slot':'晚上','focus_goal_ids':[long_goals[0]['id']],'summary':{'targets':[{'goal_id':goal['id'],'performed':True,'observation':'合成家庭观察'}],'confirmation':'none','signals':[{'kind':'主动开始','goal_ids':[long_goals[0]['id']]},{'kind':'投入愉快','goal_ids':[]}]}}})
  moment_id=str(uuid4())
  call(member_context,'POST','/prd/process',{'kind':'observe','value':{'id':moment_id,'operation_id':str(uuid4()),'expected_version':None,'kind':'moment','action':'save','input':{'business_date':today,'text':'合成瞬间观察','goal_ids':[goal['id']]},'note':''}})
 
@@ -74,6 +75,35 @@ with sync_playwright() as p:
  expect(owner.get_by_text(re.compile(r'^瞬间观察 · \d{2}:\d{2}$'))).to_be_visible()
  expect(owner.get_by_text('记录者：测试家人 · 刚保存 · 已同步',exact=True)).to_have_count(3)
  assert member['display_name']=='测试家人'
+ # A long focus flag is not an observation about every other target in a record.
+ button(owner,'查看长期关注').click()
+ directions=owner.get_by_role('dialog',name='长期关注',exact=True)
+ expect(directions).to_be_visible()
+ expect(directions.get_by_text(re.compile(r'^最近家庭观察：.*合成家庭观察'))).to_have_count(0)
+ expect(directions.get_by_text(re.compile(r'^最近课堂观察：.*合成课堂观察'))).to_have_count(0)
+ expect(directions.get_by_text(re.compile(r'^最近家庭观察：.*明确关注过这个方向，未单独填写文字观察'))).to_have_count(1)
+ expect(directions.get_by_text(re.compile(r'^最近课堂观察：.*明确关注过这个方向，未单独填写文字观察'))).to_have_count(1)
+ expect(directions.get_by_text('明确关联的参与信号：主动开始',exact=True)).to_be_visible()
+ expect(directions.get_by_text('明确关联的参与信号：投入愉快',exact=True)).to_have_count(0)
+ button(owner,'关闭长期关注').click()
+
+ # Two pending plans require an explicit selection; opening one edits only a
+ # local draft and cannot complete or overwrite either shared server record.
+ plans=[]
+ for slot,name in [('上午','合成待总结A'),('晚上','合成待总结B')]:
+  identifier=str(uuid4())
+  plans.append(call(member_context,'PUT','/prd/sessions/'+identifier,{'id':identifier,'operation_id':str(uuid4()),'expected_version':None,'action':'save_draft','input':{'business_date':today,'time_slot':slot,'plan':name,'targets':[{'goal_id':goal['id'],'role':'main'}]}}))
+ owner.reload();expect(button(owner,'填写今天的总结')).to_be_enabled()
+ button(owner,'填写今天的总结').click()
+ choice=owner.get_by_role('dialog',name='家庭干预',exact=True)
+ expect(choice.get_by_role('button',name=re.compile('^继续总结：'))).to_have_count(2)
+ button(owner,'继续总结：上午 · 合成待总结A').click()
+ expect(owner.get_by_role('dialog',name='填写干预总结',exact=True)).to_be_visible()
+ identity=call(owner_context,'GET','/auth/me')
+ owner.wait_for_function("({actor,id})=>{const k=Object.keys(localStorage).find(k=>k.includes(':'+actor+':')&&k.endsWith('session-drafts:v1'));return k&&JSON.parse(localStorage.getItem(k))[id]?.stage==='summary';}",arg={'actor':identity['user']['id'],'id':plans[0]['id']})
+ button(owner,'关闭填写干预总结').click()
+ state=call(owner_context,'GET','/prd/state')
+ for plan in plans:assert next(s for s in state['sessions'] if s['id']==plan['id'])==plan
  assert not errors,errors
- print('PASS Shanghai business date, 0/3/6 first-screen actions, unified lesson/family/moment metadata and cross-account author refresh',flush=True)
+ print('PASS Shanghai date, compact actions, author metadata, scoped long-focus evidence and explicit two-plan selection without shared writes',flush=True)
  browser.close()

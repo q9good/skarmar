@@ -7,6 +7,7 @@ import {outboxContract} from './prd-outbox-contract.mjs';
 import {followupContract} from './prd-followup-contract.mjs';
 import { sessionContract } from './prd-session-contract.mjs';
 import assert from 'node:assert/strict';
+import {planningContract} from './prd-planning-contract.mjs';
 import { randomUUID } from 'node:crypto';
 import { lessonContract } from './prd-lesson-contract.mjs';
 export const prdTestPassword = 'synthetic-prd-contract-password';
@@ -85,6 +86,7 @@ export async function prdContract(label, send) {
   await authSessionContract(label,send,admin,prdTestPassword);
   await observationContract(label,send,admin);
   const importSource=await transferContract(label,send,admin);
+  await planningContract(label,send,admin);
   const completion=await completionContract(label,send,admin);
   await exportContract(label,send,admin);
   const finalSnapshot=(await call('GET','/prd/state',undefined,admin)).data;

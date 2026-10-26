@@ -323,7 +323,22 @@
       "title": "opus对抗验收8个切片（受模型限流阻塞，未产出验收报告）",
       "status": "blocked",
       "evidence": "docs/prd-implementation-2026-10-26/acceptance-prompt.md",
-      "verification": "用户要求gpt与opus对抗完成目标：gpt实现、opus逐AC对抗验收。验收prompt已写好并随提交入库（docs/prd-implementation-2026-10-26/acceptance-prompt.md），要求opus独立重跑全部测试、抽查审计DONE判定不少于12条、核对59条AC覆盖、逐切片验收含diff审查断言是否被放宽、范围纪律核对，最后给VERDICT PASS或REVISE。实际执行受阻：claude-opus-5-5模型池在2026-10-26 03:13至06:13的3小时send窗口内持续返回429模型提供方限流，send按规程只等待不nudge，窗口耗尽退出，未产出accept-report.md。此前多次派发亦因同一限流失败（p5/p6/p7三个opus pane均出现429，attempt计数至11/300）。因此59条AC全DONE目前仍只是worker自评加编排者抽查，不是对抗性结论；在对抗验收PASS前不得宣称验收通过。接手者第一件事是按用户既定的隔3小时重试策略重派该验收，基线为当前HEAD且工作树须干净；若REVISE则派gpt修复后复验，循环到PASS。DO半段与真机验证另受环境限制（glibc 2.31<2.32、无iOS/Android真机），需在Mac或较新Linux及真机上补做。"
+      "verification": "用户要求gpt与opus对抗完成目标：gpt实现、opus逐AC对抗验收。验收prompt已写好并随提交入库（docs/prd-implementation-2026-10-26/acceptance-prompt.md），要求opus独立重跑全部测试、抽查审计DONE判定不少于12条、核对59条AC覆盖、逐切片验收含diff审查断言是否被放宽、范围纪律核对，最后给VERDICT PASS或REVISE。实际执行受阻：claude-opus-5-5模型池在2026-10-26 03:13至06:13的3小时send窗口内持续返回429模型提供方限流，send按规程只等待不nudge，窗口耗尽退出，未产出accept-report.md。此前多次派发亦因同一限流失败（p5/p6/p7三个opus pane均出现429，attempt计数至11/300）。因此59条AC全DONE目前仍只是worker自评加编排者抽查，不是对抗性结论；在对抗验收PASS前不得宣称验收通过。接手者第一件事是按用户既定的隔3小时重试策略重派该验收，基线为当前HEAD且工作树须干净；若REVISE则派gpt修复后复验，循环到PASS。DO半段与真机验证另受环境限制（glibc 2.31<2.32、无iOS/Android真机），需在Mac或较新Linux及真机上补做。",
+      "blocker": "当前云端没有Opus／orchestrate调用入口；用户已允许当前agent先独立复核，但Opus验收继续保留待办。此前原主机的429限流为历史，不代表本环境已尝试调用。"
+    },
+    {
+      "id": "T47",
+      "title": "云端独立复核、范围裁决与长期关注归属整改",
+      "status": "done",
+      "evidence": "docs/prd-implementation-2026-10-26/cloud-independent-review.md",
+      "verification": "2026-10-26安全快进到c2c3f5d（应用111331e），用户明确不以旧版兼容或旧数据迁移为前置，确认可选资料导入的原文/来源保留、人工确认、显式映射、预览/去重原则，并允许当前agent先复核、Opus保留待办。独立核对8个切片和59项AC；新增浏览器场景实际复现J01长期关注借用其他目标表现及课堂整段文字，现本地复用历史范围筛选修复，正反断言/明确关联信号均通过。补J02精确9/7与20/30排序及排除条件的Rust和两运行环境HTTP测试，J03两个待总结计划显式选择且服务器两记录完全不变。Rust最终153项、客户端55项、类型检查/Web构建、规划14/工作流6/同步14、格式/Clippy、合成维护通过；拉取基线21脚本连续3轮通过，修复后受影响3组及最终完整21脚本通过。当前glibc2.41，原生SQLite与实际编译Rust Wasm/Miniflare DO完整合约及重启均通过，未SKIP。PRD仅更新用户裁决边界，59条AC和附录A/D保持不变。done仅指本轮复核整改，Opus仍T46，真机200%文字/键盘/读屏及真实工作簿未验；implementationCommit保留原正式记录。本轮未提交、推送、部署、读取生产或修改私密配置。"
+    },
+    {
+      "id": "T48",
+      "title": "PRD新版试用发布：原账号与旧表保留、空白新模型启用",
+      "status": "in_progress",
+      "evidence": "docs/cloudflare-release-2026-10-26.md",
+      "verification": "用户要求先部署看效果。现网为旧模型，准备显式新增两项固定模型变量，在原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip上建立空白新业务表，保留全部认证和旧业务，不做语义转换或恢复演示数据。已有157项Rust测试及29项发布保护、9项既有演示保护通过；类型检查/Web构建、格式/Clippy通过。双运行环境合成演练及实际发布回执完成后补记；Opus和真机尚未验收，不冒称整体通过。"
     }
   ],
   "artifacts": [

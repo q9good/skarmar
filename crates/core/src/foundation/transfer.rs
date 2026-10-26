@@ -1124,6 +1124,59 @@ impl Sql for NewSchema<'_> {
         Ok(r)
     }
 }
+/// Explicit deployment baseline, NOT a conversion: leave every legacy/auth row
+/// in place and start an empty PRD domain. The adapter MUST supply a transaction.
+/// Ordinary startup still rejects legacy stores without this configuration.
+pub fn initialize_empty_preserving_legacy(db: &dyn Sql) -> Result<()> {
+    if super::enabled(db)? {
+        // The flag can remain configured: never reset an existing PRD database.
+        return super::initialize_authenticated(db);
+    }
+    let names = db.query(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name<>'_cf_KV'",
+        &[],
+    )?;
+    if names.len() != LEGACY.len() + AUTH.len()
+        || names
+            .iter()
+            .any(|r| !LEGACY.contains(&r[0].as_str()) && !AUTH.contains(&r[0].as_str()))
+        || LEGACY
+            .iter()
+            .chain(AUTH)
+            .any(|n| !names.iter().any(|r| &r[0] == n))
+    {
+        return Err(ApiError::conflict(
+            "空白新基线要求完整的既有旧库和账号表，拒绝创建或忽略未知表",
+        ));
+    }
+    let versions = db.query(
+        "SELECT CAST(version AS TEXT) FROM schema_migrations ORDER BY version",
+        &[],
+    )?;
+    if versions.iter().map(|r| r[0].clone()).collect::<Vec<_>>()
+        != (1..=10).map(|n| n.to_string()).collect::<Vec<_>>()
+        || db
+            .query(
+                "SELECT id FROM auth_users WHERE role='admin' AND active=1 LIMIT 1",
+                &[],
+            )?
+            .is_empty()
+    {
+        return Err(ApiError::conflict(
+            "空白新基线要求旧库版本1至10及已有有效管理员",
+        ));
+    }
+    // Only metadata was read. No business data or authentication row is copied,
+    // changed, removed, inferred, or exposed in a deployment receipt.
+    super::initialize(&NewSchema(db))?;
+    db.execute(
+        "INSERT INTO prd_upgrade(id,data) VALUES('legacy-v10',?1)",
+        params![json(&value!({
+            "schema":"skarmar.empty-baseline.v1", "legacy_tables_preserved":true
+        }))?],
+    )?;
+    super::initialize_authenticated(db)
+}
 pub fn filter_retained_legacy(db: &dyn Sql, names: &mut Vec<Vec<String>>) -> Result<()> {
     if !names.iter().any(|r| LEGACY.contains(&r[0].as_str())) {
         return Ok(());
@@ -1132,10 +1185,10 @@ pub fn filter_retained_legacy(db: &dyn Sql, names: &mut Vec<Vec<String>>) -> Res
         return Ok(());
     }
     let marker = read_json(db, "prd_upgrade", "legacy-v10")?;
-    if !marker
-        .as_ref()
-        .is_some_and(|m| m["schema"] == "skarmar.upgrade.v1")
-    {
+    if !marker.as_ref().is_some_and(|m| {
+        m["schema"] == "skarmar.upgrade.v1"
+            || (m["schema"] == "skarmar.empty-baseline.v1" && m["legacy_tables_preserved"] == true)
+    }) {
         return Err(ApiError::conflict("旧表保留标记不完整，拒绝启动"));
     }
     if names
