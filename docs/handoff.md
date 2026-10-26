@@ -48,6 +48,53 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-10-26：PRD 0.5 逐 AC 实现完成，对抗验收受限流阻塞（T44／T45 完成，T46 受阻）
+
+用户要求用编排计划让 gpt 与 opus 对抗完成实现：worker 先对照 [PRD 0.5](prd-family-intervention.md)
+逐 R、逐 59 条 AC 审计现状，再逐切片补功能并对照验收测试。完整过程、验证状态与剩余工作见
+[实现交接文档](prd-implementation-handoff-2026-10-26.md)，审计与 8 份切片报告及验收 prompt
+在 [prd-implementation-2026-10-26/](prd-implementation-2026-10-26/)。
+
+**已完成**：基线 `3ce27f9` → HEAD `111331e`，8 个切片共 74 文件 +1902／−243：
+A0-3 测试入口与 R15（`4d65479`）、A0 覆盖层 Back 竞态根治与离线取消及会话续期（`ec03810`）、
+A1-1 今天页业务日期（`f1ecb35`）、A1-2 课记撤销 capability（`c8a581e`）、
+A2-1 目标 domain／due／support（`402cfbb`）、A2-2 总结新建困难结构化字段（`b3a6f71`）、
+B-1 普通与快捷方法创建区分（`7117f32`）、C-1 附录 D 金标准逐行对账与 runtimes 运行器改进（`111331e`）。
+
+**编排者独立复跑全部测试均绿**（非沿用 worker 报告）：cargo 152 passed／0 failed、
+test:prd-client 55／55、test:prd-web 连续 3／3 PASS（21 脚本 71 检查点）、
+test:prd-runtimes 的 native SQLite 16 组全 PASS、typecheck／web:build／planning 14／
+workflow 6／sync 14／cargo fmt／check-prd-maintenance 均 PASS。worker 自评 59 条 AC 全 DONE
+并逐条给出测试文件行号；编排者抽查 AC-R04-05／R13-02／R12-05 的源码与测试与自评一致。
+切片 2 前编排者曾独立复现 `smoke_prd_observations_web.py` 间歇失败（隔离 3 次为
+PASS／PASS／FAIL），修复后连跑 8 次全绿。
+
+**范围纪律已核验**：未改 PRD 文档、未碰 `wrangler.toml` 与 `package-lock.json`
+（`package.json` 仅 3 行 test script 加 `--experimental-strip-types`，未改依赖版本）、
+未设 `SKARMA_MODEL` 生产开关、未部署、未访问生产账号与业务数据、未动 L-2／L-3。
+
+**⚠️ T46 受阻，接手者第一件事**：opus 对抗验收**未完成**。claude-opus-5-5 模型池在
+03:13–06:13 的 3 小时窗口内持续 429「模型提供方限流」（p5／p6／p7 三个 pane 均出现，
+attempt 计数至 11／300），send 按规程只等待不 nudge，窗口耗尽退出，未产出验收报告。
+因此「59 条 AC 全 DONE」目前仍只是 worker 自评加编排者抽查，**不是对抗性结论**；
+对抗验收 PASS 前不得宣称验收通过。验收 prompt 已入库
+（[acceptance-prompt.md](prd-implementation-2026-10-26/acceptance-prompt.md)），
+按用户既定的隔 3 小时重试策略重派即可；若 REVISE 则派 gpt 修复后复验，循环到 PASS。
+
+**环境限制（非代码缺陷）**：Miniflare／DO 半段本机无法运行——workerd 需 glibc ≥2.32，
+本机 Ubuntu 20.04 为 2.31，换旧版 workerd 同样失败；切片 8 已让 `test:prd-runtimes`
+输出明确 SKIP 并 exit 0，不把 SKIP 报成 PASS。**DO 半段需在 Mac 或较新 Linux 复跑**
+（T36 的 DO 通过记录来自 Mac）。真机软键盘、系统级文本缩放、真机返回手势均为桌面
+Chromium 模拟，AC-R15-03／04、R01-01、R09-02、R14-05 标注「真机另记」。
+
+**待用户裁决**：实现用的是并行 `prd_schema` v1–v6（默认仍 legacy，`wrangler.toml` 无
+`SKARMA_MODEL=prd_v1`），而 PRD §5.1 写的是「压缩 001–010 为新基线」；该差异连同
+L-2 生产存储衔接、L-3 Excel 导入映射，是发布前必须定的（交接文档第五节）。
+
+**`implementationCommit` 仍为 `491c5bf`，未更新为 `111331e`**：按 AGENTS.md 该字段指
+「最后一次应用验收对应提交」，而对抗验收未完成，更新它等于虚报验收。HEAD 已是
+`111331e` 且含全部 8 个切片，接手者据此判断实际代码状态。未部署，线上仍 T38 版本。
+
 ### 2026-10-24：PRD 0.5与手机交互首批实现（T43完成，T44待实施）
 
 安全拉取第三轮定案 `3899ffd` 后，将全部五项裁决纳入[PRD 0.5](prd-family-intervention.md)：

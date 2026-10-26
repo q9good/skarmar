@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-24",
+  "updatedAt": "2026-10-26",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -307,9 +307,23 @@
     {
       "id": "T44",
       "title": "A0新模型与持久化基础：状态／过程事件／稳定目录及方法版本、契约门禁、多草稿与离线队列",
-      "status": "todo",
-      "evidence": "docs/prd-implementation-2026-10-24.md",
-      "verification": "后续按PRD0.5在隔离合成库实施并验证SQLite/真实Rust Worker/DO合约；再推进A1课记分区并发／撤销／观察整理，A2计划总结、B复盘、C报表。当前长期详情仍使用旧criteria/review_notes，到期提示用既有日期，尚无新参与信号模型或统一周末日程；未交付图标、长期会话、全表单覆盖层与离线队列。L-2生产转换及L-3导入映射仍单独设计，不对现有生产库自动升级。"
+      "status": "done",
+      "evidence": "docs/prd-implementation-handoff-2026-10-26.md",
+      "verification": "2026-10-26核对：A0新模型与持久化基础实际已由原作者提交3ce27f9（foundation schema v1–v6、prd_entities/prd_operations/prd_revisions、稳定目录ID、方法版本、契约门禁、多草稿与离线队列基础）加上本轮切片1（4d65479测试入口与R15）与切片2（ec03810离线取消、uncertain不可丢弃、可信会话14天续期、覆盖层Back竞态根治）覆盖。编排者在HEAD 111331e独立复跑：cargo test --workspace 152 passed/0 failed、test:prd-client 55/55、test:prd-web连续3/3 PASS（21脚本71检查点）、test:prd-runtimes的native SQLite 16组全PASS、typecheck/web:build/planning 14/workflow 6/sync 14/cargo fmt/check-prd-maintenance均PASS。注意实现形态是并行prd_schema v1–v6而非PRD §5.1字面的压缩001–010，默认仍走legacy且wrangler.toml无SKARMA_MODEL=prd_v1，该差异连同L-2生产衔接留待用户裁决（见交接文档第五节）。DO半段因本机glibc 2.31<2.32无法运行，已诚实SKIP非冒充PASS。本条done指A0范围已实现并经编排者独立测试，不含opus对抗验收（见T46）。"
+    },
+    {
+      "id": "T45",
+      "title": "PRD 0.5逐AC实现：8个切片补齐A0可靠性／A1／A2／B／C缺口并独立验证",
+      "status": "done",
+      "evidence": "docs/prd-implementation-handoff-2026-10-26.md",
+      "verification": "2026-10-26用编排计划让gpt（codex-runner，GPT-5.6-Sol xhigh，Full Access）按审计路线图逐切片实现，每片独立本地提交，基线3ce27f9至HEAD 111331e共74文件+1902/−243：4d65479（A0-3测试入口修复与R15对齐）、ec03810（覆盖层Back竞态用useLayoutEffect+historyReady门控根治、离线队列仅queued且attempted=false可取消且uncertain不可丢弃、可信会话14天续期、测试基础设施）、f1ecb35（A1-1今天页Asia/Shanghai业务日期与已记录作者时间同步状态）、c8a581e（A1-2课记撤销capability门控与入站引用预检，AC-R04-05三场景）、402cfbb（A2-1目标domain单一领域/due/support，版本化且旧记录默认值安全）、b3a6f71（A2-2总结新建困难结构化字段，原话与推测分离）、7117f32（B-1普通方法创建要求steps且服务端拒绝空，与快捷创建区分）、111331e（C-1附录D统计金标准逐行对账统一fixture、test:prd-runtimes运行器改进使DO半段诚实SKIP、C批R08/R09/R13与专业沟通摘要补齐）。编排者独立复跑全部测试均绿（见T44），并抽查AC-R04-05的reason_code（not_creator/outside_creation_day/referenced/allowed）、AC-R13-02的moment不计入coverage、AC-R12-05的明确关联信号过滤（reviews.rs:839-861与foundation_followups.rs:302）均与worker自评一致。worker在切片8自评59条AC全DONE并逐条给出测试文件行号证据。范围纪律已核验：未改PRD文档、未碰wrangler.toml与package-lock.json（package.json仅3行test script加--experimental-strip-types，未改依赖版本）、未设SKARMA_MODEL生产开关、未部署、未访问生产账号与业务数据、未动L-2/L-3。切片2前编排者曾独立复现smoke_prd_observations_web.py间歇失败（隔离连跑3次为PASS/PASS/FAIL约1/3失败率），切片2修复后连跑8次全绿，证明竞态真实存在且已根治。本轮未push前已全部本地提交；done指实现与编排者独立验证完成，对抗验收见T46。"
+    },
+    {
+      "id": "T46",
+      "title": "opus对抗验收8个切片（受模型限流阻塞，未产出验收报告）",
+      "status": "blocked",
+      "evidence": "docs/prd-implementation-2026-10-26/acceptance-prompt.md",
+      "verification": "用户要求gpt与opus对抗完成目标：gpt实现、opus逐AC对抗验收。验收prompt已写好并随提交入库（docs/prd-implementation-2026-10-26/acceptance-prompt.md），要求opus独立重跑全部测试、抽查审计DONE判定不少于12条、核对59条AC覆盖、逐切片验收含diff审查断言是否被放宽、范围纪律核对，最后给VERDICT PASS或REVISE。实际执行受阻：claude-opus-5-5模型池在2026-10-26 03:13至06:13的3小时send窗口内持续返回429模型提供方限流，send按规程只等待不nudge，窗口耗尽退出，未产出accept-report.md。此前多次派发亦因同一限流失败（p5/p6/p7三个opus pane均出现429，attempt计数至11/300）。因此59条AC全DONE目前仍只是worker自评加编排者抽查，不是对抗性结论；在对抗验收PASS前不得宣称验收通过。接手者第一件事是按用户既定的隔3小时重试策略重派该验收，基线为当前HEAD且工作树须干净；若REVISE则派gpt修复后复验，循环到PASS。DO半段与真机验证另受环境限制（glibc 2.31<2.32、无iOS/Android真机），需在Mac或较新Linux及真机上补做。"
     }
   ],
   "artifacts": [
