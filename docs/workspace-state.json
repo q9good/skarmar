@@ -336,9 +336,9 @@
     {
       "id": "T48",
       "title": "PRD新版试用发布：原账号与旧表保留、空白新模型启用",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-26.md",
-      "verification": "用户要求先部署看效果。现网为旧模型，准备显式新增两项固定模型变量，在原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip上建立空白新业务表，保留全部认证和旧业务，不做语义转换或恢复演示数据。已有157项Rust测试及29项发布保护、9项既有演示保护通过；类型检查/Web构建、格式/Clippy通过。双运行环境合成演练及实际发布回执完成后补记；Opus和真机尚未验收，不冒称整体通过。 首轮ae4219d/run40263023769在Wasm Clippy被既有Excel导出冗余闭包拦住，未上传或激活；修正为直接函数引用后本机相同Wasm target Clippy通过，准备重试。"
+      "verification": "2026-10-26按用户要求发布新版试用。部署源码7a0b346e09b78a3638cbcbe382db58816a113668，run40263633238的validate/release均success，实际激活73b71710-b847-42f4-aabd-6e04dde0489b，回执deployed_and_verified/model=prd_v1。沿用原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip及精确来源，原账号、会话及旧业务表保留；显式空白新业务表在同一事务初始化，不复制或推断旧业务、不恢复演示数据、不重设管理员。157项Rust、29项发布保护、9项既有演示保护、类型/Web构建及原生/Wasm Clippy通过；本机和Actions runner的真实SQLite及Rust Wasm/DO空白基线演练均通过，原会话/密码仍有效、旧页面写入拒绝、新记录跨重启/移除配置保留，初始化失败全回滚。既有完整双运行环境合约和客户端55项通过。首轮ae4219d/run40263023769在Wasm冗余闭包Clippy退出，未上传；已直接函数引用修复。成功回执验证版本、首页/JS构建字节、health200、匿名权限、精确Origin及PRD数据库启动；云端另独立复核公共检查通过。只对合成库验证登录及关联，未登录或读取线上业务；原账号实际手机登录体验由用户试用，Opus及真机仍待办，implementationCommit保留原正式记录。"
     }
   ],
   "artifacts": [
@@ -474,6 +474,11 @@
       "title": "PRD手机交互：430×932大字上课表单（合成）",
       "sha256": "ad070854df32762a373897bece1e239e4eb955d67d06b0e9dd99e7129eec57cf",
       "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261026-prd-receipt.json",
+      "title": "PRD新版试用实际发布：原实例空白新基线激活及公共检查脱敏回执",
+      "sha256": "d34623d5939b57cd950064806298d09de1fd12434098427a7066dc07994bd03c"
     }
   ]
 }

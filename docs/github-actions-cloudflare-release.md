@@ -1,6 +1,8 @@
 # 从 Codex Cloud 触发现有 Cloudflare 应用发布
 
 2026-10-26新版试用追加：[本次发布及空白新基线](cloudflare-release-2026-10-26.md)。
+本次已完成：源码`7a0b346`、[run40263633238](https://github.com/q9good/skarmar/actions/runs/40263633238)
+成功，实际版本`73b71710-b847-42f4-aabd-6e04dde0489b`，回执deployed_and_verified/model=prd_v1。
 只有本次明确模型切换才组合使用 `[deploy-cloudflare] [activate-prd-empty]`（或dispatch对应布尔输入）；
 普通发布仍仅需发布标记。该例外只增设两项固定模型变量，保留原Worker/DO/default/域名/账号及旧表。
 不可与旧演示恢复或verify-only组合；已经启用后不得再用初始化标记，普通发布会保持新模型。

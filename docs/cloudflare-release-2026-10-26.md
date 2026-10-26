@@ -32,10 +32,31 @@
 新增初始化测试逐行比较全部合成旧业务与认证表，验证空白业务、失败事务回滚和重复启动保留。
 同一原生SQLite与真正Rust Wasm/DO的HTTP演练通过：原会话仍有效、原密码可登录、新版业务为空、旧页面写入拒绝、新目标重启及移除一次性配置后仍保留。全套PRD双运行环境合约及重启、客户端55项和23项产物SHA也通过。Actions首次启用会在runner重复上述双环境演练，再进入真实发布。实际Actions回执完成后补入。
 
-当前状态：准备发布，尚未将dry-run或本机演练计作上线。
+## 实际发布结果
+
+**已发布并通过公共检查。**
+
+- 入口：**https://skarma.vip**，可用原账号登录；新版业务初始为空，旧记录原表保留。
+- 发布源码：`7a0b346e09b78a3638cbcbe382db58816a113668`。
+- [成功run40263633238](https://github.com/q9good/skarmar/actions/runs/40263633238)，validate/release均success。
+- 原版本：`c5055bf5-1e98-4935-878d-e392032100c3`。
+- 实际上传并激活：`73b71710-b847-42f4-aabd-6e04dde0489b`，model=`prd_v1`。
+- [脱敏回执](artifacts/deployment/cloudflare-release-20261026-prd-receipt.json)：`deployed_and_verified`，
+  首页除已知Analytics外逐字节匹配，JS逐字节匹配，health=200，匿名权限和精确Origin通过，
+  `prd_database=startup_completed`。云端另独立复核这些公共访问检查通过。
+- Actions runner也实际完成同一SQLite和Rust Wasm/DO的空白基线演练，未SKIP。
+
+没有登录线上账号或读取线上业务数据，没有追加线上合成记录；原账号登录在合成库演练通过，
+真实账号和手机体验请用户试用。Opus独立验收及真机键盘/系统字号等仍保留待办，
+本次试用发布不改变正式验收记录的`implementationCommit`。
+
+后续普通发布继续保留当前新模型及两项变量，**不要重复使用一次性启用标记，也不要切回legacy**。
+本次回执与任务文档的收尾提交只更新文档，不再次发布应用。
+
+## 首轮被拦截记录
 
 首轮触发源码`ae4219d53e974c19424f09e8686d2b46a258153f`，
 [run40263023769](https://github.com/q9good/skarmar/actions/runs/40263023769)
 在Wasm Clippy被已有Excel导出的冗余闭包拦截（`runtime.rs`的`and_then`），
 原生测试和Web构建已通过，尚未进入上传／激活步骤，无发布回执。
-改为直接函数引用，保持行为不变，补跑实际Wasm target Clippy后重新触发。
+改为直接函数引用，保持行为不变，补跑实际Wasm target Clippy通过后重新触发，随后成功。

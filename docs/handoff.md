@@ -48,13 +48,19 @@ npm run sync:push
 
 ## 目前完成与待办
 
-### 2026-10-26：用户要求发布新版试用（T48，进行中）
+### 2026-10-26：PRD新版试用已发布（T48完成）
 
 用户在T47复核后要求「部署一版先看看效果」。现网仍为legacy，仅上传会继续显示旧界面；
-按此前不要求旧数据兼容的裁决，准备在原Worker/DO/default/域名启用空白prd_v1业务表，
+按此前不要求旧数据兼容的裁决，已在原Worker/DO/default/域名启用空白prd_v1业务表，
 保留全部原账号、会话与旧业务表。新增显式配置、精确双变量发布例外、事务和双运行环境演练，
 详情见[本次发布记录](cloudflare-release-2026-10-26.md)。不恢复旧演示数据、不重设管理员。
-实际Actions回执完成后补记，当前不把本机演练当上线。Opus及真机待办仍保留。
+部署源码`7a0b346`，[run40263633238](https://github.com/q9good/skarmar/actions/runs/40263633238)
+的validate/release均success；实际激活`73b71710-b847-42f4-aabd-6e04dde0489b`，
+[脱敏回执](artifacts/deployment/cloudflare-release-20261026-prd-receipt.json)为deployed_and_verified。
+runner的真实双环境启用演练通过，首页/JS、health、匿名权限、精确Origin及数据库启动通过；
+云端另独立复核公共检查通过。首轮Wasm Clippy拦截未上传，修复直接函数引用后重发成功。
+没有登录或读取线上业务、没有追加合成数据。Opus及真机待办仍保留，正式implementationCommit未改。
+后续按普通发布保留新模型，不重复初始化或切回legacy。此次收尾只更新文档，不再次部署。
 
 ### 2026-10-26：云端独立复核、用户裁决与长期关注归属整改（T47）
 
