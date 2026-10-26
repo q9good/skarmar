@@ -334,7 +334,7 @@ impl DurableObject for SkarmaSpace {
             outcome
         };
         if export {
-            let bytes = outcome.and_then(|value| skarma_http::export::workbook_value(value));
+            let bytes = outcome.and_then(skarma_http::export::workbook_value);
             return match bytes {
                 Ok(bytes) => Response::from_bytes(bytes),
                 Err(error) => Response::from_json(&serde_json::json!({"error":error.1}))

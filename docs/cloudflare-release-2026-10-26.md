@@ -33,3 +33,9 @@
 同一原生SQLite与真正Rust Wasm/DO的HTTP演练通过：原会话仍有效、原密码可登录、新版业务为空、旧页面写入拒绝、新目标重启及移除一次性配置后仍保留。全套PRD双运行环境合约及重启、客户端55项和23项产物SHA也通过。Actions首次启用会在runner重复上述双环境演练，再进入真实发布。实际Actions回执完成后补入。
 
 当前状态：准备发布，尚未将dry-run或本机演练计作上线。
+
+首轮触发源码`ae4219d53e974c19424f09e8686d2b46a258153f`，
+[run40263023769](https://github.com/q9good/skarmar/actions/runs/40263023769)
+在Wasm Clippy被已有Excel导出的冗余闭包拦截（`runtime.rs`的`and_then`），
+原生测试和Web构建已通过，尚未进入上传／激活步骤，无发布回执。
+改为直接函数引用，保持行为不变，补跑实际Wasm target Clippy后重新触发。

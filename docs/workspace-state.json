@@ -338,7 +338,7 @@
       "title": "PRD新版试用发布：原账号与旧表保留、空白新模型启用",
       "status": "in_progress",
       "evidence": "docs/cloudflare-release-2026-10-26.md",
-      "verification": "用户要求先部署看效果。现网为旧模型，准备显式新增两项固定模型变量，在原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip上建立空白新业务表，保留全部认证和旧业务，不做语义转换或恢复演示数据。已有157项Rust测试及29项发布保护、9项既有演示保护通过；类型检查/Web构建、格式/Clippy通过。双运行环境合成演练及实际发布回执完成后补记；Opus和真机尚未验收，不冒称整体通过。"
+      "verification": "用户要求先部署看效果。现网为旧模型，准备显式新增两项固定模型变量，在原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip上建立空白新业务表，保留全部认证和旧业务，不做语义转换或恢复演示数据。已有157项Rust测试及29项发布保护、9项既有演示保护通过；类型检查/Web构建、格式/Clippy通过。双运行环境合成演练及实际发布回执完成后补记；Opus和真机尚未验收，不冒称整体通过。 首轮ae4219d/run40263023769在Wasm Clippy被既有Excel导出冗余闭包拦住，未上传或激活；修正为直接函数引用后本机相同Wasm target Clippy通过，准备重试。"
     }
   ],
   "artifacts": [
