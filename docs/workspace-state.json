@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-26",
+  "updatedAt": "2026-10-27",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -339,6 +339,20 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-26.md",
       "verification": "2026-10-26按用户要求发布新版试用。部署源码7a0b346e09b78a3638cbcbe382db58816a113668，run40263633238的validate/release均success，实际激活73b71710-b847-42f4-aabd-6e04dde0489b，回执deployed_and_verified/model=prd_v1。沿用原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip及精确来源，原账号、会话及旧业务表保留；显式空白新业务表在同一事务初始化，不复制或推断旧业务、不恢复演示数据、不重设管理员。157项Rust、29项发布保护、9项既有演示保护、类型/Web构建及原生/Wasm Clippy通过；本机和Actions runner的真实SQLite及Rust Wasm/DO空白基线演练均通过，原会话/密码仍有效、旧页面写入拒绝、新记录跨重启/移除配置保留，初始化失败全回滚。既有完整双运行环境合约和客户端55项通过。首轮ae4219d/run40263023769在Wasm冗余闭包Clippy退出，未上传；已直接函数引用修复。成功回执验证版本、首页/JS构建字节、health200、匿名权限、精确Origin及PRD数据库启动；云端另独立复核公共检查通过。只对合成库验证登录及关联，未登录或读取线上业务；原账号实际手机登录体验由用户试用，Opus及真机仍待办，implementationCommit保留原正式记录。"
+    },
+    {
+      "id": "T49",
+      "title": "手机高频任务与界面复杂度独立评审",
+      "status": "done",
+      "evidence": "docs/interface-review-2026-10-26.md",
+      "verification": "在17449ad（应用与已发布7a0b346一致）上启动独立新PRD SQLite合成库，普通成员走查5个主页面及记课/目标/方法/计划/总结/经验/困难/详情/复盘；取样390x844、360x640和1440x900，共28个界面状态，主走查无页面JS错误。实测目标页5个输入/下拉占满首屏，新建入口y889；方法必填做法y877；选1目标后的计划内容2165/535px、总结2381/535px；总结实际表现y922；记课已保存但确认补充入口y1310；空依据单对象复盘仍在决定前展示长说明并用批量按钮名称。报告给出10项具体问题、优先顺序、必要保留项及建议的PRD展示调整与任务验收；7张截图已逐张查看，仅合成数据并加入SHA清单。仅评审和建议，没有修改应用、PRD正文、配置或部署，没有登录或访问生产；不代替真人家庭试用、Opus或手机真机验收。"
+    },
+    {
+      "id": "T50",
+      "title": "按独立评审简化手机高频界面与录入流程",
+      "status": "done",
+      "evidence": "docs/interface-simplification-2026-10-27.md",
+      "verification": "2026-10-27按用户授权实现T49评审的界面减负。目标/方法列表以标题详情、同行编辑和关联摘要呈现，筛选/管理收起，桌面内容限宽；方法核心字段前移。计划选定后隐藏推荐，保留困难与经验各一句，笔记/证据展开且不清空；总结先实际表现和明确方法确认，反馈/原计划/情境渐进展开。记课确认移至当天列表之前。经验困难采用具体名称，新建不问修改原因；单对象复盘保存名称准确，空依据说明压缩，家人感受及日程可展开。加载的实际复盘证据仍直接可见，seen_versions逻辑未改。回归发现历史复盘家人感受修订入口被隐藏，已恢复且完成修订/并发对照检查。最终类型/Web构建、客户端55项、规划14项、工作流6项通过；全部22个真实浏览器脚本通过，含新增手机首屏、筛选/折叠保留、方法关联、计划草稿/总结unknown方法、首屏记课确认及经验/复盘实际写入。普通成员独立合成库，无页面JS错误；目标检查360x640/390x844/1440x900，总结360x640/390x844，未冒称真机。6张改后截图逐张审看并加SHA。PRD0.6同步展示及AC-R15-02，59个AC编号、附录A/D及数据/权限口径保留。本轮未改后端/数据库/配置或部署；Opus和真机仍待办，implementationCommit保留原正式记录。"
     }
   ],
   "artifacts": [
@@ -479,6 +493,84 @@
       "path": "docs/artifacts/deployment/cloudflare-release-20261026-prd-receipt.json",
       "title": "PRD新版试用实际发布：原实例空白新基线激活及公共检查脱敏回执",
       "sha256": "d34623d5939b57cd950064806298d09de1fd12434098427a7066dc07994bd03c"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-review-goals-mobile.png",
+      "sha256": "82d04a0b3bec6d034cd065f4d344889a8f5c45367c2ae5512e5c3c6673b4fa23",
+      "synthetic": true,
+      "title": "界面评审：目标页筛选挤占手机首屏（合成）"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-review-method-mobile.png",
+      "sha256": "35737e4a4ab94d75183e49de5f0aaf21e521327a46e41891ae417e9001a57d4a",
+      "synthetic": true,
+      "title": "界面评审：必填做法排在关联目录之后（合成）"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-review-plan-mobile.png",
+      "sha256": "8bfe531c0604aa0ee3911edfe078b555ed2a1390b8d5d9446e055dac91a6652f",
+      "synthetic": true,
+      "title": "界面评审：已选目标仍被推荐项推到下方（合成）"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-review-summary-mobile.png",
+      "sha256": "e61c68b7b22b4d1eb2a8165feea52ee77b8a5ea1b8ba89b162bfa610e21a0d88",
+      "synthetic": true,
+      "title": "界面评审：总结首屏仍在展示计划与目标角色（合成）"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-review-lesson-confirmation-mobile.png",
+      "sha256": "361084dcb7a83c36462d677d45d459cdb695babf677534abf71f8780822afbec",
+      "synthetic": true,
+      "title": "界面评审：记课成功后的确认未在首屏（合成）"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-review-review-mobile.png",
+      "sha256": "5a2571d1e7289375261ed1037bf0b5836238eeb28e54c36e4b45eadbfbdd2cc4",
+      "synthetic": true,
+      "title": "界面评审：空依据复盘的说明先于决定（合成）"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-review-goals-desktop.png",
+      "sha256": "d592afe8a15a8241b7163be09e65a39f1533f781b98aa5d05a1f30d833f9b020",
+      "synthetic": true,
+      "title": "界面评审：桌面沿用纵向满宽筛选（合成）"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-simplified-goals.png",
+      "title": "界面减负：目标首屏：新建、筛选摘要与紧凑列表（合成）",
+      "sha256": "db071d0925b8792ae78b64219d6c20ae77cb9c52cf9bcc23019a1da7c390831b",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/ui-simplified-method.png",
+      "title": "界面减负：方法核心表单与补充分组（合成）",
+      "sha256": "dfb1a31c803fcd7825e82426420b79215e5c3aa108838fd826ed2ed5d346cb27",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/ui-simplified-plan.png",
+      "title": "界面减负：计划已选目标、重点困难经验与安排（合成）",
+      "sha256": "9b943d9c5326ff20985603da0bd5f496d97345ee10c35aa0602ba0b5ce318bea",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/ui-simplified-summary.png",
+      "title": "界面减负：总结实际表现与实际方法确认前移（合成）",
+      "sha256": "1793724c68e04857bfed82d290a1ce10a777f80b400be591cd1e45b15e98ccef",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/ui-simplified-lesson-confirmation.png",
+      "title": "界面减负：多条当天记录下的首屏记课确认（合成）",
+      "sha256": "7c6bcd1f504793856eb442d053998b473a7eafe72e20d432cec9442948925f10",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/ui-simplified-review.png",
+      "title": "界面减负：单对象复盘的决定、说明与补充分组（合成）",
+      "sha256": "2cc2592adba93487b77b21c893b3ba33f488e9f832a55b939f4e7fb889abc694",
+      "synthetic": true
     }
   ]
 }

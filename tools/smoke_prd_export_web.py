@@ -1,4 +1,5 @@
 """Download new-model workbook from an actual browser, excluding unsubmitted local inputs."""
+from prd_ui_helpers import reveal_control
 import os,json,re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -10,8 +11,8 @@ OUT=Path('.local/prd-export-ui');OUT.mkdir(parents=True,exist_ok=True)
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox']);ctx=b.new_context(viewport={'width':360,'height':740},accept_downloads=True);page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def btn(name):return page.get_by_role('button',name=name,exact=True)
- def click(name):btn(name).click()
- def field(name):return page.get_by_role('textbox',name=name,exact=True)
+ def click(name):reveal_control(page,'button',name).click()
+ def field(name):return reveal_control(page,'textbox',name)
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录上课')).to_be_enabled()

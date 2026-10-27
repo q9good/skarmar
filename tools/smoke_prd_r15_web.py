@@ -63,14 +63,16 @@ with sync_playwright() as p:
  meaning=field('生活意义',dialog)
  criteria=field('观察标准',dialog)
  meaning.fill('帮助孩子更独立地参与吃饭')
- expect(dialog.get_by_text('这会帮助哪方面生活？',exact=True)).to_be_visible()
+ expect(dialog.get_by_text('这会帮助哪方面生活？',exact=True)).to_be_hidden()
  button('查看填写示例：生活意义',dialog).click()
+ expect(dialog.get_by_text('这会帮助哪方面生活？',exact=True)).to_be_visible()
  expect(dialog.get_by_text('合成示例 · 例如：更独立地吃饭',exact=True)).to_be_visible()
  expect(meaning).to_have_value('帮助孩子更独立地参与吃饭')
  expect(criteria).to_have_value('')
 
  # AC-R15-04: measure actual computed sizes and contrast, including placeholder.
  label=dialog.get_by_text('本领名称',exact=True)
+ button('查看填写示例：本领名称',dialog).click()
  question=dialog.get_by_text('想帮助孩子做到什么？',exact=True)
  save=button('保存',dialog)
  save_text=dialog.get_by_text('保存',exact=True)

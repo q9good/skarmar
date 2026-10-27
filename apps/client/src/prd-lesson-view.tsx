@@ -234,11 +234,11 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   return <>
     <View style={{gap:14}}>
       {mode!=='drafts'&&<Action title="记录上课" secondary={false} disabled={!ready||!outbox.ready||busy} press={()=>open()} />}
-      {interventionEntry}
-      {error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}{notice&&<Text role="status">{notice}</Text>}
+      {error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}{notice&&(!confirmed||notice!=='已记下，家人刷新即可看到。')&&<Text role="status">{notice}</Text>}
       {confirmed&&<View style={{gap:10,padding:16,backgroundColor:'#FFFFFF',borderRadius:12}}><Text style={{fontSize:18,fontWeight:'600'}}>已记下：{confirmed.observation.business_date} · {confirmed.course.name} · {confirmed.teacher.name}</Text>
-        <Action title="补充课堂观察" press={()=>open(confirmed,'observation')} /><Action title="完成" press={()=>setReceipt(null)} />
+        <Action title="补充课堂观察" press={()=>open(confirmed,'observation')} /><Action title="完成" press={()=>{setReceipt(null);setNotice('');}} />
       </View>}
+      {interventionEntry}
       {draftRecovery()}{Object.entries(drafts).filter(([,d])=>!outbox.value.entries[d.request.id]).map(([key,d])=><Action key={key} title={`继续课记：${draftName(d)}`} press={()=>{setEditor(key);setDiscard(false);setError('');}} />)}
       {mode==='today'?<>
         {!inboxManaged&&<>
@@ -267,18 +267,17 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
     </View>
     {draft&&<DetailOverlay title={draft.phase==='organization'?'整理课堂记录':draft.phase==='administration'?'核对课记操作':'记录上课'} close={()=>{if(!busy)setEditor(null);}} footer={<><SaveStatus storageKey={storageKey} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy?'正在提交…':draft.pending?'重试同一次课记提交':draft.phase==='organization'?'保存整理':draft.phase==='administration'?'确认操作':'提交记录'} secondary={false} disabled={busy||(conflict&&!draft.pending)||Boolean(observe&&(!observe.course_id||!observe.teacher_id))} press={()=>void submit()}/></>}>
       {error&&<Text accessibilityRole="alert">{error}</Text>}
-      {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/><Text style={{fontSize:14,color:'#53665A'}}>未提交内容留在本机，保存成功后家人才可查看。</Text>
+      {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/>
       {conflict&&remote&&!draft.pending&&<View style={{padding:12,backgroundColor:'#FFFFFF',gap:10}}><Text>这一部分已有新版本，当前填写仍保留。</Text><ReadObservation value={remote.observation}/>
         <Action title="备份填写并载入最新课记" disabled={busy} press={()=>void(async()=>{try{await AsyncStorage.setItem(`${storageKey}:backup:${Date.now()}`,JSON.stringify(draft));const kind=draft.request.action.kind;const nextAction:LessonWrite['action']=kind==='observation'?{kind,value:{...remote.observation,request_review:false,review_message:''}}:kind==='organization'?{kind,value:organizationOf(remote)}:draft.request.action;await persist({...refs.current,[editor!]:{...draft,backup:draft.request,source:remote.observation,request:{...draft.request,expected_version:expected,operation_id:uuid(),action:nextAction}}});setError('');}catch(e){setError(note(e));}})()}/></View>}
       {draft.backup&&<View style={{gap:8}}><Text style={{fontWeight:'600'}}>此前填写的备份，可长按复制</Text>{draft.backup.action.kind==='observation'?<ReadObservation value={draft.backup.action.value}/>:draft.backup.action.kind==='organization'?<>{draft.backup.action.value.new_knowledge.map(k=><Text selectable key={k.id}>{k.content}</Text>)}{draft.backup.action.value.new_actions.map(a=><Text selectable key={a.id}>{a.content}</Text>)}{draft.backup.action.value.feedback?.map(f=><Text selectable key={f.id}>{labelsForFeedback(f.result)}：{f.observation}</Text>)}</>:null}</View>}
       {observe&&<>
-        {intro&&draft.request.expected_version===null&&<View style={{gap:6}}><Text>先选课程和老师。</Text><Text>可以直接提交，也可以补充观察。</Text><Text>保存成功后家人就能看到。</Text><Action title="知道了，不再提示" press={()=>void AsyncStorage.setItem(storageKey+':introduced','1').then(()=>setIntro(false))}/></View>}
-        <HelpButton/>
+        {intro&&draft.request.expected_version===null&&<View style={{gap:6}}><Text>选好课程和老师即可提交，观察可以稍后补。</Text><Action title="知道了，不再提示" press={()=>void AsyncStorage.setItem(storageKey+':introduced','1').then(()=>setIntro(false))}/></View>}
         <LessonDate value={observe.business_date} today={today} disabled={busy||Boolean(draft.pending)} change={business_date=>patch({business_date})}/>
         <CatalogChoice kind="course" value={observe.course_id} change={course_id=>patch({course_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
         <CatalogChoice kind="teacher" value={observe.teacher_id} change={teacher_id=>patch({teacher_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
         {active.filter(l=>l.id!==draft.request.id&&l.observation.business_date===observe.business_date&&l.course.id===observe.course_id&&l.teacher.id===observe.teacher_id).map(l=><Text key={l.id}>同日已有记录：{l.creator_name}，{new Date(l.created_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai'})}；确实是另一节仍可提交。</Text>)}
-        {draft.phase==='basic'?<Action title="补充观察" disabled={busy||Boolean(draft.pending)} press={()=>void persist({...refs.current,[editor!]:{...draft,phase:'observation'}})}/>:<ObservationFields value={observe} change={patch} disabled={busy||Boolean(draft.pending)}/>}
+        <HelpButton/>{draft.phase==='basic'?<Action title="补充观察" disabled={busy||Boolean(draft.pending)} press={()=>void persist({...refs.current,[editor!]:{...draft,phase:'observation'}})}/>:<ObservationFields value={observe} change={patch} disabled={busy||Boolean(draft.pending)}/>}
       </>}
       {draft.request.action.kind==='organization'&&remote&&<OrganizationFields openKnowledge={openKnowledge} value={draft.request.action.value} change={patch} data={options} lesson={remote} source={draft.source} actorId={actorId} disabled={busy||Boolean(draft.pending)}/>}
       {draft.phase==='administration'&&<Text>{draft.request.action.kind==='withdraw'?'确认撤销这条课记？撤销后不计节数。':draft.request.action.kind==='delete'?'确认删除课记？需要管理员权限，已有派生引用时会阻止操作。':draft.request.action.kind==='acknowledge'?'告诉记录者“看到了，谢谢”，不会将待办标为已处理。':'标记记错会保留节数，待管理员核对。'}</Text>}

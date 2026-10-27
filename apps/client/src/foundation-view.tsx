@@ -1,3 +1,4 @@
+import {Disclosure} from './disclosure';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
 import {DraftRecovery} from './draft-recovery';
@@ -25,7 +26,7 @@ import {TodayRecords} from './prd-today-view';
 import {businessDateLabel} from './prd-today';
 import {LessonOutboxProvider,LessonQueueStatus} from './prd-outbox-view';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, AppState, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AccountPanel, useAuth } from './auth';
 import { ApiError, request } from './api';
@@ -39,9 +40,9 @@ import { Pressable, Text, TextInput } from './readability';
 import { acceptSaved, decodeDrafts, emptySnapshot, examples, findSaved, goalStateName, levelNames, mergeSnapshot, mutationOf,
   nameOf, newGoal, newMethod, type Catalog, type CatalogSnapshot, type Draft, type GoalInput, type MethodInput, type Mutation, type Revision, type Saved, type Snapshot, type Write } from './foundation';
 const messageOf = (e: unknown) => e instanceof Error ? e.message : '保存未完成，请保留填写后重试。';
-function Action({ title, press, disabled = false, secondary = false }: { title: string; press: () => void; disabled?: boolean; secondary?: boolean }) {
-  return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={press} style={[s.action, secondary && s.secondary, disabled && { opacity: 0.5 }]}>
-    <Text style={{ color: secondary ? '#34765B' : '#FFFFFF', fontSize: 17, textAlign: 'center' }}>{title}</Text></Pressable>;
+function Action({ title, press, disabled = false, secondary = false, quiet=false, label }: { title: string; press: () => void; disabled?: boolean; secondary?: boolean; quiet?:boolean;label?:string }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }} disabled={disabled} onPress={press} style={[s.action, secondary && s.secondary,quiet&&{backgroundColor:'transparent',paddingHorizontal:0}, disabled && { opacity: 0.5 }]}>
+    <Text style={{ color: secondary||quiet ? '#34765B' : '#FFFFFF', fontSize: 17, textAlign: quiet?'left':'center' }}>{label??title}</Text></Pressable>;
 }
 function Field({ label, hint, value, change, placeholder, disabled, multiline = false }: { label: string; hint?: string; value: string; change: (v: string) => void; placeholder?: string; disabled?: boolean; multiline?: boolean }) {return <GuidedField label={label} value={value} change={change} question={hint} placeholder={placeholder} disabled={disabled} multiline={multiline}/>;}
 function Check({ label, checked, change, disabled }: { label: string; checked: boolean; change: () => void; disabled?: boolean }) {
@@ -85,15 +86,12 @@ function DomainChoice({value,change,data,accepted,disabled}:{value:CatalogSnapsh
   </View>;
 }
 function GoalFields({ value, change, data, id, disabled, existing, catalogSaved }: { value: GoalInput; change: (patch: Partial<GoalInput>) => void; data: Snapshot; id: string; disabled: boolean; existing: boolean; catalogSaved:(saved:Saved)=>void }) {
-  const [more, setMore] = useState(existing);
   const rank = { long: 0, medium: 1, short: 2 };
   return <>
     <Field label="本领名称" hint="想帮助孩子做到什么？" value={value.title} change={title => change({ title })} placeholder="例如：自己用筷子" disabled={disabled} />
     <Select label="目标类型" value={value.level} disabled={disabled || existing} options={Object.entries(levelNames).map(([value, label]) => ({ value, label }))}
       onChange={level => change({ level: level as GoalInput['level'], parent_id: null, state: 'active' })} />
-    <Text style={s.label}>更多设置</Text>
-    <Action title={more ? '收起目标补充信息' : '补充目标说明（可选）'} secondary press={() => setMore(!more)} />
-    {more && <>
+    <Disclosure title="补充目标说明（可选）" summary={value.criteria?'已写观察标准':undefined}>
       <Field label="生活意义" hint="这会帮助哪方面生活？" value={value.meaning} change={meaning => change({ meaning })} placeholder="例如：更独立地吃饭" disabled={disabled} multiline />
       <Select label="观察方式" value={value.template ?? 'text'} disabled={disabled} options={[
         { value: 'text', label: '直接写文字' }, { value: 'count', label: '次数／机会' }, { value: 'duration', label: '时长／数量' }, { value: 'steps', label: '步骤／描述' }]}
@@ -111,27 +109,33 @@ function GoalFields({ value, change, data, id, disabled, existing, catalogSaved 
         onChange={frequency => change({ frequency: frequency ? frequency as GoalInput['frequency'] : null })} />
       <DateField label="开始关注日期（可选）" value={value.attention_start ?? ''} disabled={disabled} onChange={date => change({ attention_start: date || null })} />
       <Check label="从默认列表收起" checked={value.archived} disabled={disabled} change={() => change({ archived: !value.archived })} />
-    </>}
+    </Disclosure>
   </>;
 }
 const methodSteps=(value:MethodInput)=>value.description||value.steps;
 const methodScope=(value:MethodInput)=>value.scope||(value.description?value.steps:'');
 function MethodFields({ value, change, data, disabled }: { value: MethodInput; change: (patch: Partial<MethodInput>) => void; data: Snapshot; disabled: boolean }) {
+  const [selecting,setSelecting]=useState(false),[search,setSearch]=useState('');
   return <>
     <Field label="方法名称" hint="怎样称呼这个做法？" value={value.title} change={title => change({ title })} placeholder="例如：示范后少提醒" disabled={disabled} />
-    <Text style={s.label}>关联目标</Text>
-    {data.goals.length?<RelationPicker label="方法适用目标" options={data.goals.map(g=>({id:g.id,label:g.input.title}))} selected={value.goal_ids} disabled={disabled} toggle={id=>change({goal_ids:value.goal_ids.includes(id)?value.goal_ids.filter(v=>v!==id):[...value.goal_ids,id]})}/>:<Text>先在目标页写下一个近期本领，再关联方法。</Text>}
-
     <Field label="具体做法／必填" value={methodSteps(value)} change={steps => change({ steps, description:'' })} multiline disabled={disabled} />
+    <Action title={`${data.goals.length>15?'搜索选择':'选择'}方法适用目标（已选${value.goal_ids.length}）`} secondary disabled={disabled} press={()=>{setSearch('');setSelecting(true);}}/>
+    <Text>{value.goal_ids.length?value.goal_ids.map(id=>data.goals.find(g=>g.id===id)?.input.title??'待核对目标').join('、'):'至少关联一个目标；没有目标时先在目标页新建。'}</Text>
+    {value.needs_attention&&<Text>需注意：{value.attention_reason||'请补充注意事项'}</Text>}
+    <Disclosure title="补充方法说明">
     <Field label="观察意图／可选" value={value.observe??''} change={observe=>change({observe})} multiline disabled={disabled} />
     <Field label="适用条件／可选" value={methodScope(value)} change={scope=>change({scope})} multiline disabled={disabled} />
     <Field label="指导来源（可选）" value={value.guidance} change={guidance => change({ guidance })} placeholder="例如：老师示范，家里试过几次" disabled={disabled} />
+    </Disclosure>
+    <Disclosure title="方法管理">
     <Select label="方法状态" value={value.state ?? 'active'} disabled={disabled} options={[{ value: 'active', label: '使用中' }, { value: 'paused', label: '暂停' }, { value: 'retired', label: '停用' }]}
       onChange={state => change({ state: state as MethodInput['state'],resume_on:state==='paused'?value.resume_on??null:null })} />
     {value.state==='paused'&&<DateField label="确认方法是否恢复（留空不排期）" value={value.resume_on??''} onChange={v=>change({resume_on:v||null})} disabled={disabled}/>}
     <Check label="手动置顶" checked={value.pinned} disabled={disabled} change={() => change({ pinned: !value.pinned })} />
     <Check label="需要注意" checked={value.needs_attention} disabled={disabled} change={() => change({ needs_attention: !value.needs_attention })} />
     {value.needs_attention && <Field label="需要注意的原因" value={value.attention_reason} change={attention_reason => change({ attention_reason })} multiline disabled={disabled} />}
+    </Disclosure>
+    {selecting&&<DetailOverlay title="选择方法适用目标" close={()=>setSelecting(false)}><Field label="搜索方法适用目标" value={search} change={setSearch}/>{data.goals.filter(g=>g.input.title.includes(search)).map(g=><Check key={g.id} label={g.input.title} checked={value.goal_ids.includes(g.id)} disabled={disabled} change={()=>change({goal_ids:value.goal_ids.includes(g.id)?value.goal_ids.filter(id=>id!==g.id):[...value.goal_ids,g.id]})}/>)}{!data.goals.some(g=>g.input.title.includes(search))&&<Text>没有匹配目标，原选择保持不变。</Text>}</DetailOverlay>}
   </>;
 }
 function ReadOnlyValues({ mutation, data }: { mutation: Mutation; data: Snapshot }) {
@@ -155,6 +159,7 @@ function ReadOnlyValues({ mutation, data }: { mutation: Mutation; data: Snapshot
 export function FoundationWorkspace() {
  const draftStore=useRef<DraftStore<Draft>|null>(null);
   const auth = useAuth();
+  const wide=useWindowDimensions().width>=900;
   const scope = `${auth.identity.space}:${auth.identity.user.id}`;
   const key = `skarmar:${scope}:prd-drafts:v1`;
   const [data, setData] = useState<Snapshot>(emptySnapshot);
@@ -284,7 +289,7 @@ export function FoundationWorkspace() {
     <View style={s.header}><Text style={s.brand}>✦ skarmar</Text><Action title="我的账号" secondary press={() => setAccount(true)} /></View>
     <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {account ? <><AccountPanel businessTools={false} prdExport back={() => setAccount(false)} onImported={refresh} logout={async () => { await persistence.current; await auth.logout(); }} /><HelpButton title="使用说明与手机桌面入口"/><Action title="共享需要与帮助说明" secondary press={()=>setRequestedObservation({kind:'needs',id:'',nonce:uuid()})}/><Action title="维护课程和老师选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /><Action title="维护领域选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /></> : <>
-        <View style={s.header}><Text accessibilityRole="header" style={s.title}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程、老师和领域' }[tab]}</Text>{tab==='today'&&<Text accessibilityLabel="家庭业务日期" style={s.hint}>{businessDateLabel(today)}</Text>}</View>
+        <View style={s.header}><Text accessibilityRole="header" style={s.title}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程、老师和领域' }[tab]}</Text>{tab==='goals'&&<Action title="新建目标" press={()=>begin({kind:'goal',value:newGoal()})}/>} {tab==='methods'&&<Action title="新建方法" press={()=>begin({kind:'method',value:newMethod()})}/>} {tab==='today'&&<Text accessibilityLabel="家庭业务日期" style={s.hint}>{businessDateLabel(today)}</Text>}</View>
         <LessonQueueStatus/>
         {syncError ? <View style={s.card}><Text accessibilityRole="alert">{syncError}</Text><Action title="重试同步" secondary press={() => {setProgressNonce(n=>n+1);void refresh().catch(e => setSyncError(messageOf(e)));}} /></View> : null}
         {notice ? <Text role="status">{notice}</Text> : null}
@@ -302,35 +307,32 @@ export function FoundationWorkspace() {
           </> : tab === 'followups' ? <>
             {followupHub('full')}
           </> : tab === 'goals' ? <>
-            <Field label="搜索目标" value={goalSearch} change={setGoalSearch}/><Select label="目标期限筛选" value={goalLevel} onChange={setGoalLevel} options={[{value:'all',label:'全部期限'},...Object.entries(levelNames).map(([value,label])=>({value,label}))]}/><Select label="目标展示" value={goalView} onChange={setGoalView} options={[{value:'coverage',label:'记录覆盖'},{value:'progress',label:'实际进展（测量）'}]}/>{goalView==='coverage'?<><Select label="目标覆盖来源" value={goalSource} onChange={v=>setGoalSource(v as typeof goalSource)} options={[{value:'family',label:'家庭干预'},{value:'lesson',label:'机构课程'},{value:'combined',label:'合计（分列来源）'}]}/><Select label="目标覆盖窗口" value={String(goalDays)} onChange={v=>setGoalDays(Number(v))} options={[7,30,90].map(n=>({value:String(n),label:`近${n}天`}))}/><Text>近{goalDays}天固定色阶：{coverageLegend(goalDays)}；不代表能力进步。{goalReport?`${goalReport.start} 至 ${goalReport.end}`:'正在读取覆盖'}，数字和来源同时显示。</Text></>:<><Text>实际进展来自各指标测量，不按覆盖次数计算能力百分比。这里显示各条件下最近测量；完整趋势在目标详情中查看。</Text>{progressError&&<Text accessibilityRole="alert">{progressError}</Text>}{!progress&&!progressError&&<Text>正在读取实际测量…</Text>}</>}
-            <Action title="新建目标" press={() => begin({ kind: 'goal', value: newGoal() })} />
-            <Check label="显示已收起目标" checked={showHidden} change={() => setShowHidden(!showHidden)} />
+            <Field label="搜索目标" value={goalSearch} change={setGoalSearch}/><Disclosure title="筛选目标" summary={`${goalLevel==='all'?'全部期限':levelNames[goalLevel as keyof typeof levelNames]} · ${goalView==='progress'?'实际进展':`近${goalDays}天${{family:'家庭',lesson:'机构',combined:'合计'}[goalSource]}`}`}><View style={{gap:12,...(wide?{flexDirection:'row' as const,flexWrap:'wrap' as const}: {})}}><View style={{flex:1,minWidth:180,gap:12}}><Select label="目标期限筛选" value={goalLevel} onChange={setGoalLevel} options={[{value:'all',label:'全部期限'},...Object.entries(levelNames).map(([value,label])=>({value,label}))]}/><Select label="目标展示" value={goalView} onChange={setGoalView} options={[{value:'coverage',label:'记录覆盖'},{value:'progress',label:'实际进展（测量）'}]}/>{goalView==='coverage'?<><Select label="目标覆盖来源" value={goalSource} onChange={v=>setGoalSource(v as typeof goalSource)} options={[{value:'family',label:'家庭干预'},{value:'lesson',label:'机构课程'},{value:'combined',label:'合计（分列来源）'}]}/><Select label="目标覆盖窗口" value={String(goalDays)} onChange={v=>setGoalDays(Number(v))} options={[7,30,90].map(n=>({value:String(n),label:`近${n}天`}))}/><Text>近{goalDays}天固定色阶：{coverageLegend(goalDays)}；不代表能力进步。{goalReport?`${goalReport.start} 至 ${goalReport.end}`:'正在读取覆盖'}，数字和来源同时显示。</Text></>:<><Text>实际进展来自各指标测量，不按覆盖次数计算能力百分比。这里显示各条件下最近测量；完整趋势在目标详情中查看。</Text>{progressError&&<Text accessibilityRole="alert">{progressError}</Text>}{!progress&&!progressError&&<Text>正在读取实际测量…</Text>}</>}
+            <Check label="显示已收起目标" checked={showHidden} change={() => setShowHidden(!showHidden)} /></View></View></Disclosure>
             {!goals.length && <Text>写下想帮助孩子学会的本领，或者希望长期支持的方向。</Text>}
             {goals.map(g => <View key={g.id} style={s.card} testID={`prd-goal-${g.id}`}>
-              <Text style={s.heading}>{g.input.title}</Text>{goalView==='coverage'&&g.input.level!=='long'&&goalReport&&(()=>{const row=goalReport.goals.find(r=>r.id===g.id);return row?<View style={{padding:10,borderRadius:8,backgroundColor:['#F3F6EF','#E4EEDC','#CADDB9','#94B681','#4E7656'][row.band]}}><Text style={{color:row.band===4?'#FFFFFF':'#243D36'}}>近{goalDays}天 {row.counts.selected}次覆盖 · 家庭{row.counts.family}／机构{row.counts.lesson}</Text></View>:null;})()}<Text>{levelNames[g.input.level]} · {goalStateName(g.input)}{g.input.archived ? ' · 已收起' : ''}</Text>
-              <Text>{g.input.meaning || '尚未补充生活意义'}</Text>
+              <View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看目标：${g.input.title}`} onPress={()=>void openDetail(g.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{g.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑目标：${g.input.title}`} label="编辑" quiet press={()=>begin({kind:'goal',value:g.input},{kind:'goal',value:g})}/></View>{goalView==='coverage'&&g.input.level!=='long'&&goalReport&&(()=>{const row=goalReport.goals.find(r=>r.id===g.id);return row?<View style={{padding:10,borderRadius:8,backgroundColor:['#F3F6EF','#E4EEDC','#CADDB9','#94B681','#4E7656'][row.band]}}><Text style={{color:row.band===4?'#FFFFFF':'#243D36'}}>近{goalDays}天 {row.counts.selected}次覆盖 · 家庭{row.counts.family}／机构{row.counts.lesson}</Text></View>:null;})()}<Text>{levelNames[g.input.level]} · {goalStateName(g.input)}{g.input.archived ? ' · 已收起' : ''}</Text>
+              {g.input.meaning&&<Text numberOfLines={2}>{g.input.meaning}</Text>}
               {(g.input.domain||g.input.due)&&<Text>领域：{g.input.domain?.name||'未选择'} · 目标日期：{g.input.due||'未设置'}</Text>}
               {g.input.support&&<Text>预期帮助条件：{g.input.support}</Text>}
               {goalView==='progress'&&(()=>{const p=progress?.goals.find(row=>row.id===g.id);return <View style={{gap:7,padding:10,backgroundColor:'#F3F6EF'}}>{p?<><Text>{p.measurement_count}条实际测量 · {p.segment_count}组指标与条件；截至{progress?.as_of}</Text>{measurementSeries(p.latest,localDate()).map(series=><Text key={series.key}>{series.name} · 指标第{series.metricVersion}版／目标第{series.goalVersion}版 · {series.sourceName} · {series.methodBasis} · {series.support||'帮助条件未记录'}：{series.points.at(-1)!.date}，{series.points.at(-1)!.label}{p.latest.find(r=>r.id===series.points.at(-1)!.id)?.source_deleted?'（来源已撤销或删除，保留当时测量）':''}</Text>)}{p.segment_count>3&&<Text>这里只列最近3组；其他组请打开完整趋势。</Text>}</>:<Text>{progressError?'实际测量暂未读到，请刷新重试。':!progress?'正在读取实际测量…':'待观察：尚无实际测量，不用训练次数代替进步。'}</Text>}<Action title={`查看测量趋势：${g.input.title}`} secondary press={()=>setRequestedObservation({kind:'goal',id:g.id,nonce:uuid()})}/></View>;})()}
 
-              {relatedKnowledge(g.id).map(k=>knowledgeCard(k,g.id))}
-              {data.methods.filter(m => m.input.goal_ids.includes(g.id)).map(m => <Action key={m.id} title={`关联方法：${m.input.title}`} secondary press={() => void openDetail(m.id)} />)}
-              <Action title={`查看目标：${g.input.title}`} secondary press={() => void openDetail(g.id)} />
-              <Action title={`编辑目标：${g.input.title}`} secondary press={() => begin({ kind: 'goal', value: g.input }, { kind: 'goal', value: g })} />
+              <Text style={s.hint}>方法 {data.methods.filter(m=>m.input.goal_ids.includes(g.id)).length} · 经验 {relatedKnowledge(g.id).filter(k=>k.input.kind==='experience').length} · 困难 {relatedKnowledge(g.id).filter(k=>k.input.kind==='difficulty').length}</Text>
             </View>)}
           </> : tab === 'methods' ? <>
             <Field label="搜索方法" value={methodSearch} change={setMethodSearch}/>
-            <Action title="新建方法" press={() => begin({ kind: 'method', value: newMethod() })} />
+            <Disclosure title="方法列表设置">
             <Check label="显示暂停和停用方法" checked={showHidden} change={() => setShowHidden(!showHidden)} />
             <HelpButton/>
             {!methods.length && <Text>普通新建方法需写名称、具体做法并关联目标；计划或总结里的快捷新增可以先只写名称。</Text>}
             <Action title={rankingBusy?'正在整理方法顺序…':'按最新近况重新排序'} secondary disabled={rankingBusy} press={()=>void loadMethodOrder()}/><Text>有困难意味着先检查和调整，不表示应该增加使用次数。列表不会随着后台刷新自动换位。</Text>{rankingError&&<Text>{rankingError}</Text>}
-            {!rankingBusy&&methods.map(m => <View key={m.id} style={s.card} testID={`prd-method-${m.id}`}><Text style={s.heading}>{m.input.title}</Text>
+            </Disclosure>
+            {rankingBusy&&<Text>正在读取方法…</Text>}
+            {!rankingBusy&&methods.map(m => <View key={m.id} style={s.card} testID={`prd-method-${m.id}`}><View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看方法：${m.input.title}`} onPress={()=>void openDetail(m.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{m.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑方法：${m.input.title}`} label="编辑" quiet press={()=>begin({kind:'method',value:m.input},{kind:'method',value:m})}/></View>
               <Text>{methodOrder.find(r=>r.id===m.id)?.reason??'新加入的方法，稍后可按近况重排'}</Text><Text>关联目标：{m.input.goal_ids.map(id => data.goals.find(g => g.id === id)?.input.title ?? '待核对目标').join('、')}</Text>
               <Text>{methodSteps(m.input) || '快捷创建，具体做法待补充'}</Text>
-              {relatedKnowledge(undefined,m.id).map(k => <View key={k.input.id} style={{gap:6}}><Text>{k.input.kind === 'difficulty' ? '关联困难' : '关联经验'}：{k.input.content}</Text><Action title={`查看关联知识：${k.details?.title||k.input.content}`} secondary press={()=>setRequestedFollowup({kind:'knowledge',id:k.input.id,nonce:uuid()})}/></View>)}
-              <Action title={`查看方法：${m.input.title}`} secondary press={() => void openDetail(m.id)} />
-              <Action title={`编辑方法：${m.input.title}`} secondary press={() => begin({ kind: 'method', value: m.input }, { kind: 'method', value: m })} /></View>)}
+              <Text style={s.hint}>经验 {relatedKnowledge(undefined,m.id).filter(k=>k.input.kind==='experience').length} · 困难 {relatedKnowledge(undefined,m.id).filter(k=>k.input.kind==='difficulty').length}</Text>
+</View>)}
           </> : <>
             <Text>选项可新增、改名、停用和恢复，历史记录保留当时名称。</Text>
             {(['course', 'teacher', 'domain'] as const).map(kind => <View key={kind} style={{ gap: 12 }}><Action title={{course:'新增课程',teacher:'新增老师',domain:'新增领域'}[kind]} press={() => begin({ kind: 'catalog', value: { kind, name: '', active: true } })} />
@@ -364,9 +366,9 @@ export function FoundationWorkspace() {
       {!longDirections.length&&<Action title="新建长期方向" press={()=>{setShowDirections(false);setTab('goals');begin({kind:'goal',value:{...newGoal(),level:'long'}});}}/>}
     </DetailOverlay>}
     {draft && <DetailOverlay title={draft.mutation.kind === 'goal' ? '填写目标' : draft.mutation.kind === 'method' ? '填写方法' : '维护选项'} close={() => { if (!busy) setEditor(null); }} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy ? '正在保存…' : draft.pending ? '重试同一次保存' : '保存'} disabled={busy || methodStepsMissing || (conflict && !draft.pending)} press={() => void submit()} /></>}>
-      {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/><Text style={s.hint}>填写内容会留在本机，可关闭后继续。保存成功后家人才能看到。</Text>
+      {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/>
       {error ? <Text accessibilityRole="alert">{error}</Text> : null}
-      {methodStepsMissing&&<Text accessibilityRole="alert">普通新建方法须填写具体做法；计划或总结中的快捷新增可只填名称。</Text>}
+      {methodStepsMissing&&<Text accessibilityRole="alert">普通新建方法须填写具体做法。</Text>}
       {conflict && latest && <View style={s.card}><Text>另一位家人已修改这条记录，你的填写仍保留。</Text><Text style={s.heading}>家人保存的最新内容</Text><ReadOnlyValues mutation={mutationOf(latest)} data={data} />
         <Action title="备份我的填写并采用最新版本" secondary disabled={busy} press={() => void (async () => {
           try { await AsyncStorage.setItem(`${key}:conflict:${draft.id}:${Date.now()}`, JSON.stringify(draft));
@@ -410,7 +412,7 @@ export function FoundationWorkspace() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F6F5EF' }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, gap: 12 },
   brand: { fontSize: 22, fontWeight: '700' }, title: { fontSize: 24, fontWeight: '600' }, heading: { fontSize: 18, fontWeight: '600' },
-  content: { padding: 16, gap: 14 }, card: { padding: 16, borderRadius: 12, backgroundColor: '#FFFFFF', gap: 10 },
+  content: { padding: 16, gap: 14, width:'100%',maxWidth:1080,alignSelf:'center' }, card: { padding: 16, borderRadius: 12, backgroundColor: '#FFFFFF', gap: 10 },
   action: { padding: 12, backgroundColor: '#34765B', borderRadius: 10 }, secondary: { backgroundColor: '#E9F2E9' },
   label: { fontSize: 17, fontWeight: '500' }, hint: { color: '#53665A', fontSize: 14 },
   input: { padding: 12, borderWidth: 1, borderColor: '#A6B5A8', borderRadius: 10, backgroundColor: '#FFFFFF', textAlignVertical: 'top' },

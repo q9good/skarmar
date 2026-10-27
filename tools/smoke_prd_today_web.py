@@ -1,4 +1,5 @@
 """R01 Today business date, first-screen priority and cross-account saved-record metadata."""
+from prd_ui_helpers import reveal_control
 import os,re
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -16,7 +17,7 @@ with sync_playwright() as p:
  def button(page,name):
   return page.get_by_role('button',name=name,exact=True)
  def login(page,user,password):
-  page.goto(BASE);page.get_by_role('textbox',name='账号',exact=True).fill(user);page.get_by_label('密码',exact=True).fill(password);button(page,'登录').click();expect(button(page,'记录上课')).to_be_enabled()
+  page.goto(BASE);reveal_control(page,'textbox','账号').fill(user);page.get_by_label('密码',exact=True).fill(password);button(page,'登录').click();expect(button(page,'记录上课')).to_be_enabled()
  def call(context,method,path,body=None,status=200):
   response=context.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'})
   assert response.status==status,(response.status,response.text())

@@ -1,4 +1,5 @@
 """Same account in multiple windows must not overwrite unrelated local drafts."""
+from prd_ui_helpers import reveal_control
 import os,re
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright,expect
@@ -6,9 +7,9 @@ BASE=os.environ['SKARMA_TEST_URL'].rstrip('/');assert urlparse(BASE).hostname in
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox']);ctx=browser.new_context(viewport={'width':360,'height':740});a=ctx.new_page();errors=[];a.on('pageerror',lambda e:errors.append(str(e)))
  def btn(page,n):return page.get_by_role('button',name=n,exact=True)
- def click(page,n):btn(page,n).click()
- def field(page,n):return page.get_by_role('textbox',name=n,exact=True)
- def saved(page):expect(page.get_by_text('已自动保存在这台设备；提交后家人才能看到。',exact=True)).to_be_visible()
+ def click(page,n):reveal_control(page,'button',n).click()
+ def field(page,n):return reveal_control(page,'textbox',n)
+ def saved(page):expect(page.get_by_text('草稿已存本机',exact=True)).to_be_visible()
  a.goto(BASE);field(a,'账号').fill('owner');a.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click(a,'登录');expect(btn(a,'记录上课')).to_be_enabled();b=ctx.new_page();b.on('pageerror',lambda e:errors.append(str(e)));b.goto(BASE);expect(btn(b,'记录上课')).to_be_enabled()
  for page,title in [(a,'窗口A保留的目标'),(b,'窗口B保留的目标')]:
   click(page,'目标');click(page,'新建目标');field(page,'本领名称').fill(title);saved(page);click(page,'关闭填写目标')
@@ -37,7 +38,7 @@ with sync_playwright() as p:
  verify(':lesson-drafts:v1','窗口A课堂观察','窗口B课堂观察')
  for page in [a,b]:click(page,'跟进')
  for page,title in [(a,'窗口A经验填写'),(b,'窗口B经验填写')]:
-  click(page,'新建经验');field(page,'知识名称（必填）').fill(title);field(page,'做法与依据').fill(title+'的独立原文');saved(page);close_top(page)
+  click(page,'新建经验');field(page,re.compile(r'^(?:经验|困难)名称（必填）$')).fill(title);field(page,'做法与依据').fill(title+'的独立原文');saved(page);close_top(page)
  verify(':followup-drafts:v1','窗口A经验填写','窗口B经验填写')
  for page in [a,b]:click(page,'今天')
  for page,title in [(a,'窗口A瞬间观察'),(b,'窗口B瞬间观察')]:

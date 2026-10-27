@@ -362,6 +362,7 @@ const extraGuidance:Record<string,{question:string;example:string}>={
 export function guidanceFor(label:string,example?:string,question?:string){
  if(label.startsWith('搜索'))return {question:'输入名称或关键词。',shortExample:'输入关键词',fullExample:''};
  let key=aliases[label];
+ if(/^(经验|困难)名称/.test(label))key='knowledge.title';
  if(!key){if(label==='新方法名称')key='method.title';else if(label==='新目标名称')key='goal.title';else if(label.startsWith('实际表现：'))key='summary.observation';else if(label.includes('下一步')&&!label.includes('负责人'))key='action.content';else if(label.startsWith('困难内容')||label.startsWith('实际情况／必填'))key='difficulty.observation';else if(label.startsWith('成人回应／可选'))key='difficulty.adult_response';else if(label.startsWith('原因猜测／可选'))key='difficulty.hypothesis';else if(label.startsWith('本次条件／可选'))key='difficulty.conditions';else if(label.startsWith('经验内容'))key='experience.body';else if(label.includes('情境'))key='practice.context';else if(label.includes('活动标签'))key='summary.tags';else if(label.startsWith('新增')&&label.endsWith('名称')||label==='老师名称'||label==='课程名称')key='catalog.name';else if(label.includes('修订')||label.includes('更正'))key='revision.reason';}
  const entry=extraGuidance[label]??(key?fieldMatrix[key]:undefined);
  const raw=example?.trim()?example:entry?.example??'',full=raw.startsWith('例如')?raw:'',q=question??entry?.question??'写下实际情况，可稍后补充。';

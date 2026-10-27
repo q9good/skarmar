@@ -1,4 +1,5 @@
 """Lesson UI/partition and retry tests against a disposable localhost-only PRD DB."""
+from prd_ui_helpers import reveal_control
 import os, re
 from pathlib import Path
 from uuid import uuid4
@@ -14,7 +15,7 @@ with sync_playwright() as p:
     for page in [a,b]:page.on('pageerror',lambda e:errors.append(str(e)))
     def button(page,name):return page.get_by_role('button',name=name,exact=True)
     def login(page,user,password):
-        page.goto(BASE);page.get_by_role('textbox',name='账号',exact=True).fill(user);page.get_by_label('密码',exact=True).fill(password);button(page,'登录').click();expect(button(page,'记录上课')).to_be_visible()
+        page.goto(BASE);reveal_control(page,'textbox','账号').fill(user);page.get_by_label('密码',exact=True).fill(password);button(page,'登录').click();expect(button(page,'记录上课')).to_be_visible()
     def call(method,path,body=None,status=200):
         r=first.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.status==status,r.text();return r.json()
     def state():return call('GET','/prd/state')
@@ -34,38 +35,38 @@ with sync_playwright() as p:
         body={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});call('PUT','/prd/records/'+id,body)
     a.reload();expect(button(a,'记录上课')).to_be_visible()
     nav(a,'记录上课');expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_count(0)
-    nav(a,'课程名称（必填）：请选择课程');a.get_by_role('textbox',name='新增课程名称',exact=True).fill('测试语言课');nav(a,'保存并选用')
+    nav(a,'课程名称（必填）：请选择课程');reveal_control(a,'textbox','新增课程名称').fill('测试语言课');nav(a,'保存并选用')
     expect(a.get_by_role('dialog')).to_have_count(1);expect(button(a,'授课老师（必填）：请选择老师')).to_be_visible()
-    nav(a,'授课老师（必填）：请选择老师');a.get_by_role('textbox',name='新增老师名称',exact=True).fill('测试王老师');nav(a,'保存并选用')
+    nav(a,'授课老师（必填）：请选择老师');reveal_control(a,'textbox','新增老师名称').fill('测试王老师');nav(a,'保存并选用')
     expect(a.get_by_role('dialog')).to_have_count(1)
     a.screenshot(path=str(OUT/'basic-lesson-mobile.png'));submit(a)
     assert len(state()['lessons'])==1;l=state()['lessons'][0];lesson_id=l['id'];today=l['observation']['business_date']
     nav(a,'补充课堂观察');field=a.get_by_role('textbox',name='今天课上怎么样？',exact=True);field.fill('测试：玩轮流游戏')
-    nav(a,'老师的做法和建议');a.get_by_role('textbox',name='老师的做法和建议',exact=True).fill('测试：老师建议先等待，再示范')
+    nav(a,'老师的做法和建议');reveal_control(a,'textbox','老师的做法和建议').fill('测试：老师建议先等待，再示范')
     nav(a,'老师的做法和建议 · 已写');expect(a.get_by_role('textbox',name='老师的做法和建议',exact=True)).to_have_count(0)
     nav(a,'老师的做法和建议 · 已写');expect(a.get_by_role('textbox',name='老师的做法和建议',exact=True)).to_have_value('测试：老师建议先等待，再示范')
-    a.get_by_role('checkbox',name='请爸爸妈妈看看',exact=True).click();submit(a)
+    reveal_control(a,'checkbox','请爸爸妈妈看看').click();submit(a)
     assert len(state()['lessons'])==1 and state()['lessons'][0]['observation_version']==2 and not state()['actions']
     print('PASS basic record, shared options created and independently selected; optional observations preserve text and do not add lessons/actions',flush=True)
     # Nested selector Back closes the selector only and preserves the observation draft.
     lesson_detail(a);expect(button(a,'撤销这条课记')).to_be_visible();expect(button(a,'标记记错，请管理员处理')).to_have_count(0);nav(a,'补充／修改课堂观察');nav(a,'课程名称（必填）：测试语言课');a.go_back();expect(a.get_by_role('dialog')).to_have_count(1)
     expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_value('测试：玩轮流游戏');dismiss(a,'记录上课')
     login(b,'family','s')
-    lesson_detail(b);expect(button(b,'撤销这条课记')).to_have_count(0);expect(button(b,'标记记错，请管理员处理')).to_be_visible();nav(b,'整理这条记录');b.get_by_role('checkbox',name='测试自己穿鞋',exact=True).click();b.get_by_role('checkbox',name='实际方法：测试等待示范',exact=True).click()
+    lesson_detail(b);expect(button(b,'撤销这条课记')).to_have_count(0);expect(button(b,'标记记错，请管理员处理')).to_be_visible();nav(b,'整理这条记录');reveal_control(b,'checkbox','测试自己穿鞋').click();reveal_control(b,'checkbox','实际方法：测试等待示范').click()
     # Cross-partition update: observation changes while another member is organizing old observation.
-    lesson_detail(a);nav(a,'补充／修改课堂观察');a.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：后来补充观察');submit(a)
-    nav(b,'记一条困难');b.get_by_role('textbox',name='困难内容 1',exact=True).fill('测试：等待时需要支持')
-    nav(b,'记一条经验');b.get_by_role('textbox',name='经验内容 2',exact=True).fill('测试：轮流前先示范');b.get_by_role('combobox',name='经验阶段 2',exact=True).select_option('try')
-    nav(b,'写下下一步');b.get_by_role('textbox',name='下一步 1',exact=True).fill('测试：下次请老师示范')
+    lesson_detail(a);nav(a,'补充／修改课堂观察');reveal_control(a,'textbox','今天课上怎么样？').fill('测试：后来补充观察');submit(a)
+    nav(b,'记一条困难');reveal_control(b,'textbox','困难内容 1').fill('测试：等待时需要支持')
+    nav(b,'记一条经验');reveal_control(b,'textbox','经验内容 2').fill('测试：轮流前先示范');reveal_control(b,'combobox','经验阶段 2').select_option('try')
+    nav(b,'写下下一步');reveal_control(b,'textbox','下一步 1').fill('测试：下次请老师示范')
     nav(b,'调整下一步关联 1');b.go_back();expect(b.get_by_role('dialog')).to_have_count(1)
-    b.get_by_role('combobox',name='这条记录如何处理',exact=True).select_option('complete');submit(b,'保存整理')
+    reveal_control(b,'combobox','这条记录如何处理').select_option('complete');submit(b,'保存整理')
     s=state();assert len(s['knowledge'])==2 and len(s['actions'])==1
     assert all(k['source_observation_version']==2 and k['source_observation']['notes']=='测试：玩轮流游戏' for k in s['knowledge'])
     assert s['lessons'][0]['observation']['notes']=='测试：后来补充观察'
     print('PASS independent observation/organization saves, explicit linked experience/difficulty/action and immutable source observation',flush=True)
-    nav(b,'目标');expect(b.get_by_text('关联困难：测试：等待时需要支持',exact=True)).to_be_visible();expect(b.get_by_text('关联经验：测试：轮流前先示范',exact=True)).to_be_visible()
-    nav(b,'方法');expect(b.get_by_text('关联困难：测试：等待时需要支持',exact=True)).to_be_visible()
-    nav(b,'跟进');nav(b,'经验库与困难');expect(b.get_by_text('测试：等待时需要支持',exact=True)).to_be_visible()
+    nav(b,'目标');nav(b,'查看目标：测试自己穿鞋');expect(b.get_by_text('关联困难：测试：等待时需要支持',exact=True)).to_be_visible();expect(b.get_by_text('关联经验：测试：轮流前先示范',exact=True)).to_be_visible()
+    nav(b,'关闭查看详情与修改记录');nav(b,'方法');nav(b,'查看方法：测试等待示范');expect(b.get_by_text('关联困难：测试：等待时需要支持',exact=True)).to_be_visible()
+    nav(b,'关闭查看详情与修改记录');nav(b,'跟进');nav(b,'经验库与困难');expect(b.get_by_text('测试：等待时需要支持',exact=True)).to_be_visible()
     nav(b,'今天');lesson_detail(b);nav(b,'查看关联目标：测试自己穿鞋');expect(b.get_by_role('dialog')).to_have_count(1);expect(b.get_by_role('dialog').get_by_text('测试自己穿鞋',exact=True).first).to_be_visible()
     b.go_back();expect(b.get_by_role('dialog')).to_have_count(0)
     print('PASS goal/method/followup links and replacement detail Back behavior',flush=True)
@@ -74,8 +75,8 @@ with sync_playwright() as p:
     search_box.fill('老师建议先等待');expect(b.get_by_text('匹配来源：老师建议',exact=True)).to_be_visible();search_box.fill('')
     print('PASS lesson keyword search returns to the original record and labels teacher advice and linked knowledge separately',flush=True)
     # Same-partition concurrency preserves unsaved input and requires explicit reconciliation.
-    a.reload();lesson_detail(a);expect(button(a,'撤销这条课记')).to_have_count(0);expect(button(a,'标记记错，请管理员处理')).to_be_visible();nav(a,'补充／修改课堂观察');a.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：未提交的观察')
-    lesson_detail(b);nav(b,'补充／修改课堂观察');b.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('测试：家人新观察');submit(b)
+    a.reload();lesson_detail(a);expect(button(a,'撤销这条课记')).to_have_count(0);expect(button(a,'标记记错，请管理员处理')).to_be_visible();nav(a,'补充／修改课堂观察');reveal_control(a,'textbox','今天课上怎么样？').fill('测试：未提交的观察')
+    lesson_detail(b);nav(b,'补充／修改课堂观察');reveal_control(b,'textbox','今天课上怎么样？').fill('测试：家人新观察');submit(b)
     a.evaluate("window.dispatchEvent(new Event('focus'))")
     expect(a.get_by_text('这一部分已有新版本，当前填写仍保留。',exact=True)).to_be_visible();expect(button(a,'提交记录')).to_be_disabled()
     expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_value('测试：未提交的观察')

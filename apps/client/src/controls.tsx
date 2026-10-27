@@ -3,12 +3,12 @@ import { Pressable, Text, TextInput } from './readability';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import {localDate} from './draft';
-export type SelectProps = { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; disabled?: boolean };
+export type SelectProps = { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; disabled?: boolean; compact?:boolean };
 export type DateProps = { label: string; value: string; onChange: (value: string) => void; disabled?: boolean; question?: string; emptyText?: string; help?: string };
-export function Select({ label, value, options, onChange, disabled }: SelectProps) {
+export function Select({ label, value, options, onChange, disabled, compact=false }: SelectProps) {
  const [open,setOpen]=useState(false),[search,setSearch]=useState('');
  const choices=(options.length<=6?options:options.filter(o=>o.value===value)).map(o=><Pressable key={o.value} accessibilityRole="radio" accessibilityLabel={o.label} accessibilityState={{checked:o.value===value,disabled}} disabled={disabled} onPress={()=>onChange(o.value)} style={{padding:10,backgroundColor:'#E9F2E9',borderRadius:8}}><Text>{o.value===value?'◉':'○'} {o.label}</Text></Pressable>);
- return <View style={{gap:8}}><Text>{label}</Text>{choices}{options.length>6&&<Pressable accessibilityRole="button" disabled={disabled} onPress={()=>{setSearch('');setOpen(true);}}><Text>更多{label}</Text></Pressable>}{open&&<DetailOverlay title={'选择'+label} close={()=>setOpen(false)}>{options.length>15&&<TextInput accessibilityLabel={'搜索'+label} value={search} onChangeText={setSearch} placeholder="输入名称或关键词"/>}{options.filter(o=>o.label.includes(search)).map(o=><Pressable key={o.value} accessibilityRole="button" onPress={()=>{onChange(o.value);setOpen(false);}}><Text>{o.label}</Text></Pressable>)}</DetailOverlay>}</View>;
+ return <View style={{gap:8}}>{!compact&&<Text>{label}</Text>}{choices}{options.length>6&&<Pressable accessibilityRole="button" disabled={disabled} onPress={()=>{setSearch('');setOpen(true);}}><Text>更多{label}</Text></Pressable>}{open&&<DetailOverlay title={'选择'+label} close={()=>setOpen(false)}>{options.length>15&&<TextInput accessibilityLabel={'搜索'+label} value={search} onChangeText={setSearch} placeholder="输入名称或关键词"/>}{options.filter(o=>o.label.includes(search)).map(o=><Pressable key={o.value} accessibilityRole="button" onPress={()=>{onChange(o.value);setOpen(false);}}><Text>{o.label}</Text></Pressable>)}</DetailOverlay>}</View>;
 }
 const isoDate=(value:string)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;};
 const currentMonth=()=>localDate().slice(0,7);

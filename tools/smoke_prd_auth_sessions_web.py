@@ -1,4 +1,5 @@
 """Trusted cookies, explicit revocation, renewal and original-form return; synthetic localhost only."""
+from prd_ui_helpers import reveal_control
 import os,json
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright,expect
@@ -17,7 +18,7 @@ with sync_playwright() as p:
  btn('退出其他设备').click();btn('确认退出本账号其他设备').click();expect(page.get_by_text('其他设备已退出，这台设备保持登录。',exact=True)).to_be_visible();assert b.request.get(BASE+'/api/auth/me').status==401;assert a.request.get(BASE+'/api/auth/me').ok
  print('PASS trusted opt-in secure cookie attributes and cancellable scoped other-device revocation',flush=True)
  # Open a real goal draft, then receive an impending-expiry metadata response on reload.
- btn('返回').click();btn('目标').click();btn('新建目标').click();page.get_by_role('textbox',name='本领名称',exact=True).fill('续期保留填写');btn('关闭填写目标').click()
+ btn('返回').click();btn('目标').click();btn('新建目标').click();reveal_control(page,'textbox','本领名称').fill('续期保留填写');btn('关闭填写目标').click()
  def expires_in(seconds):
   def handler(route):
    response=route.fetch();body=response.json();body['session']={'expires_at':__import__('time').time()+seconds,'trusted_device':True};route.fulfill(response=response,json=body)
@@ -25,6 +26,6 @@ with sync_playwright() as p:
  page.route('**/api/auth/me',expires_in(14*86400+60),times=1);page.reload();expect(btn('重新验证并继续填写')).to_have_count(0)
  page.route('**/api/auth/me',expires_in(14*86400-60),times=1);page.reload();expect(btn('重新验证并继续填写')).to_be_visible();btn('继续填写：续期保留填写').click();expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期保留填写')
  # Reauthenticate from the active form itself; it must remain mounted under the renewal overlay.
- field=page.get_by_role('textbox',name='本领名称',exact=True);field.fill('续期中的原表单');btn('登录即将到期，先验证登录再继续填写').click();page.get_by_role('textbox',name='续期密码',exact=True).fill('synthetic-prd-ui-password');btn('验证并回到填写').click();expect(page.get_by_role('dialog',name='续期登录',exact=True)).to_have_count(0);expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期中的原表单')
+ field=page.get_by_role('textbox',name='本领名称',exact=True);field.fill('续期中的原表单');btn('登录即将到期，先验证登录再继续填写').click();reveal_control(page,'textbox','续期密码').fill('synthetic-prd-ui-password');btn('验证并回到填写').click();expect(page.get_by_role('dialog',name='续期登录',exact=True)).to_have_count(0);expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期中的原表单')
  assert a.request.get(BASE+'/api/auth/me').ok;assert not errors,errors
  print('PASS trusted renewal prompt starts inside 14 days, stays nonblocking, and reauthentication preserves the original form',flush=True);browser.close()

@@ -1,4 +1,5 @@
 """Real-browser offline recovery, dependency, identity and cross-tab checks; synthetic localhost only."""
+from prd_ui_helpers import reveal_control
 import os,re,json
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -9,9 +10,9 @@ with sync_playwright() as p:
  browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox'])
  ctx=browser.new_context(viewport={'width':360,'height':740});page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def button(name):return page.get_by_role('button',name=name,exact=True)
- def click(name):button(name).click()
+ def click(name):reveal_control(page,'button',name).click()
  def login(user='owner',password='synthetic-prd-ui-password'):
-  page.goto(BASE);page.get_by_role('textbox',name='账号',exact=True).fill(user);page.get_by_label('密码',exact=True).fill(password);click('登录');expect(button('记录上课')).to_be_enabled()
+  page.goto(BASE);reveal_control(page,'textbox','账号').fill(user);page.get_by_label('密码',exact=True).fill(password);click('登录');expect(button('记录上课')).to_be_enabled()
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  def state():return call('GET','/prd/state')
@@ -33,11 +34,11 @@ with sync_playwright() as p:
  def submit():click('提交记录');expect(page.get_by_role('dialog')).to_have_count(0)
  login();owner=call('GET','/auth/me');member=call('POST','/auth/users',{'username':'family','display_name':'测试家人','password':'s','role':'member'})
  # Cancelling an untouched lesson is local-only and removes its two orphaned new options.
- ctx.set_offline(True);click('记录上课');create_options();click('补充观察');page.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('取消前的本机观察');submit()
+ ctx.set_offline(True);click('记录上课');create_options();click('补充观察');reveal_control(page,'textbox','今天课上怎么样？').fill('取消前的本机观察');submit()
  button(re.compile('^取消待上传：课记：')).click();expect(page.get_by_role('dialog',name='取消待上传内容',exact=True)).to_be_visible();click('确认取消待上传内容')
  expect(page.get_by_text('已取消本机待上传课记，并清理 2 个不再使用的新增选项。',exact=True)).to_be_visible();assert readqueue()['entries']=={};assert not state()['lessons'] and not state()['catalog'];click('关闭取消提示')
  print('PASS untouched queued lesson cancellation removes orphan catalogs without server writes',flush=True)
- ctx.set_offline(True);click('记录上课');create_options();click('补充观察');page.get_by_role('textbox',name='今天课上怎么样？',exact=True).fill('离线观察：轮流游戏');submit()
+ ctx.set_offline(True);click('记录上课');create_options();click('补充观察');reveal_control(page,'textbox','今天课上怎么样？').fill('离线观察：轮流游戏');submit()
  expect(page.get_by_text('待上传课记与选项：3',exact=True)).to_be_visible();pending=readqueue();lesson_id=next(i for i,e in pending['entries'].items() if e['write']['kind']=='lesson');operation=pending['entries'][lesson_id]['write']['value']['operation_id']
  click('记录');click('课时核对');click('下个月');expect(page.get_by_text('这个月还没有上课记录。',exact=True)).to_be_visible()
  click('目标');click('今天');expect(page.get_by_text('待上传课记与选项：3',exact=True)).to_be_visible()
@@ -83,7 +84,7 @@ with sync_playwright() as p:
  expect(page.get_by_text(re.compile('^待上传课记与选项：'))).to_have_count(0,timeout=20000);assert len(state()['lessons'])==7
  print('PASS multiple real browser tabs retain both queued lessons and replay each exactly once',flush=True)
  # A duplicate offline catalog is explicitly reconciled to the existing stable ID.
- ctx.set_offline(True);click('记录上课');click('课程名称（必填）：请选择课程');page.get_by_role('textbox',name='新增课程名称',exact=True).fill('离线课程');click('保存并选用');expect(page.get_by_role('dialog')).to_have_count(1);click('授课老师（必填）：请选择老师');page.get_by_role('dialog',name='选择老师',exact=True).get_by_role('button',name='离线老师',exact=True).click();submit();ctx.set_offline(False)
+ ctx.set_offline(True);click('记录上课');click('课程名称（必填）：请选择课程');reveal_control(page,'textbox','新增课程名称').fill('离线课程');click('保存并选用');expect(page.get_by_role('dialog')).to_have_count(1);click('授课老师（必填）：请选择老师');page.get_by_role('dialog',name='选择老师',exact=True).get_by_role('button',name='离线老师',exact=True).click();submit();ctx.set_offline(False)
  expect(button('改用已有选项：离线课程')).to_be_visible(timeout=20000);click('改用已有选项：离线课程');click('核对并改用：离线课程');expect(page.get_by_role('dialog')).to_have_count(0);wait_count(8);assert len(state()['catalog'])==2;assert any(e['status']=='linked' for e in readqueue()['entries'].values())
  page.reload();expect(button('记录上课')).to_be_enabled();expect(page.get_by_text(re.compile('^待上传课记与选项：'))).to_have_count(0);assert len(state()['lessons'])==8
  print('PASS duplicate offline course explicitly links existing catalog, resumes only unsent lesson and survives reload without duplicate options or lessons',flush=True)

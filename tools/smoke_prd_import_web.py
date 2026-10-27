@@ -1,4 +1,5 @@
 """Real browser multipart/mapping/retry/source roundtrip; only generated synthetic data."""
+from prd_ui_helpers import reveal_control
 import os,re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -10,18 +11,18 @@ w=Workbook();s=w.active;s.title='目标';s.append(['编号','名称','未映射'
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox']);ctx=b.new_context(viewport={'width':360,'height':740},accept_downloads=True);page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def button(name):return page.get_by_role('button',name=name,exact=True)
- def click(name):button(name).click()
+ def click(name):reveal_control(page,'button',name).click()
  def state():return ctx.request.get(BASE+'/api/prd/state').json()
- page.goto(BASE);page.get_by_role('textbox',name='账号',exact=True).fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(button('记录上课')).to_be_enabled();click('我的账号');click('打开导入工具')
+ page.goto(BASE);reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(button('记录上课')).to_be_enabled();click('我的账号');click('打开导入工具')
  def choose():
   with page.expect_file_chooser() as chooser:button(re.compile('^(重新)?选择 Excel／CSV$')).click()
   chooser.value.set_files(filename);click('上传并读取工作表');expect(page.get_by_role('combobox',name='目标：用途',exact=True)).to_be_visible()
  def map_rules():
-  page.get_by_role('textbox',name='资料来源标识',exact=True).fill('synthetic-browser-source')
+  reveal_control(page,'textbox','资料来源标识').fill('synthetic-browser-source')
   for sheet,kind in [('目标','goal'),('方法','method'),('经验','experience'),('历史','archive')]:page.get_by_role('combobox',name=sheet+'：用途',exact=True).select_option(kind)
   for sheet in ['目标','方法']:
    page.get_by_role('combobox',name=sheet+'：来源编号（必选，原表内唯一）',exact=True).select_option('编号');page.get_by_role('combobox',name=sheet+'：名称／内容',exact=True).select_option('名称')
-  page.get_by_role('combobox',name='方法：明确关联目标来源',exact=True).select_option('关联目标');
+  reveal_control(page,'combobox','方法：明确关联目标来源').select_option('关联目标');
   for key,column in [('来源编号（必选，原表内唯一）','编号'),('名称／内容','内容'),('明确关联目标来源','关联目标'),('明确经验阶段（提出／已使用／已验证）','阶段'),('经验使用状态（启用／暂停／停用）','状态')]:page.get_by_role('combobox',name='经验：'+key,exact=True).select_option(column)
   click('核对映射并生成写入预览');expect(page.get_by_text('写入预览 · 4 行',exact=True)).to_be_visible()
  choose();map_rules();assert not state()['goals'];page.get_by_role('checkbox',name=re.compile('我已核对用途')).check()

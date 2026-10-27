@@ -1,4 +1,5 @@
 """New-model UI saves and conflicts on a disposable localhost PRD database."""
+from prd_ui_helpers import reveal_control
 import os,re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -12,7 +13,7 @@ with sync_playwright() as p:
     a,b=first.new_page(),second.new_page();errors=[]
     for page in [a,b]:page.on('pageerror',lambda e:errors.append(str(e)))
     def login(page,user,password):
-        page.goto(BASE);page.get_by_role('textbox',name='账号',exact=True).fill(user);page.get_by_label('密码',exact=True).fill(password);page.get_by_role('button',name='登录',exact=True).click()
+        page.goto(BASE);reveal_control(page,'textbox','账号').fill(user);page.get_by_label('密码',exact=True).fill(password);page.get_by_role('button',name='登录',exact=True).click()
         page.get_by_role('button',name='目标',exact=True).click()
         expect(page.get_by_role('button',name='新建目标',exact=True)).to_be_visible()
     def write(path,body):
@@ -29,54 +30,58 @@ with sync_playwright() as p:
     assert not state()['goals'],'Use a fresh disposable PRD database'
     write('/auth/users',{'username':'family','display_name':'测试家人','password':'s','role':'member'})
     a.get_by_role('button',name='新建目标',exact=True).click()
-    a.get_by_role('textbox',name='本领名称',exact=True).fill('测试用筷子')
+    reveal_control(a,'textbox','本领名称').fill('测试用筷子')
     a.get_by_role('button',name='补充目标说明（可选）',exact=True).click()
-    a.get_by_role('textbox',name='生活意义',exact=True).fill('测试：更独立地吃饭')
-    a.get_by_role('combobox',name='观察方式',exact=True).select_option('count')
+    reveal_control(a,'textbox','生活意义').fill('测试：更独立地吃饭')
+    reveal_control(a,'combobox','观察方式').select_option('count')
     criterion=a.get_by_role('textbox',name='观察标准',exact=True);expect(criterion).to_have_value('')
     criterion.fill('测试：5次机会中有3次只需提醒')
-    a.get_by_role('combobox',name='观察方式',exact=True).select_option('duration');expect(criterion).to_have_value('测试：5次机会中有3次只需提醒')
-    a.get_by_role('textbox',name='预期帮助条件（可选）',exact=True).fill('测试：先不提示，需要时再示范')
+    reveal_control(a,'combobox','观察方式').select_option('duration');expect(criterion).to_have_value('测试：5次机会中有3次只需提醒')
+    reveal_control(a,'textbox','预期帮助条件（可选）').fill('测试：先不提示，需要时再示范')
     a.get_by_role('button',name='领域／可选：选择或自定义',exact=True).click()
     domain_panel=a.get_by_role('dialog',name='选择领域',exact=True);domain_panel.get_by_role('textbox',name='自定义领域',exact=True).fill('测试沟通互动');domain_panel.get_by_role('button',name='保存并选用',exact=True).click()
     expect(a.get_by_role('button',name='领域／可选：测试沟通互动',exact=True)).to_be_visible()
-    a.get_by_role('button',name='目标日期／可选：改用数字输入',exact=True).click();a.get_by_role('textbox',name='目标日期／可选',exact=True).fill('20270120')
+    a.get_by_role('button',name='目标日期／可选：改用数字输入',exact=True).click();reveal_control(a,'textbox','目标日期／可选').fill('20270120')
     save(a);short=next(g for g in state()['goals'] if g['input']['title']=='测试用筷子')
     assert short['input']['support']=='测试：先不提示，需要时再示范'
     assert short['input']['due']=='2027-01-20'
     assert short['input']['domain']['name']=='测试沟通互动' and short['input']['domain']['kind']=='domain'
     assert len([c for c in state()['catalog'] if c['input']['kind']=='domain'])==1
-    a.get_by_role('button',name='新建目标',exact=True).click();a.get_by_role('textbox',name='本领名称',exact=True).fill('测试长期方向')
-    a.get_by_role('combobox',name='目标类型',exact=True).select_option('long');save(a)
+    a.get_by_role('button',name='新建目标',exact=True).click();reveal_control(a,'textbox','本领名称').fill('测试长期方向')
+    reveal_control(a,'combobox','目标类型').select_option('long');save(a)
     long=next(g for g in state()['goals'] if g['input']['level']=='long');assert long['input']['criteria']==''
-    nav(a,'方法');a.get_by_role('button',name='新建方法',exact=True).click();a.get_by_role('textbox',name='方法名称',exact=True).fill('测试等待示范')
-    for title in ['测试用筷子','测试长期方向']:a.get_by_role('checkbox',name=title,exact=True).click()
+    nav(a,'方法');a.get_by_role('button',name='新建方法',exact=True).click();reveal_control(a,'textbox','方法名称').fill('测试等待示范')
+    a.get_by_role('button',name='选择方法适用目标（已选0）',exact=True).click()
+    for title in ['测试用筷子','测试长期方向']:reveal_control(a,'checkbox',title).click()
+    a.get_by_role('button',name='关闭选择方法适用目标',exact=True).click()
     expect(a.get_by_role('alert')).to_contain_text('普通新建方法须填写具体做法');expect(a.get_by_role('button',name='保存',exact=True)).to_be_disabled()
-    steps=a.get_by_role('textbox',name='具体做法／必填',exact=True);steps.fill('测试：先跟着孩子的玩法');a.get_by_role('textbox',name='观察意图／可选',exact=True).fill('测试：观察是否愿意再试');a.get_by_role('textbox',name='适用条件／可选',exact=True).fill('测试：熟悉的游戏中');a.get_by_role('button',name='查看填写示例：具体做法／必填',exact=True).click();expect(steps).to_have_value('测试：先跟着孩子的玩法')
+    steps=a.get_by_role('textbox',name='具体做法／必填',exact=True);steps.fill('测试：先跟着孩子的玩法');reveal_control(a,'textbox','观察意图／可选').fill('测试：观察是否愿意再试');reveal_control(a,'textbox','适用条件／可选').fill('测试：熟悉的游戏中');a.get_by_role('button',name='查看填写示例：具体做法／必填',exact=True).click();expect(steps).to_have_value('测试：先跟着孩子的玩法')
     with a.expect_request(re.compile(r'/api/prd/records/')) as full_request:save(a)
     assert full_request.value.post_data_json['method_create_mode']=='full'
     method=state()['methods'][0];assert set(method['input']['goal_ids'])=={short['id'],long['id']}
     assert method['input']['steps']=='测试：先跟着孩子的玩法' and method['input']['observe']=='测试：观察是否愿意再试' and method['input']['scope']=='测试：熟悉的游戏中'
-    nav(a,'目标');expect(a.get_by_role('button',name='关联方法：测试等待示范',exact=True)).to_have_count(2)
+    nav(a,'目标')
+    for title in ['测试用筷子','测试长期方向']:
+        a.get_by_role('button',name='查看目标：'+title,exact=True).click();expect(a.get_by_text('关联方法：测试等待示范',exact=True)).to_be_visible();a.get_by_role('button',name='关闭查看详情与修改记录',exact=True).click()
     nav(a,'方法');a.get_by_role('button',name='编辑方法：测试等待示范',exact=True).click()
-    a.get_by_role('textbox',name='具体做法／必填',exact=True).fill('测试：先示范，再等待')
+    reveal_control(a,'textbox','具体做法／必填').fill('测试：先示范，再等待')
     save(a);assert state()['methods'][0]['version']==2
     a.get_by_role('button',name='查看方法：测试等待示范',exact=True).click();method_dialog=a.get_by_role('dialog',name='查看详情与修改记录',exact=True);expect(method_dialog.get_by_text('具体做法：测试：先示范，再等待',exact=True)).to_be_visible();expect(method_dialog.get_by_text('测试：先示范，再等待',exact=True)).to_have_count(1)
     a.get_by_role('button',name='关闭查看详情与修改记录',exact=True).click()
     print('PASS goal templates preserve text; full methods require steps and keep guidance; two-way goal associations and versions remain visible',flush=True)
-    nav(a,'课程和老师');a.get_by_role('button',name='新增老师',exact=True).click();a.get_by_role('textbox',name='老师名称',exact=True).fill('测试老师旧名');save(a)
+    nav(a,'课程和老师');a.get_by_role('button',name='新增老师',exact=True).click();reveal_control(a,'textbox','老师名称').fill('测试老师旧名');save(a)
     teacher=next(c for c in state()['catalog'] if c['input']['kind']=='teacher')
-    a.get_by_role('button',name='维护选项：测试老师旧名',exact=True).click();a.get_by_role('textbox',name='老师名称',exact=True).fill('测试老师新名');save(a)
+    a.get_by_role('button',name='维护选项：测试老师旧名',exact=True).click();reveal_control(a,'textbox','老师名称').fill('测试老师新名');save(a)
     for _ in range(2):
-        a.get_by_role('button',name='维护选项：测试老师新名',exact=True).click();a.get_by_role('checkbox',name='可在后续记录中选择',exact=True).click();save(a)
+        a.get_by_role('button',name='维护选项：测试老师新名',exact=True).click();reveal_control(a,'checkbox','可在后续记录中选择').click();save(a)
     current_teacher=next(c for c in state()['catalog'] if c['id']==teacher['id'])
     assert current_teacher['version']==4
     a.get_by_role('button',name='查看改名历史：测试老师新名',exact=True).click();expect(a.get_by_role('dialog').get_by_text('测试老师旧名',exact=True)).to_be_visible()
     a.get_by_role('button',name='关闭查看详情与修改记录',exact=True).click()
     print('PASS shared catalog rename, stop/restore, stable ID and old name history',flush=True)
     login(b,'family','s');nav(a,'目标');a.get_by_role('button',name='编辑目标：测试用筷子',exact=True).click()
-    a.get_by_role('textbox',name='生活意义',exact=True).fill('测试：我的未提交内容')
-    b.get_by_role('button',name='编辑目标：测试用筷子',exact=True).click();b.get_by_role('textbox',name='生活意义',exact=True).fill('测试：第二位家人更新');save(b)
+    reveal_control(a,'textbox','生活意义').fill('测试：我的未提交内容')
+    b.get_by_role('button',name='编辑目标：测试用筷子',exact=True).click();reveal_control(b,'textbox','生活意义').fill('测试：第二位家人更新');save(b)
     a.evaluate("window.dispatchEvent(new Event('focus'))")
     expect(a.get_by_text('另一位家人已修改这条记录，你的填写仍保留。',exact=True)).to_be_visible()
     expect(a.get_by_role('textbox',name='生活意义',exact=True)).to_have_value('测试：我的未提交内容')
@@ -84,11 +89,11 @@ with sync_playwright() as p:
     expect(a.get_by_role('button',name='保存',exact=True)).to_be_disabled()
     a.get_by_role('button',name='备份我的填写并采用最新版本',exact=True).click();expect(a.get_by_role('textbox',name='生活意义',exact=True)).to_have_value('测试：第二位家人更新')
     expect(a.get_by_text('生活意义：测试：我的未提交内容',exact=True)).to_be_visible()
-    a.get_by_role('textbox',name='生活意义',exact=True).fill('测试：核对后合并');save(a)
+    reveal_control(a,'textbox','生活意义').fill('测试：核对后合并');save(a)
     assert next(g for g in state()['goals'] if g['id']==short['id'])['version']==3
     print('PASS two members: latest version never overwrites active input; conflict blocks saving until explicit reconciliation',flush=True)
     # Simulate a lost response after the backend committed, then retry exactly once.
-    a.get_by_role('button',name='新建目标',exact=True).click();a.get_by_role('textbox',name='本领名称',exact=True).fill('测试响应丢失')
+    a.get_by_role('button',name='新建目标',exact=True).click();reveal_control(a,'textbox','本领名称').fill('测试响应丢失')
     def lose_response(route):
         response=route.fetch();assert response.ok;route.abort('failed')
     a.route('**/api/prd/records/*',lose_response,times=1)
@@ -102,7 +107,7 @@ with sync_playwright() as p:
     print('PASS lost response after commit: persisted operation retries without duplicate record/history',flush=True)
     nav(a,'目标')
     for title in ['测试草稿甲','测试草稿乙']:
-        a.get_by_role('button',name='新建目标',exact=True).click();a.get_by_role('textbox',name='本领名称',exact=True).fill(title);a.get_by_role('button',name='关闭填写目标',exact=True).click()
+        a.get_by_role('button',name='新建目标',exact=True).click();reveal_control(a,'textbox','本领名称').fill(title);a.get_by_role('button',name='关闭填写目标',exact=True).click()
     a.reload()
     for title in ['测试草稿甲','测试草稿乙']:expect(a.get_by_role('button',name='继续填写：'+title,exact=True)).to_be_visible()
     a.get_by_role('button',name='继续填写：测试草稿甲',exact=True).click();expect(a.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('测试草稿甲')

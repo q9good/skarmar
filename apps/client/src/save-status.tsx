@@ -9,5 +9,5 @@ export function trackLocalSave<T>(key:string,promise:Promise<T>):Promise<T>{
 }
 export function SaveStatus({storageKey,sharing,pending}:{storageKey:string;sharing:boolean;pending:boolean}){
  const local=useSyncExternalStore(fn=>{const set=listeners.get(storageKey)??new Set();set.add(fn);listeners.set(storageKey,set);return()=>{set.delete(fn);};},()=>values.get(storageKey)??'saved',()=> 'saved' as Status);
- return <Text role="status">{sharing?'正在保存，请稍候…':pending?'上次结果尚未确认，重试将核对同一次操作。':local==='saving'?'正在保存在这台设备…':local==='failed'?'本机填写尚未保存，请保留页面后重试。':'已自动保存在这台设备；提交后家人才能看到。'}</Text>;
+ return <Text role="status">{sharing?'正在保存，请稍候…':pending?'上次结果尚未确认，重试将核对同一次操作。':local==='saving'?'正在保存草稿…':local==='failed'?'本机填写尚未保存，请保留页面后重试。':'草稿已存本机'}</Text>;
 }

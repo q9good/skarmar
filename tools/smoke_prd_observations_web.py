@@ -1,4 +1,5 @@
 """Measurements, moments, shared needs, revision conflicts and response-loss recovery; synthetic localhost only."""
+from prd_ui_helpers import reveal_control
 import os,re
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -7,8 +8,8 @@ BASE=os.environ['SKARMA_TEST_URL'].rstrip('/');assert urlparse(BASE).hostname in
 with sync_playwright() as p:
  browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox']);ctx=browser.new_context(viewport={'width':360,'height':740});page=ctx.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
  def btn(name):return page.get_by_role('button',name=name,exact=True)
- def click(name):btn(name).click()
- def field(name):return page.get_by_role('textbox',name=name,exact=True)
+ def click(name):reveal_control(page,'button',name).click()
+ def field(name):return reveal_control(page,'textbox',name)
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  def observe(kind):return call('GET','/prd/process?view=observations&object_kind='+kind)['items']

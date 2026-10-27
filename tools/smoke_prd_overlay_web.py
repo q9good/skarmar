@@ -1,4 +1,5 @@
 """Deterministic overlay-history race, nesting, forward/back, reload and sentinel-leak checks."""
+from prd_ui_helpers import reveal_control
 import os,re
 from urllib.parse import urlparse
 from playwright.sync_api import expect,sync_playwright
@@ -25,7 +26,7 @@ with sync_playwright() as p:
   page.wait_for_function("!history.state?.skarmarOverlay")
 
  page.goto(BASE)
- page.get_by_role('textbox',name='账号',exact=True).fill('owner')
+ reveal_control(page,'textbox','账号').fill('owner')
  page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password')
  button('登录').click()
  expect(button('记录上课')).to_be_enabled()
