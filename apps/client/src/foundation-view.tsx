@@ -25,6 +25,8 @@ import type {EvidenceRecord} from './prd-observations';
 import {TodayRecords} from './prd-today-view';
 import {businessDateLabel} from './prd-today';
 import {LessonOutboxProvider,LessonQueueStatus} from './prd-outbox-view';
+import {ReferencePicker,StarterSetupButton} from './starter-content-view';
+import {goalReference,methodReference,blankGoalReference,blankMethodReference} from './starter-content';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -85,10 +87,15 @@ function DomainChoice({value,change,data,accepted,disabled}:{value:CatalogSnapsh
     </DetailOverlay>}
   </View>;
 }
-function GoalFields({ value, change, data, id, disabled, existing, catalogSaved }: { value: GoalInput; change: (patch: Partial<GoalInput>) => void; data: Snapshot; id: string; disabled: boolean; existing: boolean; catalogSaved:(saved:Saved)=>void }) {
+function GoalFields({ value, change, data, id, disabled, existing, catalogSaved, newReference }: { value: GoalInput; change: (patch: Partial<GoalInput>) => void; data: Snapshot; id: string; disabled: boolean; existing: boolean; catalogSaved:(saved:Saved)=>void;newReference:(v:GoalInput)=>void }) {
   const rank = { long: 0, medium: 1, short: 2 };
   return <>
     <Field label="本领名称" hint="想帮助孩子做到什么？" value={value.title} change={title => change({ title })} placeholder="例如：自己用筷子" disabled={disabled} />
+    {!existing&&<ReferencePicker kind="goal" disabled={disabled} fork={!blankGoalReference(value)} choose={key=>{
+      const ref=goalReference(key);
+      if(blankGoalReference(value))change({title:ref.title,level:ref.level,meaning:ref.meaning,criteria:ref.criteria,support:ref.support,template:ref.template,parent_id:null,state:'active'});
+      else newReference(ref);
+    }}/>}
     <Select label="目标类型" value={value.level} disabled={disabled || existing} options={Object.entries(levelNames).map(([value, label]) => ({ value, label }))}
       onChange={level => change({ level: level as GoalInput['level'], parent_id: null, state: 'active' })} />
     <Disclosure title="补充目标说明（可选）" summary={value.criteria?'已写观察标准':undefined}>
@@ -114,11 +121,16 @@ function GoalFields({ value, change, data, id, disabled, existing, catalogSaved 
 }
 const methodSteps=(value:MethodInput)=>value.description||value.steps;
 const methodScope=(value:MethodInput)=>value.scope||(value.description?value.steps:'');
-function MethodFields({ value, change, data, disabled }: { value: MethodInput; change: (patch: Partial<MethodInput>) => void; data: Snapshot; disabled: boolean }) {
+function MethodFields({ value, change, data, disabled, existing, newReference }: { value: MethodInput; change: (patch: Partial<MethodInput>) => void; data: Snapshot; disabled: boolean;existing:boolean;newReference:(v:MethodInput)=>void }) {
   const [selecting,setSelecting]=useState(false),[search,setSearch]=useState('');
   return <>
     <Field label="方法名称" hint="怎样称呼这个做法？" value={value.title} change={title => change({ title })} placeholder="例如：示范后少提醒" disabled={disabled} />
     <Field label="具体做法／必填" value={methodSteps(value)} change={steps => change({ steps, description:'' })} multiline disabled={disabled} />
+    {!existing&&<ReferencePicker kind="method" disabled={disabled} fork={!blankMethodReference(value)} choose={key=>{
+      const ref=methodReference(key,value.goal_ids);
+      if(blankMethodReference(value))change({title:ref.title,description:'',steps:ref.steps,observe:ref.observe,scope:ref.scope,guidance:ref.guidance});
+      else newReference(ref);
+    }}/>}
     <Action title={`${data.goals.length>15?'搜索选择':'选择'}方法适用目标（已选${value.goal_ids.length}）`} secondary disabled={disabled} press={()=>{setSearch('');setSelecting(true);}}/>
     <Text>{value.goal_ids.length?value.goal_ids.map(id=>data.goals.find(g=>g.id===id)?.input.title??'待核对目标').join('、'):'至少关联一个目标；没有目标时先在目标页新建。'}</Text>
     {value.needs_attention&&<Text>需注意：{value.attention_reason||'请补充注意事项'}</Text>}
@@ -288,7 +300,7 @@ export function FoundationWorkspace() {
   return <LessonOutboxProvider data={data} cacheLoaded={snapshot=>setData(current=>mergeSnapshot(snapshot,current))} accepted={receipt=>setData(current=>'kind' in receipt?acceptSaved(current,receipt):mergeSnapshot(current,{...emptySnapshot,lessons:[receipt]}))}><View style={s.root}>
     <View style={s.header}><Text style={s.brand}>✦ skarmar</Text><Action title="我的账号" secondary press={() => setAccount(true)} /></View>
     <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-      {account ? <><AccountPanel businessTools={false} prdExport back={() => setAccount(false)} onImported={refresh} logout={async () => { await persistence.current; await auth.logout(); }} /><HelpButton title="使用说明与手机桌面入口"/><Action title="共享需要与帮助说明" secondary press={()=>setRequestedObservation({kind:'needs',id:'',nonce:uuid()})}/><Action title="维护课程和老师选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /><Action title="维护领域选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /></> : <>
+      {account ? <><AccountPanel businessTools={false} prdExport back={() => setAccount(false)} onImported={refresh} logout={async () => { await persistence.current; await auth.logout(); }} /><HelpButton title="使用说明与手机桌面入口"/>{auth.identity.user.role==='admin'&&<StarterSetupButton refresh={refresh}/>}<Action title="共享需要与帮助说明" secondary press={()=>setRequestedObservation({kind:'needs',id:'',nonce:uuid()})}/><Action title="维护课程和老师选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /><Action title="维护领域选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /></> : <>
         <View style={s.header}><Text accessibilityRole="header" style={s.title}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程、老师和领域' }[tab]}</Text>{tab==='goals'&&<Action title="新建目标" press={()=>begin({kind:'goal',value:newGoal()})}/>} {tab==='methods'&&<Action title="新建方法" press={()=>begin({kind:'method',value:newMethod()})}/>} {tab==='today'&&<Text accessibilityLabel="家庭业务日期" style={s.hint}>{businessDateLabel(today)}</Text>}</View>
         <LessonQueueStatus/>
         {syncError ? <View style={s.card}><Text accessibilityRole="alert">{syncError}</Text><Action title="重试同步" secondary press={() => {setProgressNonce(n=>n+1);void refresh().catch(e => setSyncError(messageOf(e)));}} /></View> : null}
@@ -376,8 +388,8 @@ export function FoundationWorkspace() {
           catch (e) { setError(messageOf(e)); }
         })()} /></View>}
       {draft.conflict_backup && <View style={s.card}><Text style={s.heading}>你此前填写的备份</Text><Text style={s.hint}>对照下方最新表单，按需补回；长按文字可复制。</Text><ReadOnlyValues mutation={draft.conflict_backup} data={data} /></View>}
-      {draft.mutation.kind === 'goal' ? <GoalFields id={draft.id} value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} existing={draft.expected_version !== null} catalogSaved={saved=>setData(current=>acceptSaved(current,saved))} change={patch} /> : draft.mutation.kind === 'method' ?
-        <MethodFields value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} change={patch} /> : <>
+      {draft.mutation.kind === 'goal' ? <GoalFields id={draft.id} value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} existing={draft.expected_version !== null} newReference={v=>begin({kind:'goal',value:v})} catalogSaved={saved=>setData(current=>acceptSaved(current,saved))} change={patch} /> : draft.mutation.kind === 'method' ?
+        <MethodFields value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} change={patch} existing={draft.expected_version!==null} newReference={v=>begin({kind:'method',value:v})} /> : <>
           <Field label={{course:'课程名称',teacher:'老师名称',domain:'领域名称'}[draft.mutation.value.kind]} value={draft.mutation.value.name} change={name => patch({ name })} placeholder={draft.mutation.value.kind === 'course' ? '例如：语言课' : draft.mutation.value.kind === 'teacher' ? '例如：张老师' : fieldMatrix['goal.domain'].example} disabled={busy || Boolean(draft.pending)} />
           <Check label="可在后续记录中选择" checked={draft.mutation.value.active} disabled={busy || Boolean(draft.pending)} change={() => patch({ active: !(draft.mutation.value as { active: boolean }).active })} />
         </>}

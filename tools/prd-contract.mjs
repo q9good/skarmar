@@ -1,3 +1,4 @@
+import {starterContract} from './prd-starter-contract.mjs';
 import {transferContract} from './prd-transfer-contract.mjs';
 import {completionContract} from './prd-completion-contract.mjs';
 import {exportContract} from './prd-export-contract.mjs';
@@ -86,6 +87,7 @@ export async function prdContract(label, send) {
   await authSessionContract(label,send,admin,prdTestPassword);
   await observationContract(label,send,admin);
   const importSource=await transferContract(label,send,admin);
+  await starterContract(label,send,admin);
   await planningContract(label,send,admin);
   const completion=await completionContract(label,send,admin);
   await exportContract(label,send,admin);

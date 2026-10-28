@@ -745,3 +745,256 @@ fn reusing_edited_source_goal_for_new_history_requires_reconciliation_but_repeat
         0
     );
 }
+
+fn starter_keys() -> Vec<String> {
+    let pack: Value =
+        serde_json::from_str(include_str!("../../../data/seeds/family-starter-v1.json")).unwrap();
+    let catalog: Value =
+        serde_json::from_str(include_str!("../../../data/seeds/initial-catalog.json")).unwrap();
+    pack["goals"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .chain(pack["methods"].as_array().unwrap())
+        .map(|r| r["key"].as_str().unwrap().to_string())
+        .chain(
+            catalog["catalog"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|r| format!("catalog.{}", r["key"].as_str().unwrap())),
+        )
+        .collect()
+}
+fn starter_preview(db: &mut Connection, u: &User, keys: &[String]) -> Value {
+    call(db, u, "starter_preview", json!({"keys":keys})).unwrap()
+}
+fn starter_confirm(db: &mut Connection, u: &User, p: &Value) -> skarma_core::store::Result<Value> {
+    call(
+        db,
+        u,
+        "commit",
+        json!({"preview_id":p["preview_id"],"digest":p["digest"]}),
+    )
+}
+#[test]
+fn starter_preview_is_read_only_and_retries_preserve_edits_renames_and_inactive_options() {
+    let mut db = new_db();
+    let u = actor();
+    let keys = starter_keys();
+    assert_eq!(keys.len(), 26);
+    let p = starter_preview(&mut db, &u, &keys);
+    assert!(
+        store::foundation_snapshot(&mut db)
+            .unwrap()
+            .goals
+            .is_empty()
+    );
+    let receipt = starter_confirm(&mut db, &u, &p).unwrap();
+    assert_eq!(receipt["saved"], 26);
+    assert_eq!(starter_confirm(&mut db, &u, &p).unwrap(), receipt);
+    let s = store::foundation_snapshot(&mut db).unwrap();
+    assert_eq!(
+        (s.goals.len(), s.methods.len(), s.catalog.len()),
+        (6, 10, 10)
+    );
+    assert!(
+        s.lessons.is_empty()
+            && s.sessions.is_empty()
+            && s.knowledge.is_empty()
+            && s.actions.is_empty()
+    );
+    assert!(
+        s.goals
+            .iter()
+            .all(|g| g.input.level == skarma_core::model::Level::Long)
+    );
+    let g = s
+        .goals
+        .iter()
+        .find(|g| g.input.title == "内在动机与主动探索")
+        .unwrap();
+    let mut v = serde_json::to_value(&g.input).unwrap();
+    v["title"] = json!("家人调整后的长期方向");
+    store::write_foundation(&mut db,&u,serde_json::from_value(json!({"id":g.id,"operation_id":id(),"expected_version":1,"change_note":"家人调整","mutation":{"kind":"goal","value":v}})).unwrap()).unwrap();
+    let c = &s.catalog[0];
+    let mut v = serde_json::to_value(&c.input).unwrap();
+    v["active"] = json!(false);
+    v["name"] = json!("家人调整后的选项");
+    store::write_foundation(&mut db,&u,serde_json::from_value(json!({"id":c.id,"operation_id":id(),"expected_version":1,"change_note":"停用","mutation":{"kind":"catalog","value":v}})).unwrap()).unwrap();
+    let before = serde_json::to_value(store::foundation_snapshot(&mut db).unwrap()).unwrap();
+    let p = starter_preview(&mut db, &u, &keys);
+    assert!(
+        p["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|r| r["skipped"] == true)
+    );
+    let r = starter_confirm(&mut db, &u, &p).unwrap();
+    assert_eq!(r["saved"], 0);
+    assert_eq!(r["skipped"], 26);
+    assert_eq!(
+        serde_json::to_value(store::foundation_snapshot(&mut db).unwrap()).unwrap(),
+        before
+    );
+}
+#[test]
+fn starter_reuses_only_previewed_exact_matches_and_keeps_old_content_and_state() {
+    let mut db = new_db();
+    let u = actor();
+    for (kind, value) in [
+        (
+            "goal",
+            json!({"title":"内在动机与主动探索","level":"long","meaning":"原有个体化说明","state":"paused"}),
+        ),
+        (
+            "catalog",
+            json!({"kind":"teacher","name":"唐唐","active":false}),
+        ),
+    ] {
+        store::write_foundation(&mut db,&u,serde_json::from_value(json!({"id":id(),"operation_id":id(),"expected_version":null,"mutation":{"kind":kind,"value":value}})).unwrap()).unwrap();
+    }
+    let before = store::foundation_snapshot(&mut db).unwrap();
+    let g = before.goals[0].clone();
+    let c = before.catalog[0].clone();
+    let p = starter_preview(&mut db, &u, &starter_keys());
+    assert_eq!(
+        p["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|r| r["starter_status"] == "reuse")
+            .count(),
+        2
+    );
+    let r = starter_confirm(&mut db, &u, &p).unwrap();
+    assert_eq!(r["reused"], 2);
+    assert_eq!(r["saved"], 24);
+    let after = store::foundation_snapshot(&mut db).unwrap();
+    assert_eq!(
+        serde_json::to_value(after.goals.iter().find(|v| v.id == g.id)).unwrap(),
+        serde_json::to_value(Some(g)).unwrap()
+    );
+    assert_eq!(
+        serde_json::to_value(after.catalog.iter().find(|v| v.id == c.id)).unwrap(),
+        serde_json::to_value(Some(c)).unwrap()
+    );
+}
+#[test]
+fn starter_is_admin_only_requires_dependencies_and_detects_stale_preview() {
+    let mut db = new_db();
+    let u = actor();
+    let mut member = u.clone();
+    member.role = AccountRole::Member;
+    assert_eq!(
+        call(&mut db, &member, "starter_preview", json!({"keys":["G01"]}))
+            .unwrap_err()
+            .0,
+        StatusCode::FORBIDDEN
+    );
+    for keys in [
+        json!([]),
+        json!(["unknown"]),
+        json!(["G01", "G01"]),
+        json!(["M03"]),
+    ] {
+        assert_eq!(
+            call(&mut db, &u, "starter_preview", json!({"keys":keys}))
+                .unwrap_err()
+                .0,
+            StatusCode::UNPROCESSABLE_ENTITY
+        );
+    }
+    let p = starter_preview(&mut db, &u, &starter_keys());
+    store::write_foundation(&mut db,&u,serde_json::from_value(json!({"id":id(),"operation_id":id(),"expected_version":null,"mutation":{"kind":"catalog","value":{"kind":"course","name":"合成并发新增","active":true}}})).unwrap()).unwrap();
+    assert_eq!(
+        starter_confirm(&mut db, &u, &p).unwrap_err().0,
+        StatusCode::CONFLICT
+    );
+    assert!(
+        store::foundation_snapshot(&mut db)
+            .unwrap()
+            .goals
+            .is_empty()
+    );
+    assert_eq!(
+        call(
+            &mut db,
+            &u,
+            "map",
+            json!({"preview_id":p["preview_id"],"namespace":"ordinary","rules":[]})
+        )
+        .unwrap_err()
+        .0,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+}
+#[test]
+fn starter_failure_rolls_back_every_entity_and_source_marker() {
+    let mut db = new_db();
+    let u = actor();
+    db.execute_batch("CREATE TRIGGER reject_starter BEFORE INSERT ON prd_entities WHEN NEW.kind='teacher' BEGIN SELECT RAISE(ABORT,'synthetic failure'); END;").unwrap();
+    let p = starter_preview(&mut db, &u, &starter_keys());
+    assert!(starter_confirm(&mut db, &u, &p).is_err());
+    let s = store::foundation_snapshot(&mut db).unwrap();
+    assert!(s.goals.is_empty() && s.methods.is_empty() && s.catalog.is_empty());
+    let n: i64 = db
+        .query_row("SELECT count(*) FROM prd_import_rows", [], |r| r.get(0))
+        .unwrap();
+    assert_eq!(n, 0);
+    db.execute_batch("DROP TRIGGER reject_starter;").unwrap();
+    assert_eq!(starter_confirm(&mut db, &u, &p).unwrap()["saved"], 26);
+}
+
+#[test]
+fn starter_does_not_recreate_removed_items_or_guess_between_same_named_goals() {
+    let mut db = new_db();
+    let u = actor();
+    let keys = starter_keys();
+    let p = starter_preview(&mut db, &u, &keys);
+    starter_confirm(&mut db, &u, &p).unwrap();
+    let s = store::foundation_snapshot(&mut db).unwrap();
+    let m = &s.methods[0];
+    db.execute("DELETE FROM prd_method_goals WHERE method_id=?1", [&m.id])
+        .unwrap();
+    // A source receipt may outlive its entity; model this without breaking FKs.
+    db.execute("DELETE FROM prd_revisions WHERE entity_id=?1", [&m.id])
+        .unwrap();
+    db.execute("DELETE FROM prd_entities WHERE id=?1", [&m.id])
+        .unwrap();
+    let p = starter_preview(&mut db, &u, &keys);
+    assert!(
+        p["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["target_id"] == m.id
+                && r["starter_status"] == "removed"
+                && r["skipped"] == true)
+    );
+    assert_eq!(starter_confirm(&mut db, &u, &p).unwrap()["saved"], 0);
+    assert_eq!(
+        store::foundation_snapshot(&mut db).unwrap().methods.len(),
+        9
+    );
+    let mut db = new_db();
+    for _ in 0..2 {
+        store::write_foundation(&mut db,&u,serde_json::from_value(json!({"id":id(),"operation_id":id(),"expected_version":null,"mutation":{"kind":"goal","value":{"title":"内在动机与主动探索","level":"long"}}})).unwrap()).unwrap();
+    }
+    assert_eq!(
+        call(&mut db, &u, "starter_preview", json!({"keys":["G05"]}))
+            .unwrap_err()
+            .0,
+        StatusCode::CONFLICT
+    );
+
+    let mut db = new_db();
+    store::write_foundation(&mut db,&u,serde_json::from_value(json!({"id":id(),"operation_id":id(),"expected_version":null,"mutation":{"kind":"goal","value":{"title":"内在动机与主动探索","level":"short"}}})).unwrap()).unwrap();
+    assert_eq!(
+        call(&mut db, &u, "starter_preview", json!({"keys":["G05"]}))
+            .unwrap_err()
+            .0,
+        StatusCode::CONFLICT
+    );
+}

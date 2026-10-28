@@ -15,6 +15,9 @@ use uuid::Uuid;
 
 const LIMIT: usize = 1000;
 const MAX_JSON: usize = 1_000_000;
+#[path = "starter.rs"]
+mod starter;
+pub use starter::Selection as StarterSelection;
 const LEGACY: &[&str] = &[
     "schema_migrations",
     "goals",
@@ -121,6 +124,7 @@ pub struct UpgradeInput {
     deny_unknown_fields
 )]
 pub enum Command {
+    StarterPreview(StarterSelection),
     AuthorizeUpload,
     Workbook(ImportPreviewInput),
     Map(MapInput),
@@ -176,6 +180,8 @@ struct Row {
 #[serde(tag = "kind", content = "value", rename_all = "snake_case")]
 enum Mapped {
     Archive,
+    Catalog(m::CatalogInput),
+    Existing(Box<m::Saved>),
     Session {
         completed: bool,
         input: Box<sm::Input>,
@@ -201,6 +207,12 @@ enum Mapped {
 impl Mapped {
     fn kind(&self) -> &str {
         match self {
+            Self::Catalog(c) => starter::catalog_kind(&c.kind),
+            Self::Existing(s) => match s.as_ref() {
+                m::Saved::Goal(_) => "goal",
+                m::Saved::Method(_) => "method",
+                m::Saved::Catalog(c) => starter::catalog_kind(&c.input.kind),
+            },
             Self::Session { .. } => "session",
             Self::Archive => "archive",
             Self::Goal(_) => "goal",
@@ -222,6 +234,7 @@ pub fn command(db: &dyn Sql, actor: &User, cmd: Command) -> Result<Value> {
     admin(actor)?;
     let prd = super::enabled(db)?;
     match cmd {
+        Command::StarterPreview(input) if prd => starter::preview(db, actor, input),
         Command::UpgradePreview if !prd => upgrade_preview(db),
         Command::UpgradeCommit(input) if !prd => upgrade_commit(db, actor, input),
         Command::UpgradeCommit(input) if prd => {
@@ -564,6 +577,11 @@ fn map(db: &dyn Sql, actor: &User, input: MapInput) -> Result<Value> {
         return Err(ApiError::conflict("此预览已经导入，请查看批次回执"));
     }
     let ns = required(input.namespace, "请填写稳定的资料来源标识，重导时保持相同")?;
+    if ns.starts_with("skarmar:starter:") || p.input.filename == "skarmar-starter-v1.json" {
+        return Err(ApiError::invalid(
+            "初始内容请使用专用预览入口，不能改作文件映射",
+        ));
+    }
     if ns.len() > 200 {
         return Err(ApiError::invalid("资料来源标识过长"));
     }
@@ -657,6 +675,7 @@ fn map(db: &dyn Sql, actor: &User, input: MapInput) -> Result<Value> {
     }
     // Deterministic dependency order; invalid/cyclic parents still fail atomically.
     rows.sort_by_key(|r| match &r.mapped {
+        Mapped::Catalog(_) | Mapped::Existing(_) => 0,
         Mapped::Goal(g) => match g.level {
             crate::model::Level::Long => 0,
             crate::model::Level::Medium => 1,
@@ -694,7 +713,7 @@ fn map(db: &dyn Sql, actor: &User, input: MapInput) -> Result<Value> {
                 }))
                 .collect(),
             Mapped::Moment(_) => vec![],
-            Mapped::Archive => vec![],
+            Mapped::Archive | Mapped::Catalog(_) | Mapped::Existing(_) => vec![],
         };
         // Moment references use JSON only at the observation boundary.
         let moment_refs = if let Mapped::Moment(input) = &row.mapped {
@@ -748,7 +767,7 @@ fn map(db: &dyn Sql, actor: &User, input: MapInput) -> Result<Value> {
     Ok(result)
 }
 fn plan_summary(id: &str, plan: &Plan) -> Value {
-    value!({"preview_id":id,"digest":plan.digest,"namespace":plan.namespace,"rows":plan.rows.iter().map(|r|value!({"key":r.key,"sheet":r.sheet,"row":r.row,"kind":r.mapped.kind(),"target_id":r.target_id,"skipped":r.skipped,"mapped":r.mapped})).collect::<Vec<_>>(),"warning":"只追加；经验保留明确映射的阶段，未指定时为想法。文字不换算成训练次数或量化进度。未映射字段完整存档。预览不替代提交时校验。"})
+    value!({"preview_id":id,"digest":plan.digest,"namespace":plan.namespace,"rows":plan.rows.iter().map(|r|value!({"key":r.key,"sheet":r.sheet,"row":r.row,"kind":r.mapped.kind(),"target_id":r.target_id,"skipped":r.skipped,"mapped":r.mapped,"starter_status":r.raw.get("starter_status")})).collect::<Vec<_>>(),"warning":"只追加；经验保留明确映射的阶段，未指定时为想法。文字不换算成训练次数或量化进度。未映射字段完整存档。预览不替代提交时校验。"})
 }
 fn catalog(db: &dyn Sql, actor: &User, kind: m::CatalogKind, name: &str) -> Result<String> {
     let key = match kind {
@@ -799,6 +818,21 @@ fn apply(db: &dyn Sql, actor: &User, row: &Row) -> Result<Option<Value>> {
     let id = row.target_id.clone();
     Ok(Some(match &row.mapped {
         Mapped::Archive => return Ok(None),
+        Mapped::Existing(saved) => serde_json::to_value(saved)?,
+        Mapped::Catalog(c) => serde_json::to_value(super::write(
+            db,
+            actor,
+            m::Write {
+                provided_fields: None,
+                method_change: None,
+                method_create_mode: None,
+                id,
+                operation_id: op,
+                expected_version: None,
+                change_note: "明确预览并创建初始目录".into(),
+                mutation: m::Mutation::Catalog(c.clone()),
+            },
+        )?)?,
         Mapped::Session { completed, input } => serde_json::to_value(super::sessions::write(
             db,
             actor,
@@ -954,13 +988,16 @@ fn commit(db: &dyn Sql, actor: &User, input: Confirm) -> Result<Value> {
     let mut saved = 0;
     let mut archived = 0;
     let mut skipped = 0;
+    let mut reused = 0;
     for row in &plan.rows {
         if row.skipped {
             skipped += 1;
             continue;
         }
         let result = apply(db, actor, row)?;
-        if result.is_some() {
+        if matches!(row.mapped, Mapped::Existing(_)) {
+            reused += 1;
+        } else if result.is_some() {
             saved += 1;
         } else {
             archived += 1;
@@ -971,7 +1008,7 @@ fn commit(db: &dyn Sql, actor: &User, input: Confirm) -> Result<Value> {
             params![row.key, bounded(&record)?],
         )?;
     }
-    let result = value!({"batch_id":p.id,"digest":plan.digest,"namespace":plan.namespace,"saved":saved,"archived":archived,"skipped":skipped,"total":plan.rows.len(),"sources":plan.rows.iter().map(|r|value!({"key":r.key,"sheet":r.sheet,"row":r.row,"kind":r.mapped.kind(),"target_id":if matches!(r.mapped,Mapped::Archive){None}else{Some(&r.target_id)},"skipped":r.skipped})).collect::<Vec<_>>(),"audit":super::followups::audit(actor,"导入完成")});
+    let result = value!({"batch_id":p.id,"digest":plan.digest,"namespace":plan.namespace,"saved":saved,"reused":reused,"archived":archived,"skipped":skipped,"total":plan.rows.len(),"sources":plan.rows.iter().map(|r|value!({"key":r.key,"sheet":r.sheet,"row":r.row,"kind":r.mapped.kind(),"target_id":if matches!(r.mapped,Mapped::Archive){None}else{Some(&r.target_id)},"skipped":r.skipped})).collect::<Vec<_>>(),"audit":super::followups::audit(actor,"导入完成")});
     db.execute(
         "INSERT INTO prd_import_batches(id,data) VALUES(?1,?2)",
         params![p.id, bounded(&result)?],
