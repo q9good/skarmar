@@ -1,5 +1,10 @@
 # 从 Codex Cloud 触发现有 Cloudflare 应用发布
 
+2026-10-28最新普通发布已完成：源码`6c8e991`（应用`e801f88`），
+[run40690269788](https://github.com/q9good/skarmar/actions/runs/40690269788)为success，
+实际激活`09d57936-2071-45e8-a4c2-69a46e9645fb`。见[本次发布记录](cloudflare-release-2026-10-28.md)。
+保留原账号和业务数据，未清库或重复启用基线；初始参考需管理员预览确认才写入。
+
 2026-10-26新版试用追加：[本次发布及空白新基线](cloudflare-release-2026-10-26.md)。
 本次已完成：源码`7a0b346`、[run40263633238](https://github.com/q9good/skarmar/actions/runs/40263633238)
 成功，实际版本`73b71710-b847-42f4-aabd-6e04dde0489b`，回执deployed_and_verified/model=prd_v1。

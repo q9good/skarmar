@@ -378,9 +378,9 @@
     {
       "id": "T54",
       "title": "部署初始内容、手机界面减负与课程老师双向排序",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-28.md",
-      "verification": "用户已授权部署并允许按需清理非账号数据。本版沿用现有PRD v7存储结构，无需清库或初始化，采用普通发布保留账号、会话与业务记录；不使用一次性基线/演示恢复标记。应用基线e801f88已安全推送，远端一致且run40675171170校验success；本轮复跑29项发布保护、9项演示保护和38项产物SHA通过。准备通过GitHub Actions发布原Worker/DO/default/域名和精确来源，实际触发SHA/运行/版本/回执等待确认，期间保持远端分支不变。"
+      "verification": "2026-10-28按用户授权通过GitHub Actions正常发布原skarma-web，来源6c8e991f0cb82079d577fe62a349185c16649f33（应用e801f88），run40690269788的validate/release均success。原版本73b71710-b847-42f4-aabd-6e04dde0489b，上传并实际激活09d57936-2071-45e8-a4c2-69a46e9645fb，回执deployed_and_verified/model=prd_v1，脱敏原件已保存并加SHA。runner首页/JS字节、health200、匿名权限、精确Origin及PRD数据库启动均通过，云端另独立执行同组公开检查并通过。此次无新schema或初始化需求，未使用用户给予的非账号数据清理许可，保留账号/会话/业务记录；未登录真实账号、读取业务数据、自动种入参考、重建Worker/DO/default或修改域名/来源/私密配置。此前本机162项Rust、58项客户端、24组浏览器、实际SQLite/DO合约与重启通过；本轮重跑29+9项发布工具保护及既有38项产物通过，runner实际执行类型/Web/Rust/Wasm Clippy后发布。部署期间远端未前进，成功后才收尾文档；正式implementationCommit、Opus和真机待办不变。"
     }
   ],
   "artifacts": [
@@ -605,6 +605,11 @@
       "title": "长期目标录入参考：内在动机与主动探索（独立测试空间）",
       "sha256": "752074fee1cff16e99b9bdd7c5c4ced9e7117d3932e70fccbab769a1c0f7c367",
       "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261028-receipt.json",
+      "title": "2026-10-28初始内容与界面改进的实际Cloudflare发布脱敏回执",
+      "sha256": "4c7474f602a399523997149e6a929eca6ec35bd05076c5466514946988385d17"
     }
   ]
 }
