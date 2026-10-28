@@ -11,7 +11,7 @@ import {SaveStatus,trackLocalSave} from './save-status';
 import {ExampleHint} from './input-guidance';
 import {HelpButton} from './product-help';
 import {useLessonOutbox} from './prd-outbox-view';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, request } from './api';
@@ -21,7 +21,7 @@ import { useAuth } from './auth';
 import { DetailOverlay } from './overlay';
 import { Pressable, Text, TextInput } from './readability';
 import type { Catalog, Saved, Snapshot } from './foundation';
-import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, monthRange, shiftMonth, teacherTotals, commonChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
+import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, monthRange, shiftMonth, teacherTotals, commonChoices, rankedCatalogChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
 const queues = new Map<string, Promise<void>>();
 const labelsForFeedback=(v:string)=>({helpful:'有帮助',uncertain:'不确定',unhelpful:'没帮上'} as Record<string,string>)[v]??v;
 const note = (e: unknown) => e instanceof Error ? e.message : '操作未完成，请保留填写后重试';
@@ -35,19 +35,21 @@ function Check({ title, checked, press, disabled }: { title: string; checked: bo
 function ReadObservation({ value }: { value: Observation }) {
   return <View style={{ gap: 8 }}>{value.course_started&&<Text>家人明确标记：这门课程刚开始上。</Text>}{[value.notes, value.teacher_notes && `老师的做法和建议：${value.teacher_notes}`, value.progress_notes && `进展与泛化：${value.progress_notes}`, value.interest_notes && `兴趣与互动：${value.interest_notes}`, value.difficulty_notes && `困难与成人回应：${value.difficulty_notes}`, value.cause_guess && `原因猜测（待验证）：${value.cause_guess}`].filter(Boolean).map((text,i) => <Text selectable key={i}>{text}</Text>)}{!observationText(value) && <Text>还没有补充课堂观察。</Text>}</View>;
 }
-function CatalogChoice({ kind, value, change, data, accepted, lesson, disabled }: { kind: 'course'|'teacher'; value: string; change: (v:string)=>void; data: Snapshot; accepted: (s:Saved)=>void; lesson?: Lesson; disabled: boolean }) {
+function CatalogChoice({ kind, value, relatedId, change, data, accepted, lesson, disabled }: { kind: 'course'|'teacher'; value: string; relatedId: string; change: (v:string)=>void; data: Snapshot; accepted: (s:Saved)=>void; lesson?: Lesson; disabled: boolean }) {
   const outbox=useLessonOutbox();
   const [panel, setPanel] = useState(false), [search, setSearch] = useState(''), [name, setName] = useState(''), [error, setError] = useState(''), [saving, setSaving] = useState(false);
   const pending = useRef<Parameters<typeof request>[2]>(undefined);
   const label = kind === 'course' ? '课程' : '老师';
   const options = data.catalog.filter(c => c.input.kind === kind && (c.input.active || c.id === value));
-  const shortcuts=useRef(commonChoices(data.lessons,data.catalog,kind,localDate())).current;
+  // Re-rank shortcuts after an explicit counterpart change, not a background refresh.
+  const shortcuts=useMemo(()=>commonChoices(data.lessons,data.catalog,kind,localDate(),relatedId),[kind,relatedId]);
   const [pickerOptions,setPickerOptions]=useState<Catalog[]>([]);
   const optionLabel = (c:Catalog) => lesson?.[kind].id === c.id ? `${lesson[kind].name}${lesson[kind].name !== c.input.name ? '（历史名称）' : ''}` : c.input.name;
   return <View style={{ gap: 8 }}>
-    <Action title={`${kind==='course'?'课程名称（必填）':'授课老师（必填）'}：${options.find(c=>c.id===value)?optionLabel(options.find(c=>c.id===value)!):`请选择${label}`}`} disabled={disabled} press={()=>{setPickerOptions(options.filter(c=>c.input.active));setPanel(true);}} />
-    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{shortcuts.map(c => <Action key={c.id} title={c.input.name} disabled={disabled||!data.catalog.some(row=>row.id===c.id&&row.input.active)} press={() => change(c.id)} />)}</View>
+    <Action title={`${kind==='course'?'课程名称（必填）':'授课老师（必填）'}：${options.find(c=>c.id===value)?optionLabel(options.find(c=>c.id===value)!):`请选择${label}`}`} disabled={disabled} press={()=>{setPickerOptions(rankedCatalogChoices(data.lessons,data.catalog,kind,localDate(),relatedId));setSearch('');setPanel(true);}} />
+    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{shortcuts.map(c => <Action key={c.id} title={data.catalog.find(row=>row.id===c.id)?.input.name??c.input.name} disabled={disabled||!data.catalog.some(row=>row.id===c.id&&row.input.active)} press={() => change(c.id)} />)}</View>
     {panel && <DetailOverlay title={`选择${label}`} close={() => { if (!saving) setPanel(false); }}>
+      {relatedId&&<Text>{kind==='teacher'?'按这门课程的历史授课次数排序':'按这位老师的历史上课次数排序'}</Text>}
       <Field label={`搜索${label}`} value={search} change={setSearch} multiline={false} />
       {pickerOptions.filter(c => c.input.name.includes(search)).map(c => <Action key={c.id} title={c.input.name} disabled={saving||!data.catalog.some(row=>row.id===c.id&&row.input.active)} press={() => { change(c.id); setPanel(false); }} />)}
       <Field label={`新增${label}名称`} value={name} change={setName} disabled={saving || Boolean(pending.current)} multiline={false} placeholder={kind === 'course' ? '例如：语言课' : '例如：张老师'} />
@@ -274,8 +276,8 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
       {observe&&<>
         {intro&&draft.request.expected_version===null&&<View style={{gap:6}}><Text>选好课程和老师即可提交，观察可以稍后补。</Text><Action title="知道了，不再提示" press={()=>void AsyncStorage.setItem(storageKey+':introduced','1').then(()=>setIntro(false))}/></View>}
         <LessonDate value={observe.business_date} today={today} disabled={busy||Boolean(draft.pending)} change={business_date=>patch({business_date})}/>
-        <CatalogChoice kind="course" value={observe.course_id} change={course_id=>patch({course_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
-        <CatalogChoice kind="teacher" value={observe.teacher_id} change={teacher_id=>patch({teacher_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
+        <CatalogChoice kind="course" value={observe.course_id} relatedId={observe.teacher_id} change={course_id=>patch({course_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
+        <CatalogChoice kind="teacher" value={observe.teacher_id} relatedId={observe.course_id} change={teacher_id=>patch({teacher_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
         {active.filter(l=>l.id!==draft.request.id&&l.observation.business_date===observe.business_date&&l.course.id===observe.course_id&&l.teacher.id===observe.teacher_id).map(l=><Text key={l.id}>同日已有记录：{l.creator_name}，{new Date(l.created_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai'})}；确实是另一节仍可提交。</Text>)}
         <HelpButton/>{draft.phase==='basic'?<Action title="补充观察" disabled={busy||Boolean(draft.pending)} press={()=>void persist({...refs.current,[editor!]:{...draft,phase:'observation'}})}/>:<ObservationFields value={observe} change={patch} disabled={busy||Boolean(draft.pending)}/>}
       </>}

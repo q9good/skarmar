@@ -100,7 +100,7 @@ with sync_playwright() as p:
  page.get_by_role('combobox',name='经验阶段',exact=True).select_option('try')
  click(page,'补充条件、成人回应与比较口径');field(page,'依据和条件（可选）').fill('合成条件：熟悉材料');click(page,'补充条件、成人回应与比较口径')
  click(page,'保存跟进');expect(page.get_by_role('dialog')).to_have_count(0)
- k=call(ctx,'GET','/prd/state')['knowledge'][0];assert k['details']['evidence']=='合成条件：熟悉材料' and k['input']['goal_ids']==[goals[1]['id']]
+ k=next(k for k in call(ctx,'GET','/prd/state')['knowledge'] if k['details']['title']=='合成示范心得');assert k['details']['evidence']=='合成条件：熟悉材料' and k['input']['goal_ids']==[goals[1]['id']]
 
  click(page,'目标');click(page,'查看目标：'+goals[2]['input']['title']);click(page,'现在复盘这个对象')
  expect(page.get_by_role('combobox',name='本次复盘决定',exact=True)).to_be_in_viewport(ratio=1)

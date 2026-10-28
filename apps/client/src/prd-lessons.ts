@@ -67,13 +67,25 @@ export function teacherTotals(lessons: Lesson[], start: string, end: string, tod
   }
   return [...map.values()].sort((a,b) => a.name.localeCompare(b.name,'zh-CN'));
 }
-export function commonChoices(lessons: Lesson[], catalog: Catalog[], kind: 'course'|'teacher', today: string) {
+function catalogRanks(lessons: Lesson[], catalog: Catalog[], kind: 'course'|'teacher', today: string, relatedId: string) {
   const end = Date.parse(today+'T00:00:00Z'), start = end - 55*86400000;
   const weekday = new Date(end).getUTCDay();
+  const relatedKind = kind === 'course' ? 'teacher' : 'course';
+  const history = lessons.filter(l => countable(l) && Date.parse(l.observation.business_date+'T00:00:00Z') <= end);
   return catalog.filter(c => c.input.kind === kind && c.input.active).map(c => {
-    const records = lessons.filter(l => countable(l) && l[kind].id === c.id && Date.parse(l.observation.business_date+'T00:00:00Z') >= start && l.observation.business_date <= today);
+    const all = history.filter(l => l[kind].id === c.id);
+    const related = relatedId ? all.filter(l => l[relatedKind].id === relatedId) : [];
+    const relatedRecent = related.map(l => l.observation.business_date).sort().at(-1) ?? '';
+    const records = all.filter(l => Date.parse(l.observation.business_date+'T00:00:00Z') >= start);
     const recent = records.map(l => l.observation.business_date).sort().at(-1) ?? '';
     const same = kind === 'course' ? records.filter(l => new Date(l.observation.business_date+'T00:00:00Z').getUTCDay() === weekday).map(l => l.observation.business_date).sort().at(-1) ?? '' : '';
-    return { c, count: records.length, recent, same };
-  }).filter(r => r.count > 0).sort((a,b) => b.same.localeCompare(a.same) || b.count-a.count || b.recent.localeCompare(a.recent) || a.c.id.localeCompare(b.c.id)).slice(0,4).map(r => r.c);
+    return { c, count: records.length, recent, same, relatedCount: related.length, relatedRecent };
+  }).sort((a,b) => b.relatedCount-a.relatedCount || b.relatedRecent.localeCompare(a.relatedRecent) || b.same.localeCompare(a.same) || b.count-a.count || b.recent.localeCompare(a.recent) || a.c.id.localeCompare(b.c.id));
+}
+/** All active options remain available. Pairing suggests order, never a selection. */
+export function rankedCatalogChoices(lessons: Lesson[], catalog: Catalog[], kind: 'course'|'teacher', today: string, relatedId = '') {
+  return catalogRanks(lessons,catalog,kind,today,relatedId).map(r => r.c);
+}
+export function commonChoices(lessons: Lesson[], catalog: Catalog[], kind: 'course'|'teacher', today: string, relatedId = '') {
+  return catalogRanks(lessons,catalog,kind,today,relatedId).filter(r => r.count > 0 || r.relatedCount > 0).slice(0,4).map(r => r.c);
 }

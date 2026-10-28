@@ -41,7 +41,7 @@ test('multiple drafts and exact pending operations survive serialization; malfor
   assert.deepEqual(decodeDrafts(null),{});
 });
 
-import { commonChoices, decodeLessonDrafts, emptyObservation, lessonSearchSources, monthRange, shiftMonth, teacherTotals } from '../apps/client/src/prd-lessons.ts';
+import { commonChoices, rankedCatalogChoices, decodeLessonDrafts, emptyObservation, lessonSearchSources, monthRange, shiftMonth, teacherTotals } from '../apps/client/src/prd-lessons.ts';
 const lesson=(id,day,teacher='t',course='c',status='recorded')=>({id,version:1,observation_version:1,organization_version:1,created_at:day+'T00:00:00Z',creator_id:'u',creator_name:'测试',acknowledgements:[],request_generation:0,requested_by:null,request_name:null,request_message:'',status,marked_error:false,observation:{...emptyObservation(day),course_id:course,teacher_id:teacher},teacher:{id:teacher,name:'旧名称',kind:'teacher',version:1},course:{id:course,name:'课程',kind:'course',version:1},organization:{seen_observation_version:0,targets:[],methods:[],focus_goals:[],processed_request_generation:0,state:'pending',claimed_by:null,claimed_name:null,outcome:''}});
 test('lesson totals use stable teacher identity, include marked errors, exclude tombstones and respect calendar bounds',()=>{
   const rows=[lesson('one','2024-02-01'),{...lesson('two','2024-02-29'),marked_error:true,teacher:{id:'t',name:'新名称'}},lesson('three','2024-02-20','t','c','withdrawn'),lesson('four','2024-02-20','t','c','deleted'),lesson('five','2024-03-01')];
@@ -84,6 +84,41 @@ test('course shortcuts favor recent same weekday, teacher shortcuts rank indepen
   assert.equal(commonChoices(rows,catalog,'course','2024-03-04')[0].id,'x');
   assert.equal(commonChoices(rows,catalog,'teacher','2024-03-04')[0].id,'t');
   assert.deepEqual(commonChoices([],catalog,'teacher','2024-03-04'),[]);
+});
+test('course-selected teacher order uses all recorded pair history and stable IDs, not overall popularity or names',()=>{
+ const catalog=['paired','alternate','popular','unused','off'].map(id=>({id,version:2,input:{kind:'teacher',name:id==='paired'?'改名后的老师':id,active:id!=='off'}}));
+ const rows=[
+  ...Array.from({length:3},(_,i)=>lesson('old'+i,'2023-01-01','paired','focus')),
+  ...Array.from({length:2},(_,i)=>lesson('recent'+i,'2024-03-03','alternate','focus')),
+  ...Array.from({length:7},(_,i)=>lesson('popular'+i,'2024-03-04','popular','other')),
+  ...['withdrawn','deleted','queued'].flatMap(status=>Array.from({length:9},(_,i)=>lesson(status+i,'2024-03-04','popular','focus',status))),
+  ...Array.from({length:9},(_,i)=>lesson('future'+i,'2024-03-05','popular','focus')),
+  ...Array.from({length:9},(_,i)=>lesson('inactive'+i,'2024-03-04','off','focus')),
+ ];
+ const before=JSON.stringify({catalog,rows});
+ assert.deepEqual(rankedCatalogChoices(rows,catalog,'teacher','2024-03-04','focus').map(c=>c.id),['paired','alternate','popular','unused']);
+ assert.deepEqual(commonChoices(rows,catalog,'teacher','2024-03-04','focus').map(c=>c.id),['paired','alternate','popular']);
+ assert.equal(rankedCatalogChoices(rows,catalog,'teacher','2024-03-04','focus')[0].input.name,'改名后的老师');
+ assert.equal(JSON.stringify({catalog,rows}),before);
+});
+test('teacher-selected course order prioritizes pair counts before weekday shortcuts and falls back for unseen pairs',()=>{
+ const catalog=['old','recent','popular','unused'].map(id=>({id,version:1,input:{kind:'course',name:id,active:true}}));
+ const rows=[
+  ...Array.from({length:3},(_,i)=>lesson('old'+i,'2023-01-01','selected','old')),
+  ...Array.from({length:2},(_,i)=>lesson('recent'+i,'2024-03-03','selected','recent')),
+  ...Array.from({length:8},(_,i)=>lesson('popular'+i,'2024-03-04','other','popular')),
+ ];
+ assert.equal(commonChoices(rows,catalog,'course','2024-03-04')[0].id,'popular');
+ assert.deepEqual(rankedCatalogChoices(rows,catalog,'course','2024-03-04','selected').map(c=>c.id),['old','recent','popular','unused']);
+ assert.deepEqual(rankedCatalogChoices(rows,catalog,'course','2024-03-04','no-history'),rankedCatalogChoices(rows,catalog,'course','2024-03-04'));
+});
+test('pair frequency ties use latest pair date, include marked lessons, keep every active option and cap shortcuts at four',()=>{
+ const catalog=['a','b','c','d','e','f'].map(id=>({id,version:1,input:{kind:'teacher',name:id,active:true}}));
+ const rows=[lesson('a','2024-03-01','a'),{...lesson('b','2024-03-02','b'),marked_error:true},lesson('c','2024-03-02','c'),lesson('d','2024-03-02','d'),lesson('e','2024-03-02','e')];
+ assert.deepEqual(rankedCatalogChoices(rows,catalog,'teacher','2024-03-04','c').map(c=>c.id),['b','c','d','e','a','f']);
+ assert.deepEqual(commonChoices(rows,catalog,'teacher','2024-03-04','c').map(c=>c.id),['b','c','d','e']);
+ assert.deepEqual(rankedCatalogChoices([],catalog,'teacher','2024-03-04','c').map(c=>c.id),['a','b','c','d','e','f']);
+ assert.deepEqual(commonChoices([],catalog,'teacher','2024-03-04','c'),[]);
 });
 test('lesson drafts validate nested payloads, zones and exact pending requests before rendering without losing original raw data',()=>{
   const request={id:'l',operation_id:'op',expected_version:null,action:{kind:'observation',value:emptyObservation('2024-03-04')}};
