@@ -1,0 +1,16 @@
+{
+  "schema": "skarmar.catalog-seed.v1",
+  "source": "family-confirmed-2026-10-28",
+  "catalog": [
+    { "key": "teacher-01", "kind": "teacher", "name": "唐唐", "active": true },
+    { "key": "teacher-02", "kind": "teacher", "name": "彭彭", "active": true },
+    { "key": "teacher-03", "kind": "teacher", "name": "邱邱", "active": true },
+    { "key": "teacher-04", "kind": "teacher", "name": "杨杨", "active": true },
+    { "key": "teacher-05", "kind": "teacher", "name": "钟老师", "active": true },
+    { "key": "teacher-06", "kind": "teacher", "name": "胖杨", "active": true },
+    { "key": "course-01", "kind": "course", "name": "感统", "active": true },
+    { "key": "course-02", "kind": "course", "name": "认知", "active": true },
+    { "key": "course-03", "kind": "course", "name": "社交", "active": true },
+    { "key": "course-04", "kind": "course", "name": "小组", "active": true }
+  ]
+}
