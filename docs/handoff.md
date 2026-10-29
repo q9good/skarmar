@@ -48,6 +48,15 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-10-29：试用反馈修复已发布（T57完成）
+
+用户要求先发布本版。源码87f94d6（应用23215ce），[run40885836043](https://github.com/q9good/skarmar/actions/runs/40885836043)的validate/release均success，
+实际激活`266022a9-e23d-4916-bda1-52e646badb41`，原版本`09d57936-2071-45e8-a4c2-69a46e9645fb`。见[发布记录](cloudflare-release-2026-10-29.md)。
+runner与云端独立首页/JS字节、health、匿名权限、精确Origin与数据库启动检查通过；回执deployed_and_verified。
+保留原Worker/DO/default/域名及账号、会话、业务记录，没有清库、初始化或导入合成样本。
+包含T55修复及T56残留帮助入口整改；五项体验建议仍待用户评审，52图加注后续发布事实而不改原图。
+本轮98项产物SHA登记；收尾提交不再次部署，T12、Opus/真机及正式implementationCommit不变。
+
 ### 2026-10-29：全功能自测与图文审核（T56完成，等待用户评审，未部署）
 
 阅读[52图审核文档](functional-review-2026-10-29.md)，或下载[单文件HTML](artifacts/review-2026-10-29/review.html)查看全部内嵌原图、筛选和导出批注。

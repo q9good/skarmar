@@ -399,9 +399,9 @@
     {
       "id": "T57",
       "title": "发布试用反馈修复与当前已复验Web版本",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-29.md",
-      "verification": "2026-10-29用户明确要求先部署已审核版本。应用基线23215ce9dc1a6b7668d8e339e2d8ea67c1b6ddeb，受测应用SHA256 28effa0107e3455216e499bc90b8367b2b0c371f418dd404fc8b659bd897ffab核对一致；工作区干净且远端相同，普通验证run40859567395成功。发布前29项发布保护、9项演示工具保护和96项产物SHA通过。准备通过既有GitHub Actions Secrets和普通发布标记发布原skarma-web/DO/default/skarma.vip，保留账号、会话和业务；无新schema/配置，不重复PRD初始化，不恢复/种入测试数据。实际上传、激活及公开验收待本次run回执，不能把标记或dry-run当上线。"
+      "verification": "2026-10-29按用户授权通过既有GitHub Actions普通发布原应用，触发源码87f94d66a30853d3d71fc9ed315046c6cfecd4e7（应用23215ce），run40885836043的validate/release均success，实际类型/Web/Rust测试及Wasm Clippy通过。原版本09d57936-2071-45e8-a4c2-69a46e9645fb，上传并实际激活266022a9-e23d-4916-bda1-52e646badb41，脱敏回执deployed_and_verified/model=prd_v1已保存。runner及云端独立首页/JS字节、health、匿名权限、精确Origin与数据库启动全部通过，未登录真实账号或读取业务数据。受测应用SHA与T56一致；本轮29发布保护/9演示工具保护及96项既有产物通过。沿用原Worker/DO/default/skarma.vip、PRD v7及账号/会话/业务，无清库/初始化/演示恢复/自动补种，无后端/schema/配置变化。发布期间分支不前进，run成功后才收尾；仅给原52图审核文档追加后续发布说明，原图字节不变，当前98项产物SHA登记。五项体验建议仍待用户评审，T12/Opus/真机及implementationCommit不改。"
     }
   ],
   "artifacts": [
@@ -959,13 +959,13 @@
     {
       "path": "docs/artifacts/review-2026-10-29/review.html",
       "title": "52张内嵌截图的单文件交互审核文档",
-      "sha256": "96c7ded53cd19d4dbadde293ec3f9a55b1dbc1c72df52ee28b6bd046c9ee78fb",
+      "sha256": "8f52a6fb0594d489e5e1b145cde637d58aa6f9ad1ffb26c24241b2b990142c76",
       "synthetic": true
     },
     {
       "path": "docs/artifacts/review-2026-10-29/checks.json",
       "title": "PRD59条AC、执行结果与范围边界",
-      "sha256": "e1292f27a448d2a9c174c3d02693e2f5fd1417abcbdb373d8e46c0e25e40a4e6",
+      "sha256": "51118a62f0b5cb90e3ea265a636cb75a912f3f3beaf800def08172d8ea5f9ca4",
       "synthetic": true
     },
     {
@@ -973,6 +973,16 @@
       "title": "52张原图清单与受测应用摘要",
       "sha256": "581e1d5efca494196534231707b0533015bc36dc25a70c80add22bc3aca82840",
       "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261029-receipt.json",
+      "title": "2026-10-29试用反馈修复实际发布脱敏回执",
+      "sha256": "4fa2665995353efef6d8b8db543ee82378d927e5e960906d99e00b87b8b670e7"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261029-independent-checks.json",
+      "title": "2026-10-29云端独立公开上线检查（无账号与业务数据）",
+      "sha256": "9a1d3b1c17d9894fa0bd5a7ae0c3fb4c812f757f4bbda6b9f65e1d409dba7c55"
     }
   ]
 }

@@ -832,5 +832,12 @@
     "原生App、语音、游戏、家庭电脑同步节点不是本期已交付Web功能；旧主机恢复不作为本轮前置。",
     "机构课时当前以节数统计，没有实际时长字段，不能把一节课当成固定分钟。目标／方法采用收起或停用管理，不把这称为清空数据库。"
   ],
-  "screenshot_count": 52
+  "screenshot_count": 52,
+  "subsequent_release": {
+    "source_sha": "87f94d66a30853d3d71fc9ed315046c6cfecd4e7",
+    "deployed_version": "266022a9-e23d-4916-bda1-52e646badb41",
+    "run": "https://github.com/q9good/skarmar/actions/runs/40885836043",
+    "state": "deployed_and_verified",
+    "note": "Audit itself did not deploy; subsequent authorized release preserved accounts and business data."
+  }
 }
