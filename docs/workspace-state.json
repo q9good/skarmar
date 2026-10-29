@@ -68,9 +68,9 @@
     {
       "id": "T10",
       "title": "训练中选择实际使用的途径并保存版本快照",
-      "status": "todo",
-      "evidence": "docs/purpose-pathway-experience.md",
-      "verification": "T36已实现机构课程的实际方法选择及次数，家庭干预尚未保存每次实际方法及版本快照，本任务仍待实现，不能将方法适用关系计作家庭使用次数。"
+      "status": "done",
+      "evidence": "docs/functional-review-2026-10-29.md",
+      "verification": "T36已实现机构课程的实际方法选择及次数，家庭干预尚未保存每次实际方法及版本快照，本任务仍待实现，不能将方法适用关系计作家庭使用次数。 2026-10-29按当前prd_v1重新核对：家庭总结已保存明确实际方法及版本快照，计划与实际独立，记不清不算已知空集合；162项Rust、两套运行环境完整合约及重启、26组Web和本轮实际计划/总结/历史走查通过。旧模型的待实现描述是历史，不能继续当作当前Web缺口。"
     },
     {
       "id": "T11",
@@ -388,6 +388,13 @@
       "status": "done",
       "evidence": "docs/trial-feedback-2026-10-29.md",
       "verification": "2026-10-29按用户十项反馈整改。基础草稿按目标/方法/目录归页并可从账号恢复；新增保留退出及二次确认放弃本机填写，未知请求不丢弃；空名称禁提交，校验错误只留在表单且关窗清除，隐藏观察不再串页，测量草稿从所属目标恢复。在线课记明确正在上传并以真实回执确认；flush串行后续扫描修复并发入队等待定时器，基线旧实现同组61项仅竞态失败，修复后61项通过。长期关注加分隔与单行标签；全局帮助仅账号问号，目标/方法搜索收进筛选/设置。课时默认上月按老师，可切按课程，稳定ID共用正式节数与时间范围并清理旧展开；未推算分钟或新增时长字段。经验/困难按父子目标及关联方法分层多选，共享方法保持同ID勾选，不自动扩展关联；新建入口仅库分段。类型/Web构建、客户端61项、规划14/工作流6及25组本机Chromium脚本通过；首轮前10组通过后旧测量恢复入口测试失败，按所属目标更新路径后剩余15组全部通过，原幂等/权限/并发/保存断言保留。新增浏览器实际领域校验/切页/刷新/放弃、经验困难保存ID、上月双口径、延迟真实回执/其他页面读取均通过；截图两张合成并逐张检查。PRD0.9同步且59条AC编号/附录D不变。无后端/schema/依赖/环境变化，未部署或访问生产业务，implementationCommit及Opus/真机待办保留。"
+    },
+    {
+      "id": "T56",
+      "title": "当前Web全功能复验及52张截图的用户审核文档",
+      "status": "done",
+      "evidence": "docs/functional-review-2026-10-29.md",
+      "verification": "2026-10-29按用户要求，以PRD0.9及d583e47为基线对当前Web逐AC复验并从新本机合成库逐页取证。162项Rust、61项客户端、14规划/6工作流、类型/Web构建、原生SQLite及编译Rust Worker DO完整合约与重启均通过，无SKIP。移除干预更多操作中遗留的全局帮助入口QA01并补断言后，现有25组完整浏览器回归通过；新增注册/审批/拒绝/直接创建/成员权限/停用恢复/重置及自行改密/退出重登/大字持久化组实际通过并加入默认回归，共26组。另实际页面走通初始内容预览创建、目标/方法、共享计划/实际总结、课记补充整理、双口径统计、月历、经验困难分层与反馈、复盘下一步、测量/瞬间、普通成员与管理员删除、并发冲突、离线补传及XLSX下载/重读、导入预览，取得52张原始合成截图并逐张查看。59条AC中57条本机范围通过，R15-03/04部分桌面模拟或抽样，真机/完整读屏及Opus仍未验；不称整体正式验收。输出Markdown、内嵌52图的单文件HTML及checks/screenshots清单；HTML通过本机HTTP验证52图解码、搜索、批注持久化和JSON下载、原图放大、320/390/1440布局及0JS错误。管理浏览器禁止file URL，未改策略，使用仅监听本机的文档服务验证后已停止。29项发布配置保护/14同步工具测试通过，96项产物SHA通过。记录5项非阻断展示优化供用户评审，不擅自改变目标默认视图等既定PRD。T10历史快照按新模型实际方法版本证据核正。没有部署、生产登录/读写、配置/schema/依赖变化；application SHA绑定受测字节，implementationCommit及Opus/真机待办保留。"
     }
   ],
   "artifacts": [
@@ -628,6 +635,336 @@
       "path": "docs/artifacts/validation/feedback-followup-hierarchy.png",
       "title": "试用反馈整改：目标层级与共享方法多选（合成）",
       "sha256": "65fa8a1b7253fca94805dbfd002dd414146c603ab24020763e037ba56f08f117",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/01-login.png",
+      "title": "全功能审核 01：登录与家庭设备选项",
+      "sha256": "05ac53f9ef8f3f67ebb71cee1ffb78292f5a049564b51be7301b77d263f2a9b6",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/02-registration.png",
+      "title": "全功能审核 02：申请注册",
+      "sha256": "7330fbf0f0d2ee79733747f5d8064dab64167d129d4dbc590133c1f103f67401",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/03-empty.png",
+      "title": "全功能审核 03：首次进入空库",
+      "sha256": "7a0d98f31905baed5425b46f160efe9a283550f3fc8ee0ea15073e8aea549d92",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/04-starter.png",
+      "title": "全功能审核 04：初始内容须先预览确认",
+      "sha256": "9a9b23190ee84fb6b0dc23a4f567456edf3af75e37c19e4271f521b301f0984e",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/05-goal-form.png",
+      "title": "全功能审核 05：目标录入与观察模板",
+      "sha256": "ea503a87bc264a9a684b730baa177d6fe611a490cbee8e8deb98d457950347dc",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/06-today.png",
+      "title": "全功能审核 06：长期关注与当天入口",
+      "sha256": "5f992dda710ad466873c0262a59a7ea9016ec37f073c862f716c234e75d48d29",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/07-today-small.png",
+      "title": "全功能审核 07：小屏首屏仍可记课或计划",
+      "sha256": "6323e5c455ceb3354d1b1ffdc00ff9d8da133dd290de4bb073d9ff7425f686aa",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/08-long-focus.png",
+      "title": "全功能审核 08：长期方向详情与关联",
+      "sha256": "2ca21cfc1b4d8801805a6062b25d6faad44e374f66b28e13a8ac1abc65be7275",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/09-goals.png",
+      "title": "全功能审核 09：目标目录",
+      "sha256": "c7f779ca49691a987eb096bd9299d9612e4e5b0c504f41359df60eafa3c30b62",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/10-goals-desktop.png",
+      "title": "全功能审核 10：电脑宽屏目标目录",
+      "sha256": "d2372b40ae9252ee3baf045a91e908953844e5d97e122f8e9b04c41dbc2b0e02",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/11-goal-links.png",
+      "title": "全功能审核 11：目标详情与方法、经验、困难",
+      "sha256": "4ae988f03838a5ae291ca9cd7a1aa733722a57276298cb35b02e84aa950d65d9",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/12-methods.png",
+      "title": "全功能审核 12：方法按近况排列",
+      "sha256": "df36468044427900ddbdd4fd642e76512ef74f44a9d53779a0b312e119669237",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/13-method-edit.png",
+      "title": "全功能审核 13：方法编辑保留目标关联",
+      "sha256": "d421f4e6c83b8edf19ea188f13842606a6ac187924e086d95266989f3607817e",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/14-plan.png",
+      "title": "全功能审核 14：干预计划与重点提醒",
+      "sha256": "6d1aceadad4252b94b5e260a04a9dd0e0ca8340ec48f2323a082f7a435ea7e06",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/15-balance.png",
+      "title": "全功能审核 15：计划中的均衡覆盖提示",
+      "sha256": "09114f5afba776c895ed0086d45907ff242a2e7f0ea821689d61605d622fbd6e",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/16-summary.png",
+      "title": "全功能审核 16：训练后填写实际表现与方法",
+      "sha256": "39e5b11c06ca67b296e9df3687bb0a0bb206e2c29b5bf1bdcae1f5ada6e904df",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/17-summary-difficulty.png",
+      "title": "全功能审核 17：总结沉淀新困难",
+      "sha256": "d80057122b752fd50c490ee6a2042b3a46977ae552711c6bb4f2c6d79fd03137",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/18-today-saved.png",
+      "title": "全功能审核 18：今天的已同步记录",
+      "sha256": "7cdac8a20980283377c198a4ef76468a77f7b3968964a30fed86988f224e5e34",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/19-course-picker.png",
+      "title": "全功能审核 19：课程下拉、新增与历史排序",
+      "sha256": "b31e62d6cde673957a9c834466e7ec7fa7e272efaa3e7b0da24034857763e4d3",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/20-lesson-basic.png",
+      "title": "全功能审核 20：老人快速记课",
+      "sha256": "ac816ba0aa73a6de06ae5a4acd249212febc225a888edd6cd3b0ca12f3ab4b47",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/21-lesson-saved.png",
+      "title": "全功能审核 21：记课后的首屏确认",
+      "sha256": "5d573fe5ab4b8d493d2e8ee919921986f7d18d621ffc0ee7c130cb742f6a04bc",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/22-lesson-observation.png",
+      "title": "全功能审核 22：可选课堂观察与家人待办",
+      "sha256": "7151a76bb138c7b09b970dab618bb395e20cb0150018ba9d2edd7b127847109e",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/23-lesson-links.png",
+      "title": "全功能审核 23：课堂记录关联目标与实际方法",
+      "sha256": "cbbb82b404f24cca54ccfa5f91e39de92f3e747ce8e41f773dd2ddfd6a3af4b1",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/24-classroom.png",
+      "title": "全功能审核 24：机构课堂记录",
+      "sha256": "57412e36bbb21e6b6db4500d550ba38f0e6eab41689225a2addae8251fb05200",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/25-teacher-totals.png",
+      "title": "全功能审核 25：上月按老师核对课时",
+      "sha256": "da426356388b7dde0d3c51b2b49d814f6fc151f30b73bf44359153c94146f844",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/26-course-totals.png",
+      "title": "全功能审核 26：同一时期按课程汇总及明细",
+      "sha256": "f52c16e0ae5378b31fa43d7a1b8703a86ed390fdf5fc781e392ba9fc52ad3dd5",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/27-calendar.png",
+      "title": "全功能审核 27：家庭干预月历",
+      "sha256": "a21c37af198460e2721073122fbd089d66a242022526943244d7dbceecff0fb4",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/28-history.png",
+      "title": "全功能审核 28：目标的频次与时间远近",
+      "sha256": "6229b02b3f60bbffb68f6fc8529fb51fd1a3e04e740d937be09f4e98eae872d7",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/29-member.png",
+      "title": "全功能审核 29：普通家人可修改总结，不能删除",
+      "sha256": "d00ec15ef5ffd0955a26d3f13bf87fea34f92c8402c1ab93d52963ed636417de",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/30-admin-delete.png",
+      "title": "全功能审核 30：管理员删除前明确确认",
+      "sha256": "c0b8abee3ab65c4e90ec685ef279571c4bbe633b1382ff1b0adfc05b6d696466",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/31-follow-tasks.png",
+      "title": "全功能审核 31：跟进待处理事项",
+      "sha256": "523737add9334184d172a26fea98ee291e0a28686e7f30aa757ee261d7dee4c8",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/32-library.png",
+      "title": "全功能审核 32：经验库与困难",
+      "sha256": "f4282e6bc74ed76975d76b40f9e0916c018e02171652baf9ac0962394bb24f49",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/33-new-experience.png",
+      "title": "全功能审核 33：独立录入经验",
+      "sha256": "0c35a0918d2b046f96ba704005b765db6a3db21bd66f6de37be62967a03a46a4",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/34-hierarchy.png",
+      "title": "全功能审核 34：父子目标与方法分层多选",
+      "sha256": "5c6860261faa2229cf6e538e6894486fe5ecca58d8ccc69fc7f05d75d896f4bc",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/35-experience-feedback.png",
+      "title": "全功能审核 35：经验的实际反馈",
+      "sha256": "637d837d50ef9d6714ec2bf7ada96856adfdabcfd5884c2c7b295d6772bb2cc8",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/36-difficulty.png",
+      "title": "全功能审核 36：困难跟进与可比条件",
+      "sha256": "5948f2777f763f1a98146390116f4a1b95d3511d228236bdc447baaa35cc1331",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/37-review.png",
+      "title": "全功能审核 37：复盘实际依据与下一步",
+      "sha256": "d4e49ee73ffe4a77d08308c03e99c2111133f998fc485a0b7a204733e9ad059d",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/38-review-decision.png",
+      "title": "全功能审核 38：复盘决定与调整说明",
+      "sha256": "149d836731990c9468b8a72641ef470656712dfab808c56b1fe18e23a94c36c1",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/39-action.png",
+      "title": "全功能审核 39：下一步、负责人及状态",
+      "sha256": "43d4df07a856a5e601ac153ef48024cd4e0e0001706e9e61ff27c15f1489ce72",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/40-measurement.png",
+      "title": "全功能审核 40：实际测量与口径分段",
+      "sha256": "fa5242248287dd749fe2ba782377b7204a193f69e3730e1e1829cf67163b4523",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/41-moment.png",
+      "title": "全功能审核 41：随手记一个瞬间",
+      "sha256": "db7f0b66eb9db6777cf5e581a2279064f0d7ce4fd359a35afa00d2cc84862f21",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/42-conflict.png",
+      "title": "全功能审核 42：多人修改冲突保护",
+      "sha256": "33c9bbda88635351d7f4232c64d6cfdd46fed1d8304610c40f893ea9c9f8413a",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/43-offline.png",
+      "title": "全功能审核 43：离线仅保存在本机，联网补传",
+      "sha256": "d4e9c93d7bda444e306cfa67b11faf61c8e28bccf700705008e2009fa54e3e7d",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/44-account.png",
+      "title": "全功能审核 44：我的账号与数据导出",
+      "sha256": "7147d325d96189f2b931955c8082315174a93c39157d0dbeb19c6332b041316d",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/45-export.png",
+      "title": "全功能审核 45：Excel实际下载确认",
+      "sha256": "4e63c72bf4e0c77ccd1d37520584dc2e7fa557555a2b0a5d4b19c30a8e3fdd4f",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/46-help.png",
+      "title": "全功能审核 46：账号角落的问号说明",
+      "sha256": "3670d8f85954cf8b6e6ec96edd0880de3466829de974cfde7f8d934e98dcc23b",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/47-catalog.png",
+      "title": "全功能审核 47：课程与老师选项维护",
+      "sha256": "d5610949bee111b9be30a4dcba9f3873a088363da1a815bc3e4ebc2df079cfb1",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/48-discard.png",
+      "title": "全功能审核 48：放弃本机填写需确认",
+      "sha256": "fbd81d282512c1671dcc7c8fa4c794e21673e3842ea7a3a1fa8ea1dec575b331",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/49-import.png",
+      "title": "全功能审核 49：Excel显式映射与写入预览",
+      "sha256": "b9233ca6f56c26aa82d16d9bd1c0a6a14c3874b9d2b92869b7c729596b91c366",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/50-registration-receipt.png",
+      "title": "全功能审核 50：注册实际提交与待审批",
+      "sha256": "6c9d954572ccff4aa10fa73ce3c586b58b503303d66875f1ce8166b750d90da0",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/51-account-approval.png",
+      "title": "全功能审核 51：管理员审批注册申请",
+      "sha256": "91d7961e40fc42d15f3f2bcda8f1ff950bddb41c71cd7bcaff1b88d55f5ba60f",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/52-account-display.png",
+      "title": "全功能审核 52：普通成员账号与本机大字模式",
+      "sha256": "7371f7f648294798806afd0b3f3006bdeebb844c8dbf87d44637fe0e05205f74",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/review.html",
+      "title": "52张内嵌截图的单文件交互审核文档",
+      "sha256": "96c7ded53cd19d4dbadde293ec3f9a55b1dbc1c72df52ee28b6bd046c9ee78fb",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/checks.json",
+      "title": "PRD59条AC、执行结果与范围边界",
+      "sha256": "e1292f27a448d2a9c174c3d02693e2f5fd1417abcbdb373d8e46c0e25e40a4e6",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/screenshots.json",
+      "title": "52张原图清单与受测应用摘要",
+      "sha256": "581e1d5efca494196534231707b0533015bc36dc25a70c80add22bc3aca82840",
       "synthetic": true
     }
   ]

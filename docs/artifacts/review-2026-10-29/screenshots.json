@@ -1,0 +1,528 @@
+{
+  "date": "2026-10-29",
+  "base_commit": "d583e47afab27c6d956a7cd9de6896ec248d054f",
+  "application_sha256": "28effa0107e3455216e499bc90b8367b2b0c371f418dd404fc8b659bd897ffab",
+  "synthetic": true,
+  "items": [
+    {
+      "file": "01-login.png",
+      "title": "登录与家庭设备选项",
+      "section": "账号与初始设置",
+      "description": "登录页保留受信任家庭设备和申请注册入口。图中没有填写密码。",
+      "width": 390,
+      "height": 844,
+      "sha256": "05ac53f9ef8f3f67ebb71cee1ffb78292f5a049564b51be7301b77d263f2a9b6",
+      "synthetic": true
+    },
+    {
+      "file": "02-registration.png",
+      "title": "申请注册",
+      "section": "账号与初始设置",
+      "description": "管理员审批的注册表单；密码没有12位下限。注册、审批与停用另有完整认证测试。",
+      "width": 390,
+      "height": 844,
+      "sha256": "7330fbf0f0d2ee79733747f5d8064dab64167d129d4dbc590133c1f103f67401",
+      "synthetic": true
+    },
+    {
+      "file": "03-empty.png",
+      "title": "首次进入空库",
+      "section": "今天",
+      "description": "没有自动创建正式目标、课程或训练记录；两个主入口保留。",
+      "width": 390,
+      "height": 844,
+      "sha256": "7a0d98f31905baed5425b46f160efe9a283550f3fc8ee0ea15073e8aea549d92",
+      "synthetic": true
+    },
+    {
+      "file": "04-starter.png",
+      "title": "初始内容须先预览确认",
+      "section": "账号与初始设置",
+      "description": "演示明确选择六个长期方向、十种参考方法、六位老师和四门课程；预览前没有写入。",
+      "width": 390,
+      "height": 844,
+      "sha256": "9a9b23190ee84fb6b0dc23a4f567456edf3af75e37c19e4271f521b301f0984e",
+      "synthetic": true
+    },
+    {
+      "file": "05-goal-form.png",
+      "title": "目标录入与观察模板",
+      "section": "目标与方法",
+      "description": "名称和类型即可保存；意义、标准、帮助条件、上级和领域按需补充，示例不替代输入。",
+      "width": 390,
+      "height": 844,
+      "sha256": "ea503a87bc264a9a684b730baa177d6fe611a490cbee8e8deb98d457950347dc",
+      "synthetic": true
+    },
+    {
+      "file": "06-today.png",
+      "title": "长期关注与当天入口",
+      "section": "今天",
+      "description": "前三个长期方向逐项分隔，其余方向可展开；今天只列当天内容。",
+      "width": 390,
+      "height": 844,
+      "sha256": "5f992dda710ad466873c0262a59a7ea9016ec37f073c862f716c234e75d48d29",
+      "synthetic": true
+    },
+    {
+      "file": "07-today-small.png",
+      "title": "小屏首屏仍可记课或计划",
+      "section": "今天",
+      "description": "360×640桌面手机尺寸下，六个真实长度的参考方向不会挤走两个主按钮；不是手机真机截图。",
+      "width": 360,
+      "height": 640,
+      "sha256": "6323e5c455ceb3354d1b1ffdc00ff9d8da133dd290de4bb073d9ff7425f686aa",
+      "synthetic": true
+    },
+    {
+      "file": "08-long-focus.png",
+      "title": "长期方向详情与关联",
+      "section": "今天",
+      "description": "显示意义、按明确目标筛选的最近观察，以及关联的方法、经验和困难。",
+      "width": 390,
+      "height": 844,
+      "sha256": "2ca21cfc1b4d8801805a6062b25d6faad44e374f66b28e13a8ac1abc65be7275",
+      "synthetic": true
+    },
+    {
+      "file": "09-goals.png",
+      "title": "目标目录",
+      "section": "目标与方法",
+      "description": "首屏直接看到目标及覆盖；搜索和期限、来源等筛选默认折叠。",
+      "width": 390,
+      "height": 844,
+      "sha256": "c7f779ca49691a987eb096bd9299d9612e4e5b0c504f41359df60eafa3c30b62",
+      "synthetic": true
+    },
+    {
+      "file": "10-goals-desktop.png",
+      "title": "电脑宽屏目标目录",
+      "section": "目标与方法",
+      "description": "同一组数据在1440×900宽屏检查；内容限宽，避免输入和卡片无限拉伸。",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2372b40ae9252ee3baf045a91e908953844e5d97e122f8e9b04c41dbc2b0e02",
+      "synthetic": true
+    },
+    {
+      "file": "11-goal-links.png",
+      "title": "目标详情与方法、经验、困难",
+      "section": "目标与方法",
+      "description": "核对目标下能看到已关联方法、经验和困难，并可打开原记录和复盘。",
+      "width": 390,
+      "height": 844,
+      "sha256": "4ae988f03838a5ae291ca9cd7a1aa733722a57276298cb35b02e84aa950d65d9",
+      "synthetic": true
+    },
+    {
+      "file": "12-methods.png",
+      "title": "方法按近况排列",
+      "section": "目标与方法",
+      "description": "方法显示关联目标和排序原因；困难优先提示检查与调整。",
+      "width": 390,
+      "height": 844,
+      "sha256": "df36468044427900ddbdd4fd642e76512ef74f44a9d53779a0b312e119669237",
+      "synthetic": true
+    },
+    {
+      "file": "13-method-edit.png",
+      "title": "方法编辑保留目标关联",
+      "section": "目标与方法",
+      "description": "方法名称、具体做法与目标关系可修改，做法调整及文字纠错区分处理。",
+      "width": 390,
+      "height": 844,
+      "sha256": "d421f4e6c83b8edf19ea188f13842606a6ac187924e086d95266989f3607817e",
+      "synthetic": true
+    },
+    {
+      "file": "14-plan.png",
+      "title": "干预计划与重点提醒",
+      "section": "家庭干预",
+      "description": "选中目标后显示相关困难和经验；主要练、顺便练和复习可调整，计划不计实际次数。",
+      "width": 390,
+      "height": 844,
+      "sha256": "6d1aceadad4252b94b5e260a04a9dd0e0ca8340ec48f2323a082f7a435ea7e06",
+      "synthetic": true
+    },
+    {
+      "file": "15-balance.png",
+      "title": "计划中的均衡覆盖提示",
+      "section": "家庭干预",
+      "description": "目标、实际方法、活动可切换；来源分家庭、机构和合计。环图表示覆盖数量，不表示能力百分比。",
+      "width": 390,
+      "height": 844,
+      "sha256": "09114f5afba776c895ed0086d45907ff242a2e7f0ea821689d61605d622fbd6e",
+      "synthetic": true
+    },
+    {
+      "file": "16-summary.png",
+      "title": "训练后填写实际表现与方法",
+      "section": "家庭干预",
+      "description": "实际表现先填；实际方法必须明确确认，不把计划方法自动当成用过。",
+      "width": 390,
+      "height": 844,
+      "sha256": "39e5b11c06ca67b296e9df3687bb0a0bb206e2c29b5bf1bdcae1f5ada6e904df",
+      "synthetic": true
+    },
+    {
+      "file": "17-summary-difficulty.png",
+      "title": "总结沉淀新困难",
+      "section": "家庭干预",
+      "description": "实际情况、成人回应、原因猜测和条件分开；新内容默认关联本次明确目标，可调整。",
+      "width": 390,
+      "height": 844,
+      "sha256": "d80057122b752fd50c490ee6a2042b3a46977ae552711c6bb4f2c6d79fd03137",
+      "synthetic": true
+    },
+    {
+      "file": "18-today-saved.png",
+      "title": "今天的已同步记录",
+      "section": "今天",
+      "description": "总结提交后当天列表显示作者与时间；历史记录不混入今天。",
+      "width": 390,
+      "height": 844,
+      "sha256": "7cdac8a20980283377c198a4ef76468a77f7b3968964a30fed86988f224e5e34",
+      "synthetic": true
+    },
+    {
+      "file": "19-course-picker.png",
+      "title": "课程下拉、新增与历史排序",
+      "section": "机构课程",
+      "description": "已有选项可选、可搜索新增；选课程后老师按组合历史频次排序，不自动替换另一个字段。",
+      "width": 390,
+      "height": 844,
+      "sha256": "b31e62d6cde673957a9c834466e7ec7fa7e272efaa3e7b0da24034857763e4d3",
+      "synthetic": true
+    },
+    {
+      "file": "20-lesson-basic.png",
+      "title": "老人快速记课",
+      "section": "机构课程",
+      "description": "默认当天，课程与老师必填；选完可以直接提交，观察不是必填。",
+      "width": 390,
+      "height": 844,
+      "sha256": "ac816ba0aa73a6de06ae5a4acd249212febc225a888edd6cd3b0ca12f3ab4b47",
+      "synthetic": true
+    },
+    {
+      "file": "21-lesson-saved.png",
+      "title": "记课后的首屏确认",
+      "section": "机构课程",
+      "description": "服务器回执后才显示已记下，补充观察入口在前面，补充不新增课时。",
+      "width": 390,
+      "height": 844,
+      "sha256": "5d573fe5ab4b8d493d2e8ee919921986f7d18d621ffc0ee7c130cb742f6a04bc",
+      "synthetic": true
+    },
+    {
+      "file": "22-lesson-observation.png",
+      "title": "可选课堂观察与家人待办",
+      "section": "机构课程",
+      "description": "自由观察先填，主题按需展开；老师建议不会自动变成下一步，须由家人明确整理。",
+      "width": 390,
+      "height": 844,
+      "sha256": "7151a76bb138c7b09b970dab618bb395e20cb0150018ba9d2edd7b127847109e",
+      "synthetic": true
+    },
+    {
+      "file": "23-lesson-links.png",
+      "title": "课堂记录关联目标与实际方法",
+      "section": "机构课程",
+      "description": "整理和原观察独立保存版本；机构覆盖与家庭覆盖分列，不能把方法适用关系当成实际使用。",
+      "width": 390,
+      "height": 844,
+      "sha256": "cbbb82b404f24cca54ccfa5f91e39de92f3e747ce8e41f773dd2ddfd6a3af4b1",
+      "synthetic": true
+    },
+    {
+      "file": "24-classroom.png",
+      "title": "机构课堂记录",
+      "section": "记录与统计",
+      "description": "当前自然月按课程分组，保留原课堂观察和老师建议，可打开原记录。",
+      "width": 390,
+      "height": 844,
+      "sha256": "57412e36bbb21e6b6db4500d550ba38f0e6eab41689225a2addae8251fb05200",
+      "synthetic": true
+    },
+    {
+      "file": "25-teacher-totals.png",
+      "title": "上月按老师核对课时",
+      "section": "记录与统计",
+      "description": "默认上个自然月、按老师汇总节数，点击分组看明细；金额线下算。",
+      "width": 390,
+      "height": 844,
+      "sha256": "da426356388b7dde0d3c51b2b49d814f6fc151f30b73bf44359153c94146f844",
+      "synthetic": true
+    },
+    {
+      "file": "26-course-totals.png",
+      "title": "同一时期按课程汇总及明细",
+      "section": "记录与统计",
+      "description": "同一批三条上月记录，按课程计认知2节、社交1节；没有把节数换算为分钟。",
+      "width": 390,
+      "height": 844,
+      "sha256": "f52c16e0ae5378b31fa43d7a1b8703a86ed390fdf5fc781e392ba9fc52ad3dd5",
+      "synthetic": true
+    },
+    {
+      "file": "27-calendar.png",
+      "title": "家庭干预月历",
+      "section": "记录与统计",
+      "description": "向下滚动后的完整月份区域；按月展示已完成次数，待总结与完成分开，空白表示未记录，瞬间不计入。",
+      "width": 390,
+      "height": 844,
+      "sha256": "a21c37af198460e2721073122fbd089d66a242022526943244d7dbceecff0fb4",
+      "synthetic": true
+    },
+    {
+      "file": "28-history.png",
+      "title": "目标的频次与时间远近",
+      "section": "记录与统计",
+      "description": "手机用13周小条和最近日期；可展开近90天或最近30次，历史层级和方法版本保留。",
+      "width": 390,
+      "height": 844,
+      "sha256": "6229b02b3f60bbffb68f6fc8529fb51fd1a3e04e740d937be09f4e98eae872d7",
+      "synthetic": true
+    },
+    {
+      "file": "29-member.png",
+      "title": "普通家人可修改总结，不能删除",
+      "section": "观察与可靠性",
+      "description": "用独立成员账号实际登录；保留修改已完成总结，管理员删除入口不出现。API权限拒绝另由完整测试验证。",
+      "width": 390,
+      "height": 844,
+      "sha256": "d00ec15ef5ffd0955a26d3f13bf87fea34f92c8402c1ab93d52963ed636417de",
+      "synthetic": true
+    },
+    {
+      "file": "30-admin-delete.png",
+      "title": "管理员删除前明确确认",
+      "section": "观察与可靠性",
+      "description": "本次真实删除一条专门生成的合成干预；删除不连带清除沉淀内容，原来的示例总结和机构记录保持原样。",
+      "width": 390,
+      "height": 844,
+      "sha256": "c0b8abee3ab65c4e90ec685ef279571c4bbe633b1382ff1b0adfc05b6d696466",
+      "synthetic": true
+    },
+    {
+      "file": "31-follow-tasks.png",
+      "title": "跟进待处理事项",
+      "section": "跟进与复盘",
+      "description": "待办、课堂请求和到期困难集中显示；这个分段不出现新建经验／困难入口。",
+      "width": 390,
+      "height": 844,
+      "sha256": "523737add9334184d172a26fea98ee291e0a28686e7f30aa757ee261d7dee4c8",
+      "synthetic": true
+    },
+    {
+      "file": "32-library.png",
+      "title": "经验库与困难",
+      "section": "跟进与复盘",
+      "description": "新建入口在此分段；经验阶段、困难状态、条件与来源分别保留。",
+      "width": 390,
+      "height": 844,
+      "sha256": "f4282e6bc74ed76975d76b40f9e0916c018e02171652baf9ac0962394bb24f49",
+      "synthetic": true
+    },
+    {
+      "file": "33-new-experience.png",
+      "title": "独立录入经验",
+      "section": "跟进与复盘",
+      "description": "经验可记录已有做法或待验证想法，阶段由家人明确选择；名称、依据和关联不会通过示例自动填写。",
+      "width": 390,
+      "height": 844,
+      "sha256": "0c35a0918d2b046f96ba704005b765db6a3db21bd66f6de37be62967a03a46a4",
+      "synthetic": true
+    },
+    {
+      "file": "34-hierarchy.png",
+      "title": "父子目标与方法分层多选",
+      "section": "跟进与复盘",
+      "description": "长中短目标按真实父子关系展开；同一方法出现在多个目标下，勾选状态共用，不自动勾选上下级。",
+      "width": 390,
+      "height": 844,
+      "sha256": "5c6860261faa2229cf6e538e6894486fe5ecca58d8ccc69fc7f05d75d896f4bc",
+      "synthetic": true
+    },
+    {
+      "file": "35-experience-feedback.png",
+      "title": "经验的实际反馈",
+      "section": "跟进与复盘",
+      "description": "有帮助、不确定、没帮上同等可选；每次保留条件和来源，其他家人可补看法，不靠点赞判断有效。",
+      "width": 390,
+      "height": 844,
+      "sha256": "637d837d50ef9d6714ec2bf7ada96856adfdabcfd5884c2c7b295d6772bb2cc8",
+      "synthetic": true
+    },
+    {
+      "file": "36-difficulty.png",
+      "title": "困难跟进与可比条件",
+      "section": "跟进与复盘",
+      "description": "记下尝试、成人回应和实际变化；原因猜测不当成事实，可比观察不足不自动升优先级。",
+      "width": 390,
+      "height": 844,
+      "sha256": "5948f2777f763f1a98146390116f4a1b95d3511d228236bdc447baaa35cc1331",
+      "synthetic": true
+    },
+    {
+      "file": "37-review.png",
+      "title": "复盘实际依据与下一步",
+      "section": "跟进与复盘",
+      "description": "逐项回看已读取的记录，明确继续、调整或暂停；保存后才生成下一次安排，未读依据不会被自动消耗。",
+      "width": 390,
+      "height": 844,
+      "sha256": "d4e49ee73ffe4a77d08308c03e99c2111133f998fc485a0b7a204733e9ad059d",
+      "synthetic": true
+    },
+    {
+      "file": "38-review-decision.png",
+      "title": "复盘决定与调整说明",
+      "section": "跟进与复盘",
+      "description": "看过依据后再决定继续、调整或暂停，说明与下一步需明确保存；可选日程和家人负担不会阻碍记录。",
+      "width": 390,
+      "height": 844,
+      "sha256": "149d836731990c9468b8a72641ef470656712dfab808c56b1fe18e23a94c36c1",
+      "synthetic": true
+    },
+    {
+      "file": "39-action.png",
+      "title": "下一步、负责人及状态",
+      "section": "跟进与复盘",
+      "description": "下一步可指派、排日期、纳入共享计划；已经在计划中的行动受占用保护。",
+      "width": 390,
+      "height": 844,
+      "sha256": "43d4df07a856a5e601ac153ef48024cd4e0e0001706e9e61ff27c15f1489ce72",
+      "synthetic": true
+    },
+    {
+      "file": "40-measurement.png",
+      "title": "实际测量与口径分段",
+      "section": "观察与可靠性",
+      "description": "3/5仅表示这次机会内的比例；记录次数不是能力进展，标准或帮助条件改变后分开看。",
+      "width": 390,
+      "height": 844,
+      "sha256": "fa5242248287dd749fe2ba782377b7204a193f69e3730e1e1829cf67163b4523",
+      "synthetic": true
+    },
+    {
+      "file": "41-moment.png",
+      "title": "随手记一个瞬间",
+      "section": "观察与可靠性",
+      "description": "单文本配日期与可选目标；正式保存可作观察依据，但不增加家庭干预次数。",
+      "width": 390,
+      "height": 844,
+      "sha256": "db7f0b66eb9db6777cf5e581a2279064f0d7ce4fd359a35afa00d2cc84862f21",
+      "synthetic": true
+    },
+    {
+      "file": "42-conflict.png",
+      "title": "多人修改冲突保护",
+      "section": "观察与可靠性",
+      "description": "服务器新版本和本窗口输入并列保留，禁止静默覆盖；须明确采用最新或合并。",
+      "width": 390,
+      "height": 844,
+      "sha256": "33c9bbda88635351d7f4232c64d6cfdd46fed1d8304610c40f893ea9c9f8413a",
+      "synthetic": true
+    },
+    {
+      "file": "43-offline.png",
+      "title": "离线仅保存在本机，联网补传",
+      "section": "观察与可靠性",
+      "description": "待上传单独提示且不计正式课时；联网后核对原账号、目录依赖及同一次请求，再显示服务器确认。",
+      "width": 390,
+      "height": 844,
+      "sha256": "d4e9c93d7bda444e306cfa67b11faf61c8e28bccf700705008e2009fa54e3e7d",
+      "synthetic": true
+    },
+    {
+      "file": "44-account.png",
+      "title": "我的账号与数据导出",
+      "section": "账号与初始设置",
+      "description": "数据导出、导入、登录设备和本机显示集中在账号，避免占据今天页。",
+      "width": 390,
+      "height": 844,
+      "sha256": "7147d325d96189f2b931955c8082315174a93c39157d0dbeb19c6332b041316d",
+      "synthetic": true
+    },
+    {
+      "file": "45-export.png",
+      "title": "Excel实际下载确认",
+      "section": "账号与初始设置",
+      "description": "本次点击实际产生Excel下载并重新读取检查；本机未提交草稿、待上传和登录凭据不导出。",
+      "width": 390,
+      "height": 844,
+      "sha256": "4e63c72bf4e0c77ccd1d37520584dc2e7fa557555a2b0a5d4b19c30a8e3fdd4f",
+      "synthetic": true
+    },
+    {
+      "file": "46-help.png",
+      "title": "账号角落的问号说明",
+      "section": "账号与初始设置",
+      "description": "帮助集中在账号问号，保留方法证据边界、家庭帮助说明与手机桌面入口。",
+      "width": 390,
+      "height": 844,
+      "sha256": "3670d8f85954cf8b6e6ec96edd0880de3466829de974cfde7f8d934e98dcc23b",
+      "synthetic": true
+    },
+    {
+      "file": "47-catalog.png",
+      "title": "课程与老师选项维护",
+      "section": "账号与初始设置",
+      "description": "新增、改名、停用和恢复由这里维护；历史课程保留当时名称。",
+      "width": 390,
+      "height": 844,
+      "sha256": "d5610949bee111b9be30a4dcba9f3873a088363da1a815bc3e4ebc2df079cfb1",
+      "synthetic": true
+    },
+    {
+      "file": "48-discard.png",
+      "title": "放弃本机填写需确认",
+      "section": "观察与可靠性",
+      "description": "空名称不能保存；放弃只清除本机未提交输入，已保存数据不变，结果未知请求不提供直接丢弃。",
+      "width": 390,
+      "height": 844,
+      "sha256": "fbd81d282512c1671dcc7c8fa4c794e21673e3842ea7a3a1fa8ea1dec575b331",
+      "synthetic": true
+    },
+    {
+      "file": "49-import.png",
+      "title": "Excel显式映射与写入预览",
+      "section": "账号与初始设置",
+      "description": "本次只到预览，不自动写入。实际导入、重复去重、原文来源与回执重试另有完整合约及浏览器验收。",
+      "width": 390,
+      "height": 844,
+      "sha256": "b9233ca6f56c26aa82d16d9bd1c0a6a14c3874b9d2b92869b7c729596b91c366",
+      "synthetic": true
+    },
+    {
+      "file": "50-registration-receipt.png",
+      "title": "注册实际提交与待审批",
+      "section": "账号与初始设置",
+      "description": "实际用单字符合成密码提交成功，没有12位限制；审批前不能登录，邮箱仅作申请人提供的信息。",
+      "width": 390,
+      "height": 844,
+      "sha256": "6c9d954572ccff4aa10fa73ce3c586b58b503303d66875f1ce8166b750d90da0",
+      "synthetic": true
+    },
+    {
+      "file": "51-account-approval.png",
+      "title": "管理员审批注册申请",
+      "section": "账号与初始设置",
+      "description": "管理员实际批准申请后，原密码可登录；拒绝和账号停用／恢复均有独立验证。",
+      "width": 390,
+      "height": 844,
+      "sha256": "91d7961e40fc42d15f3f2bcda8f1ff950bddb41c71cd7bcaff1b88d55f5ba60f",
+      "synthetic": true
+    },
+    {
+      "file": "52-account-display.png",
+      "title": "普通成员账号与本机大字模式",
+      "section": "账号与初始设置",
+      "description": "普通成员没有账号管理入口；本机大字设置重载后保留，其他设备不受影响。",
+      "width": 390,
+      "height": 844,
+      "sha256": "7371f7f648294798806afd0b3f3006bdeebb844c8dbf87d44637fe0e05205f74",
+      "synthetic": true
+    }
+  ]
+}

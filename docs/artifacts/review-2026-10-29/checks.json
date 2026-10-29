@@ -1,0 +1,836 @@
+{
+  "date": "2026-10-29",
+  "prd": "0.9",
+  "base_commit": "d583e47afab27c6d956a7cd9de6896ec248d054f",
+  "application_sha256": "28effa0107e3455216e499bc90b8367b2b0c371f418dd404fc8b659bd897ffab",
+  "application_digest_scope": "git tracked apps/client, crates, data/seeds: sorted path NUL sha256(file)",
+  "application_changes_from_base": [
+    "apps/client/src/prd-session-view.tsx: remove residual global help"
+  ],
+  "data": "synthetic localhost only",
+  "deployment": "not performed",
+  "tests": [
+    {
+      "name": "Rust 全套",
+      "result": "162项通过",
+      "command": "cargo test --workspace"
+    },
+    {
+      "name": "客户端逻辑",
+      "result": "61项通过",
+      "command": "node --experimental-strip-types tools/test-prd-client.mjs"
+    },
+    {
+      "name": "规划与工作流",
+      "result": "14＋6项通过",
+      "command": "node --experimental-strip-types tools/test-planning.mjs / tools/test-workflow.mjs"
+    },
+    {
+      "name": "Web 浏览器回归",
+      "result": "26组通过（原25组＋新增账号全流程）",
+      "command": "CHROMIUM_EXECUTABLE=/usr/bin/chromium npm run test:prd-web"
+    },
+    {
+      "name": "图文取证流程",
+      "result": "49张主流程＋3张账号截图，实际保存断言通过，JS异常0",
+      "command": "node tools/check-prd-web.mjs capture_prd_review_web.py smoke_prd_account_web.py"
+    },
+    {
+      "name": "原生 SQLite／Rust Worker DO",
+      "result": "两套完整合约及重启持久化均通过，无SKIP",
+      "command": "node tools/check-prd-runtimes.mjs"
+    },
+    {
+      "name": "类型检查／Web构建",
+      "result": "通过",
+      "command": "npm run typecheck / EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 npm run web:build"
+    },
+    {
+      "name": "发布配置保护",
+      "result": "29项通过，仅本机合成配置测试",
+      "command": "python3 -m unittest discover -s tools -p test_cloudflare_release.py"
+    },
+    {
+      "name": "同步工具",
+      "result": "通过",
+      "command": "node --test tools/test-workspace-sync.mjs"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "AC-R01-01",
+      "operation": "长期方向0／3／6个，标准360×640",
+      "expected": "两个主按钮无需滚动可见",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_today_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R01-02",
+      "operation": "用户主动展开长期方向详情",
+      "expected": "详情先展示意义与最近观察",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_today_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R01-03",
+      "operation": "同日两个待总结计划",
+      "expected": "家庭入口先选择待总结记录，不覆盖任何计划",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_today_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R02-01",
+      "operation": "已有目标，使用默认日期时段",
+      "expected": "三次点击加一句话可保存计划",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_polish_web.py",
+        "tools/smoke_prd_simplified_web.py",
+        "tools/prd-planning-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R02-02",
+      "operation": "重点9天未记，维持20天未记",
+      "expected": "按9/7与20/30排序，重点靠前",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_polish_web.py",
+        "tools/smoke_prd_simplified_web.py",
+        "tools/prd-planning-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R02-03",
+      "operation": "目标显式不设频率／暂停",
+      "expected": "自动建议中不出现该目标",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_polish_web.py",
+        "tools/smoke_prd_simplified_web.py",
+        "tools/prd-planning-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R02-04",
+      "operation": "目标有未解决困难及可用经验",
+      "expected": "选中目标即显示对应知识摘要",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_polish_web.py",
+        "tools/smoke_prd_simplified_web.py",
+        "tools/prd-planning-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R03-01",
+      "operation": "已经做完路径，计划字段为空",
+      "expected": "填写实际目标与表现并确认方法后能提交",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_sessions_web.py",
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_completion_web.py",
+        "tools/prd-session-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R03-02",
+      "operation": "方法选择记不清",
+      "expected": "计方法未记录，不计为已知空集合",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_sessions_web.py",
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_completion_web.py",
+        "tools/prd-session-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R03-03",
+      "operation": "未选任何标签、情境或参与信号",
+      "expected": "不阻碍提交总结",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_sessions_web.py",
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_completion_web.py",
+        "tools/prd-session-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R03-04",
+      "operation": "同一总结创建两条困难后重试",
+      "expected": "只保留这两条产出，不重复创建",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_sessions_web.py",
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_completion_web.py",
+        "tools/prd-session-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R03-05",
+      "operation": "计划目标标本次未做",
+      "expected": "该目标不增加实际覆盖",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_sessions_web.py",
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_completion_web.py",
+        "tools/prd-session-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R03-06",
+      "operation": "总结确认方法时，实际所用方法不在库中",
+      "expected": "只填名称即可新建并计为本次实际使用，新方法自动关联本次明确目标",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_sessions_web.py",
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_completion_web.py",
+        "tools/prd-session-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R04-01",
+      "operation": "默认今天，常用课程和老师可见",
+      "expected": "今天入口到基础提交最多四次点击",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_catalog_ranking_web.py",
+        "tools/prd-lesson-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R04-02",
+      "operation": "先选课程或老师，再查看另一项",
+      "expected": "按该组合正式历史次数排序，另一字段保持原选值或未选；可选无历史的新组合",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_catalog_ranking_web.py",
+        "tools/prd-lesson-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R04-03",
+      "operation": "基础记录已保存后补充观察",
+      "expected": "总节数不增加",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_catalog_ranking_web.py",
+        "tools/prd-lesson-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R04-04",
+      "operation": "创建者创建当天，课记无入站引用",
+      "expected": "允许撤销且正式节数减少一节",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_catalog_ranking_web.py",
+        "tools/prd-lesson-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R04-05",
+      "operation": "非创建者／隔日／已被引用任一成立",
+      "expected": "普通成员只能标记记错",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_catalog_ranking_web.py",
+        "tools/prd-lesson-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R05-01",
+      "operation": "打开观察表单",
+      "expected": "自由文本位于四个主题之前",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_polish_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R05-02",
+      "operation": "主题已填后折叠再展开",
+      "expected": "原内容保持",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_polish_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R05-03",
+      "operation": "老人保存观察，父母用独立版本保存关系",
+      "expected": "两个不相交分区写入均成功",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_polish_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R05-04",
+      "operation": "同一观察区被并发修改",
+      "expected": "第二次写入返回可核对冲突而不覆盖",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_polish_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R05-05",
+      "operation": "只写老师建议，未选择生成任务",
+      "expected": "不自动创建下一步",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_polish_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R06-01",
+      "operation": "只填名称与长期／近期类型",
+      "expected": "可保存目标",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_model_web.py",
+        "tools/smoke_prd_observations_web.py",
+        "tools/smoke_prd_r15_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R06-02",
+      "operation": "标准有文字后切模板",
+      "expected": "文字不被例子覆盖",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_model_web.py",
+        "tools/smoke_prd_observations_web.py",
+        "tools/smoke_prd_r15_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R06-03",
+      "operation": "机会数0或做到数大于机会数",
+      "expected": "不显示伪造成功率",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_model_web.py",
+        "tools/smoke_prd_observations_web.py",
+        "tools/smoke_prd_r15_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R07-01",
+      "operation": "方法详情就地记心得",
+      "expected": "新经验明确关联该方法",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_polish_web.py",
+        "tools/smoke_prd_history_web.py",
+        "tools/smoke_prd_completion_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R07-02",
+      "operation": "方法从版本1修改为2",
+      "expected": "旧实践仍引用版本1",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_polish_web.py",
+        "tools/smoke_prd_history_web.py",
+        "tools/smoke_prd_completion_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R07-03",
+      "operation": "方法只关联已达成目标",
+      "expected": "默认排在正常使用中的在途相关方法之后",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_polish_web.py",
+        "tools/smoke_prd_history_web.py",
+        "tools/smoke_prd_completion_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R08-01",
+      "operation": "同一天同课同老师两条实际记录",
+      "expected": "核对计两节",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_catalog_ranking_web.py",
+        "tools/smoke_prd_feedback_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R08-02",
+      "operation": "老师改名但ID不变",
+      "expected": "跨月按同一ID汇总",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_catalog_ranking_web.py",
+        "tools/smoke_prd_feedback_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R08-03",
+      "operation": "搜索老师建议关键词",
+      "expected": "结果能回到有匹配主题①的原课记",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_lessons_web.py",
+        "tools/smoke_prd_catalog_ranking_web.py",
+        "tools/smoke_prd_feedback_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R09-01",
+      "operation": "附录D的10月已完成数据",
+      "expected": "10/18为1、10/24为2，其余当月日为0",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_history_web.py",
+        "tools/smoke_prd_gap_fixes_web.py",
+        "tools/prd-planning-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R09-02",
+      "operation": "360px宽目标时间分布",
+      "expected": "使用可展开周条，不使用狭窄逐日点击点",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_history_web.py",
+        "tools/smoke_prd_gap_fixes_web.py",
+        "tools/prd-planning-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R10-01",
+      "operation": "同一来源另一家人补相反看法",
+      "expected": "附注可见而使用总数保持一",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/prd-followup-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R10-02",
+      "operation": "明确修订反馈主结果并通过版本核对",
+      "expected": "计数移动到新分类但总量不增加",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/prd-followup-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R10-03",
+      "operation": "已有家庭帮助经验补录",
+      "expected": "允许选择已有帮助阶段而无需虚构过去使用事件",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/prd-followup-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R11-01",
+      "operation": "只有两条可比观察，判断无变化",
+      "expected": "不自动提示达到三条观察下限",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/prd-followup-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R11-02",
+      "operation": "三条可比观察且判断无变化",
+      "expected": "提示可改每周回看，但不自动提高训练量",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/prd-followup-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R12-01",
+      "operation": "锚点2026-10-10，隔周到期10/24，11/14补做",
+      "expected": "下次为2026-11-21",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_review_pages_web.py",
+        "tools/smoke_prd_refinement_web.py",
+        "crates/api/tests/foundation_followups.rs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R12-02",
+      "operation": "同方法挂两个目标",
+      "expected": "复盘队列仅有该方法一项",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_review_pages_web.py",
+        "tools/smoke_prd_refinement_web.py",
+        "crates/api/tests/foundation_followups.rs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R12-03",
+      "operation": "保存下一步后在目标下建计划",
+      "expected": "可查询并纳入该行动",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_review_pages_web.py",
+        "tools/smoke_prd_refinement_web.py",
+        "crates/api/tests/foundation_followups.rs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R12-04",
+      "operation": "两个成员同时完成同一到期项",
+      "expected": "只生成一个下次安排",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_review_pages_web.py",
+        "tools/smoke_prd_refinement_web.py",
+        "crates/api/tests/foundation_followups.rs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R12-05",
+      "operation": "比较期内有两条明确关联的参与信号，另有一条未关联的整次信号",
+      "expected": "复盘卡只读列出前两条及日期与来源，无因果表述，未关联信号不列入",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_followups_web.py",
+        "tools/smoke_prd_review_pages_web.py",
+        "tools/smoke_prd_refinement_web.py",
+        "crates/api/tests/foundation_followups.rs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R13-01",
+      "operation": "附录D全部输入",
+      "expected": "各窗口、来源和最近日期匹配期望值表",
+      "status": "本机通过",
+      "evidence": [
+        "tools/fixtures/prd-coverage.json",
+        "tools/prd-planning-contract.mjs",
+        "tools/smoke_prd_balance_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R13-02",
+      "operation": "仅新增瞬间I1",
+      "expected": "家庭已完成数和热力图不变",
+      "status": "本机通过",
+      "evidence": [
+        "tools/fixtures/prd-coverage.json",
+        "tools/prd-planning-contract.mjs",
+        "tools/smoke_prd_balance_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R13-03",
+      "operation": "记录含中期及其子目标",
+      "expected": "该中期按同一来源只计一次",
+      "status": "本机通过",
+      "evidence": [
+        "tools/fixtures/prd-coverage.json",
+        "tools/prd-planning-contract.mjs",
+        "tools/smoke_prd_balance_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R14-01",
+      "operation": "基础课记离线后联网重放同一请求两次",
+      "expected": "只产生一节正式课记",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_offline_web.py",
+        "tools/smoke_prd_actor_guard_web.py",
+        "tools/smoke_prd_overlay_web.py",
+        "tools/smoke_prd_draft_windows_web.py",
+        "tools/prd-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R14-02",
+      "operation": "待上传期间切换账号",
+      "expected": "旧账号请求不以新账号上传",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_offline_web.py",
+        "tools/smoke_prd_actor_guard_web.py",
+        "tools/smoke_prd_overlay_web.py",
+        "tools/smoke_prd_draft_windows_web.py",
+        "tools/prd-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R14-03",
+      "operation": "表单正编辑且收到新状态",
+      "expected": "当前输入与手指下列表顺序不变",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_offline_web.py",
+        "tools/smoke_prd_actor_guard_web.py",
+        "tools/smoke_prd_overlay_web.py",
+        "tools/smoke_prd_draft_windows_web.py",
+        "tools/prd-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R14-04",
+      "operation": "详情覆盖层打开后浏览器返回",
+      "expected": "只关闭覆盖层并保留表单",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_offline_web.py",
+        "tools/smoke_prd_actor_guard_web.py",
+        "tools/smoke_prd_overlay_web.py",
+        "tools/smoke_prd_draft_windows_web.py",
+        "tools/prd-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R14-05",
+      "operation": "跨日未提交课记后重开本账号",
+      "expected": "全局继续入口可恢复该草稿",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_offline_web.py",
+        "tools/smoke_prd_actor_guard_web.py",
+        "tools/smoke_prd_overlay_web.py",
+        "tools/smoke_prd_draft_windows_web.py",
+        "tools/prd-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R14-06",
+      "operation": "旧API版本携带写请求",
+      "expected": "执行前拒绝并提示升级，原输入保留",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_offline_web.py",
+        "tools/smoke_prd_actor_guard_web.py",
+        "tools/smoke_prd_overlay_web.py",
+        "tools/smoke_prd_draft_windows_web.py",
+        "tools/prd-contract.mjs"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R15-01",
+      "operation": "字段空白并直接提交",
+      "expected": "示例不进入请求或导出",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_r15_web.py",
+        "tools/smoke_prd_simplified_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R15-02",
+      "operation": "字段已有输入并主动展开例子",
+      "expected": "标签持续可见、问句与完整例子可读取，原输入不变",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_r15_web.py",
+        "tools/smoke_prd_simplified_web.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R15-03",
+      "operation": "200%文本缩放且键盘开启",
+      "expected": "操作栏不遮挡当前焦点",
+      "status": "部分验证",
+      "evidence": [
+        "tools/smoke_prd_r15_web.py",
+        "tools/smoke_prd_simplified_web.py"
+      ],
+      "note": "200%桌面缩放与缩小visualViewport通过；真实iPhone/Android软键盘、系统文本缩放未验。"
+    },
+    {
+      "id": "AC-R15-04",
+      "operation": "标准页面的文本与点击区",
+      "expected": "分别按附录A尺寸及对比度测量达标",
+      "status": "部分验证",
+      "evidence": [
+        "tools/smoke_prd_r15_web.py",
+        "tools/smoke_prd_simplified_web.py"
+      ],
+      "note": "核心表单实际测量字号、44px点击区及4.5:1对比度通过；全页面逐控件及系统读屏未完成。"
+    },
+    {
+      "id": "AC-R16-01",
+      "operation": "检查页头／登录／Web元数据／桌面图标",
+      "expected": "产品显示名为skarmar",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_export_web.py",
+        "tools/test_cloudflare_release.py"
+      ],
+      "note": "当前Web／共用后端测试范围；不代表手机真机或生产验收。"
+    },
+    {
+      "id": "AC-R16-02",
+      "operation": "只做显示名改动",
+      "expected": "Worker／DO／域名及空间标识保持原值",
+      "status": "本机通过",
+      "evidence": [
+        "tools/smoke_prd_export_web.py",
+        "tools/test_cloudflare_release.py"
+      ],
+      "note": "29项发布配置保护测试及本次变更检查通过；未改Worker/DO/域名/空间，也没有读取生产配置。"
+    }
+  ],
+  "issues": [
+    {
+      "id": "QA01",
+      "status": "已修复并复验",
+      "text": "干预表单的“更多干预操作”遗留全局帮助入口；移除后帮助集中到账号问号。补断言，最终25组及新增账号流程通过。",
+      "shots": []
+    },
+    {
+      "id": "UX01",
+      "status": "待你评审",
+      "text": "总结保存后，今天卡片与“已记下”提示重复描述同一内容；建议只保留一处确认。",
+      "shots": [
+        "today-saved"
+      ]
+    },
+    {
+      "id": "UX02",
+      "status": "待你评审",
+      "text": "经验库的搜索框偏高，首屏条目偏少；建议改为单行搜索或收起。",
+      "shots": [
+        "library"
+      ]
+    },
+    {
+      "id": "UX03",
+      "status": "待你评审",
+      "text": "管理员删除确认使用整张表单高度，留白较多；建议改为紧凑确认框。",
+      "shots": [
+        "admin-delete"
+      ]
+    },
+    {
+      "id": "UX04",
+      "status": "待你评审",
+      "text": "Excel导入预览部分字段仍为英文内部名称；建议补齐中文标签，原始字段放可展开区。数据映射与原文保留已通过。",
+      "shots": [
+        "import"
+      ]
+    },
+    {
+      "id": "UX05",
+      "status": "待你评审",
+      "text": "目标默认全部期限，长期与近期混排；建议评审是否默认近期本领、把长期管理另分组。此处未擅自更改已定PRD。",
+      "shots": [
+        "goals"
+      ]
+    },
+    {
+      "id": "S01",
+      "status": "已核正任务快照",
+      "text": "历史T10仍写家庭实际方法／版本未实现；当前已实现并经两运行环境、浏览器及本轮截图验证。状态更新，不新增重复功能。",
+      "shots": [
+        "summary",
+        "member"
+      ]
+    }
+  ],
+  "limitations": [
+    "这是一轮本机Web自测和界面走查，等待用户审核；不是Opus独立验收结论，T46继续保留待办。",
+    "没有iPhone／Android真机；200%缩放和键盘避让只作桌面模拟，原生日期控件外观仍可能受操作系统语言影响。",
+    "没有部署、登录生产账号或读取真实业务数据；线上仍为T54版本，截图包含尚未上线的T55修复和本轮QA01。",
+    "主要大陆网络、真实手机移动网络、后台关闭网页上传、真实工作簿迁移未在本轮验收。",
+    "原生App、语音、游戏、家庭电脑同步节点不是本期已交付Web功能；旧主机恢复不作为本轮前置。",
+    "机构课时当前以节数统计，没有实际时长字段，不能把一节课当成固定分钟。目标／方法采用收起或停用管理，不把这称为清空数据库。"
+  ],
+  "screenshot_count": 52
+}

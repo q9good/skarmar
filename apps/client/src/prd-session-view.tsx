@@ -15,7 +15,6 @@ import {CoveragePanel} from './prd-coverage-view';
 export {CoveragePanel} from './prd-coverage-view';
 import {SaveStatus,trackLocalSave} from './save-status';
 import {ExampleHint} from './input-guidance';
-import {HelpButton} from './product-help';
 import {HistoryPanel} from './prd-history-view';
 import {emptyDetails,practiceOf,stateOf,labels,type Details,type Feedback,type PracticeFeedback} from './prd-followups';
 import React,{useEffect,useRef,useState} from 'react';
@@ -167,7 +166,7 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,openGoal,ope
  <Text>引用课堂材料（保留当时版本，不自动算目标覆盖）</Text>{options.lessons.filter(l=>l.status==='recorded').slice(-10).map(l=><Check key={l.id} title={`参考课记：${l.observation.business_date} · ${l.course.name}`} checked={input.lesson_sources.some(s=>s.id===l.id)} disabled={disabled} onPress={()=>patch({lesson_sources:input.lesson_sources.some(s=>s.id===l.id)?input.lesson_sources.filter(s=>s.id!==l.id):[...input.lesson_sources,{id:l.id,version:l.version}]})}/>)}
  </>}</>}
  <Disclosure title="更多干预操作">
- <HelpButton/><Button title="查看全部方向的近况" onPress={()=>setCoverage(true)}/>
+ <Button title="查看全部方向的近况" onPress={()=>setCoverage(true)}/>
  {remote?.status!=='completed'&&<Button title={draft.stage==='plan'?'已经做完：直接记总结':'返回调整计划'} onPress={()=>{if(draft.stage==='plan')toSummary();else if(!disabled)void persist({...refs.current,[editor!]:{...draft,stage:'plan'}})}}/>}
  </Disclosure>
  {remote?.status==='completed'&&<Field label="本次修订说明" value={draft.request.change_note} disabled={disabled} onChange={change_note=>void persist({...refs.current,[editor!]:{...draft,request:{...draft.request,operation_id:uuid(),change_note}}})} placeholder="例如：补充实际使用的方法，修正一次观察"/>}

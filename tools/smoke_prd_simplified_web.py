@@ -62,6 +62,7 @@ with sync_playwright() as p:
  expect(page.get_by_text('留意困难：合成换材料时需要支持',exact=True)).to_be_visible();expect(page.get_by_text('可参考经验：合成先示范并留出等待时间',exact=True)).to_be_visible()
  expect(page.get_by_role('button',name=re.compile('^主要练：'))).to_have_count(0)
  field(page,'准备怎么做').fill('合成计划：一起尝试生活小步骤')
+ click(page,'更多干预操作');expect(btn(page,'使用说明与手机桌面入口')).to_have_count(0);expect(btn(page,'查看全部方向的近况')).to_be_visible();click(page,'更多干预操作')
  click(page,'目标笔记与参考：'+goals[1]['input']['title']);field(page,'计划笔记：'+goals[1]['input']['title']).fill('合成笔记不会因折叠清空');click(page,'目标笔记与参考：'+goals[1]['input']['title'])
  shot('plan');click(page,'保存共享草稿并退出');expect(page.get_by_role('dialog')).to_have_count(0)
  saved=call(ctx,'GET','/prd/state')['sessions'][0];assert saved['status']=='planned' and saved['input']['targets'][0]['note']=='合成笔记不会因折叠清空'
