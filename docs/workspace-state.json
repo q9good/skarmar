@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-28",
+  "updatedAt": "2026-10-29",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -381,6 +381,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-28.md",
       "verification": "2026-10-28按用户授权通过GitHub Actions正常发布原skarma-web，来源6c8e991f0cb82079d577fe62a349185c16649f33（应用e801f88），run40690269788的validate/release均success。原版本73b71710-b847-42f4-aabd-6e04dde0489b，上传并实际激活09d57936-2071-45e8-a4c2-69a46e9645fb，回执deployed_and_verified/model=prd_v1，脱敏原件已保存并加SHA。runner首页/JS字节、health200、匿名权限、精确Origin及PRD数据库启动均通过，云端另独立执行同组公开检查并通过。此次无新schema或初始化需求，未使用用户给予的非账号数据清理许可，保留账号/会话/业务记录；未登录真实账号、读取业务数据、自动种入参考、重建Worker/DO/default或修改域名/来源/私密配置。此前本机162项Rust、58项客户端、24组浏览器、实际SQLite/DO合约与重启通过；本轮重跑29+9项发布工具保护及既有38项产物通过，runner实际执行类型/Web/Rust/Wasm Clippy后发布。部署期间远端未前进，成功后才收尾文档；正式implementationCommit、Opus和真机待办不变。"
+    },
+    {
+      "id": "T55",
+      "title": "修复试用草稿与上传问题并改进关注、课时口径与跟进关联",
+      "status": "done",
+      "evidence": "docs/trial-feedback-2026-10-29.md",
+      "verification": "2026-10-29按用户十项反馈整改。基础草稿按目标/方法/目录归页并可从账号恢复；新增保留退出及二次确认放弃本机填写，未知请求不丢弃；空名称禁提交，校验错误只留在表单且关窗清除，隐藏观察不再串页，测量草稿从所属目标恢复。在线课记明确正在上传并以真实回执确认；flush串行后续扫描修复并发入队等待定时器，基线旧实现同组61项仅竞态失败，修复后61项通过。长期关注加分隔与单行标签；全局帮助仅账号问号，目标/方法搜索收进筛选/设置。课时默认上月按老师，可切按课程，稳定ID共用正式节数与时间范围并清理旧展开；未推算分钟或新增时长字段。经验/困难按父子目标及关联方法分层多选，共享方法保持同ID勾选，不自动扩展关联；新建入口仅库分段。类型/Web构建、客户端61项、规划14/工作流6及25组本机Chromium脚本通过；首轮前10组通过后旧测量恢复入口测试失败，按所属目标更新路径后剩余15组全部通过，原幂等/权限/并发/保存断言保留。新增浏览器实际领域校验/切页/刷新/放弃、经验困难保存ID、上月双口径、延迟真实回执/其他页面读取均通过；截图两张合成并逐张检查。PRD0.9同步且59条AC编号/附录D不变。无后端/schema/依赖/环境变化，未部署或访问生产业务，implementationCommit及Opus/真机待办保留。"
     }
   ],
   "artifacts": [
@@ -610,6 +617,18 @@
       "path": "docs/artifacts/deployment/cloudflare-release-20261028-receipt.json",
       "title": "2026-10-28初始内容与界面改进的实际Cloudflare发布脱敏回执",
       "sha256": "4c7474f602a399523997149e6a929eca6ec35bd05076c5466514946988385d17"
+    },
+    {
+      "path": "docs/artifacts/validation/feedback-long-directions.png",
+      "title": "试用反馈整改：长期关注分隔与紧凑主入口（合成）",
+      "sha256": "7baaf0d0197965087375fd90e0686e3bccd2678c2947f0341d319dbbe5302ba5",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/feedback-followup-hierarchy.png",
+      "title": "试用反馈整改：目标层级与共享方法多选（合成）",
+      "sha256": "65fa8a1b7253fca94805dbfd002dd414146c603ab24020763e037ba56f08f117",
+      "synthetic": true
     }
   ]
 }

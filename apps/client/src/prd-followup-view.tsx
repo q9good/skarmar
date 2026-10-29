@@ -1,4 +1,5 @@
 import {Disclosure} from './disclosure';
+import {GoalMethodPicker} from './goal-method-picker';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
 import {DraftRecovery} from './draft-recovery';
@@ -148,7 +149,7 @@ export function FollowupHub({data,mode,refresh,requested,onRequested,adjustMetho
  {notice&&<Text role="status">{notice}</Text>}{error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}
  {mode==='full'&&<>
  <View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}><Button title="要处理的" primary={section==='tasks'} press={()=>setSection('tasks')}/><Button title="经验库与困难" primary={section==='library'} press={()=>setSection('library')}/></View>
- <View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}><Button title="新建经验" disabled={!ready} press={()=>startKnowledge('experience')}/><Button title="新建困难" disabled={!ready} press={()=>startKnowledge('difficulty')}/></View>
+ {section==='library'&&<View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}><Button title="新建经验" disabled={!ready} press={()=>startKnowledge('experience')}/><Button title="新建困难" disabled={!ready} press={()=>startKnowledge('difficulty')}/></View>}
  {section==='tasks'?<>
  <Check title="显示已完成或取消的下一步" checked={showClosedActions} press={()=>setShowClosedActions(v=>!v)}/>
  {data.actions.filter(a=>showClosedActions||['pending','in_plan'].includes(a.status)).map(a=><View key={a.input.id} style={{gap:5}}><Text>下一步：{a.input.content} · {a.assignee_name??'家人待认领'}</Text><Button title={`维护下一步：${a.input.content}`} press={()=>open({kind:'action',value:{id:a.input.id,operation_id:uuid(),expected_version:a.version,input:structuredClone(a.input),state:a.status,note:''}})}/></View>)}
@@ -232,7 +233,7 @@ export function FollowupHub({data,mode,refresh,requested,onRequested,adjustMetho
 {review&&['complete','defer'].includes(review.action)&&!draft.pending&&<Button title="顺延此项（不计完成复盘）" disabled={disabled||conflict} press={()=>void submit('defer')}/>}
  {!draft.pending&&!busy&&<Button title="放弃这份本机跟进草稿" press={()=>void(async()=>{const next={...refs.current};delete next[editor!];try{await persist(next);setEditor(null)}catch(e){setError(errorText(e))}})()}/>}
  </DetailOverlay>}
- {binding&&kb?.input&&<DetailOverlay title="关联目标与方法" close={()=>setBinding(false)}><Text>至少明确关联一个目标或方法；不会根据文字猜关系。</Text><RelationPicker label="可关联目标" prefix="关联目标：" options={options.goals.map(g=>({id:g.id,label:g.input.title}))} selected={kb.input!.goal_ids} disabled={disabled} toggle={id=>patchInput({goal_ids:toggle(kb.input!.goal_ids,id)})}/><RelationPicker label="可关联方法" prefix="关联方法：" options={options.methods.map(m=>({id:m.id,label:m.input.title,related:m.input.goal_ids.some(id=>kb.input!.goal_ids.includes(id))}))} selected={kb.input!.method_ids} disabled={disabled} toggle={id=>patchInput({method_ids:toggle(kb.input!.method_ids,id)})}/></DetailOverlay>}
+ {binding&&kb?.input&&<DetailOverlay title="关联目标与方法" close={()=>setBinding(false)}><Text>至少明确关联一个目标或方法；不会根据文字猜关系。</Text><GoalMethodPicker goals={options.goals} methods={options.methods} goalIds={kb.input.goal_ids} methodIds={kb.input.method_ids} disabled={disabled} toggleGoal={id=>patchInput({goal_ids:toggle(kb.input!.goal_ids,id)})} toggleMethod={id=>patchInput({method_ids:toggle(kb.input!.method_ids,id)})}/></DetailOverlay>}
  {queueOpen&&<DetailOverlay title="共享复盘队列" close={()=>{++queueSequence.current;setQueueLoading(false);setQueueOpen(false);}}>
  <Button title={queueLoading?'正在读取最新复盘分组…':'按最新安排刷新分组'} disabled={busy||queueLoading} press={()=>void refreshQueue()}/>
  {queueError&&<Text accessibilityRole="alert">{queueError}；保留此前分组，请重试后核对。</Text>}

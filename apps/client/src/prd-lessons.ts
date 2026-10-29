@@ -60,10 +60,14 @@ export function lessonSearchSources(lesson: Lesson, knowledge: Knowledge[], quer
 export function monthRange(month: string) { const [y,m] = month.split('-').map(Number); return { start: `${month}-01`, end: `${month}-${new Date(Date.UTC(y,m,0)).getUTCDate()}` }; }
 export function shiftMonth(month: string, offset: number) { const [y,m] = month.split('-').map(Number); return new Date(Date.UTC(y,m-1+offset,1)).toISOString().slice(0,7); }
 export function teacherTotals(lessons: Lesson[], start: string, end: string, today='9999-12-31') {
+  return lessonTotals(lessons,start,end,today,'teacher');
+}
+export function lessonTotals(lessons: Lesson[], start: string, end: string, today: string, by:'teacher'|'course') {
   const map = new Map<string,{ id: string; name: string; count: number; marked: number; records: Lesson[] }>();
   for (const l of lessons) if (countable(l) && l.observation.business_date >= start && l.observation.business_date <= end && l.observation.business_date <= today) {
-    const group = map.get(l.teacher.id) ?? { id: l.teacher.id, name: l.teacher.name, count: 0, marked: 0, records: [] };
-    group.count++; group.marked += Number(l.marked_error); group.records.push(l); map.set(l.teacher.id, group);
+    const item=l[by];
+    const group = map.get(item.id) ?? { id: item.id, name: item.name, count: 0, marked: 0, records: [] };
+    group.count++; group.marked += Number(l.marked_error); group.records.push(l); map.set(item.id, group);
   }
   return [...map.values()].sort((a,b) => a.name.localeCompare(b.name,'zh-CN'));
 }

@@ -36,7 +36,8 @@ with sync_playwright() as p:
   if btn(page,'知道了，不再提示').is_visible():click(page,'知道了，不再提示')
   click(page,'补充观察');field(page,'今天课上怎么样？').fill(title);saved(page);close_top(page)
  verify(':lesson-drafts:v1','窗口A课堂观察','窗口B课堂观察')
- for page in [a,b]:click(page,'跟进')
+ for page in [a,b]:
+  click(page,'跟进');click(page,'经验库与困难')
  for page,title in [(a,'窗口A经验填写'),(b,'窗口B经验填写')]:
   click(page,'新建经验');field(page,re.compile(r'^(?:经验|困难)名称（必填）$')).fill(title);field(page,'做法与依据').fill(title+'的独立原文');saved(page);close_top(page)
  verify(':followup-drafts:v1','窗口A经验填写','窗口B经验填写')

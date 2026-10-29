@@ -99,7 +99,7 @@ with sync_playwright() as p:
     a.route('**/api/prd/records/*',lose_response,times=1)
     a.get_by_role('button',name='保存',exact=True).click();expect(a.get_by_role('button',name='重试同一次保存',exact=True)).to_be_visible()
     committed=next(g for g in state()['goals'] if g['input']['title']=='测试响应丢失');assert committed['version']==1
-    a.reload()
+    a.reload();nav(a,'目标')
     a.get_by_role('button',name='继续填写：测试响应丢失',exact=True).click()
     expect(a.get_by_role('button',name='重试同一次保存',exact=True)).to_be_enabled()
     a.get_by_role('button',name='重试同一次保存',exact=True).click();expect(a.get_by_role('dialog')).to_have_count(0)
@@ -108,7 +108,7 @@ with sync_playwright() as p:
     nav(a,'目标')
     for title in ['测试草稿甲','测试草稿乙']:
         a.get_by_role('button',name='新建目标',exact=True).click();reveal_control(a,'textbox','本领名称').fill(title);a.get_by_role('button',name='关闭填写目标',exact=True).click()
-    a.reload()
+    a.reload();nav(a,'目标')
     for title in ['测试草稿甲','测试草稿乙']:expect(a.get_by_role('button',name='继续填写：'+title,exact=True)).to_be_visible()
     a.get_by_role('button',name='继续填写：测试草稿甲',exact=True).click();expect(a.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('测试草稿甲')
     a.screenshot(path=str(OUT/'goal-draft-mobile.png'))

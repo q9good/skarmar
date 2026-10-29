@@ -26,7 +26,7 @@ with sync_playwright() as p:
  # Keep server metadata consistent for the whole phase, including concurrent refreshes.
  outside=expires_in(14*86400+60);page.route('**/api/auth/me',outside);page.reload();expect(btn('记录上课')).to_be_enabled();expect(btn('重新验证并继续填写')).to_have_count(0)
  page.unroute('**/api/auth/me',outside)
- inside=expires_in(14*86400-60);page.route('**/api/auth/me',inside);page.reload();expect(btn('重新验证并继续填写')).to_be_visible();btn('继续填写：续期保留填写').click();expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期保留填写')
+ inside=expires_in(14*86400-60);page.route('**/api/auth/me',inside);page.reload();expect(btn('重新验证并继续填写')).to_be_visible();btn('目标').click();btn('继续填写：续期保留填写').click();expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期保留填写')
  # Reauthenticate from the active form itself; it must remain mounted under the renewal overlay.
  field=page.get_by_role('textbox',name='本领名称',exact=True);field.fill('续期中的原表单');btn('登录即将到期，先验证登录再继续填写').click();reveal_control(page,'textbox','续期密码').fill('synthetic-prd-ui-password');page.unroute('**/api/auth/me',inside);btn('验证并回到填写').click();expect(page.get_by_role('dialog',name='续期登录',exact=True)).to_have_count(0);expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期中的原表单')
  assert a.request.get(BASE+'/api/auth/me').ok;assert not errors,errors

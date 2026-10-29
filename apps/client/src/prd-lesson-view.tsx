@@ -9,10 +9,9 @@ import {GuidedField} from './guided-field';
 import {LessonPractice} from './lesson-practice-view';
 import {SaveStatus,trackLocalSave} from './save-status';
 import {ExampleHint} from './input-guidance';
-import {HelpButton} from './product-help';
 import {useLessonOutbox} from './prd-outbox-view';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, request } from './api';
 import { DateField, Select } from './controls';
@@ -21,7 +20,7 @@ import { useAuth } from './auth';
 import { DetailOverlay } from './overlay';
 import { Pressable, Text, TextInput } from './readability';
 import type { Catalog, Saved, Snapshot } from './foundation';
-import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, monthRange, shiftMonth, teacherTotals, commonChoices, rankedCatalogChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
+import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, monthRange, shiftMonth, lessonTotals, commonChoices, rankedCatalogChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
 const queues = new Map<string, Promise<void>>();
 const labelsForFeedback=(v:string)=>({helpful:'有帮助',uncertain:'不确定',unhelpful:'没帮上'} as Record<string,string>)[v]??v;
 const note = (e: unknown) => e instanceof Error ? e.message : '操作未完成，请保留填写后重试';
@@ -135,7 +134,8 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   const [otherTasks,setOtherTasks]=useState(false),[intro,setIntro]=useState(false);
   useEffect(()=>{void AsyncStorage.getItem(storageKey+':introduced').then(v=>{if(!v)setIntro(true);}).catch(()=>undefined);},[storageKey]);
   const [discard,setDiscard]=useState(false), [historyOpen,setHistoryOpen]=useState(false), [history,setHistory]=useState<import('./prd-lessons').LessonRevision[]>([]), [historyError,setHistoryError]=useState('');
-  const [section,setSection]=useState<'classroom'|'totals'>('classroom'), [month,setMonth]=useState(()=>localDate().slice(0,7)), [countMonth,setCountMonth]=useState(()=>shiftMonth(localDate().slice(0,7),-1)), [selectedTeacher,setSelectedTeacher]=useState<string|null>(null), [search,setSearch]=useState(''), [teachersOnly,setTeachersOnly]=useState(false);
+  const [totalsBy,setTotalsBy]=useState<'teacher'|'course'>('teacher');
+  const [section,setSection]=useState<'classroom'|'totals'>('classroom'), [month,setMonth]=useState(()=>localDate().slice(0,7)), [countMonth,setCountMonth]=useState(()=>shiftMonth(localDate().slice(0,7),-1)), [selectedGroup,setSelectedGroup]=useState<string|null>(null), [search,setSearch]=useState(''), [teachersOnly,setTeachersOnly]=useState(false);
   const [withdrawal,setWithdrawal]=useState<WithdrawalCapability|null>(null),[withdrawalLoading,setWithdrawalLoading]=useState(false),[withdrawalError,setWithdrawalError]=useState('');
   const refs=useRef(drafts), alive=useRef(true), inFlight=useRef(false);
   useEffect(()=>{
@@ -189,11 +189,11 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
         await outbox.queue.enqueue({kind:'lesson',value:payload},Boolean(draft.pending));
         const remaining={...refs.current};delete remaining[key];
         try{await persist(remaining);}catch{ /* Queue is durable and still hides this original draft. */ }
-        setEditor(null);setError('');scrollTop();setNotice('课记已保存在本机待上传，服务器确认后才计节数。');
+        setEditor(null);setError('');scrollTop();setNotice(Platform.OS==='web'&&!navigator.onLine?'课记已保存在本机待上传，服务器确认后才计节数。':'正在上传课记，服务器确认后才计节数…');
         await outbox.sync();const entry=outbox.queue.value.entries[payload.id];
         if(entry?.status==='confirmed'){
           setReceipt(payload.id);setNotice('已记下，家人刷新即可看到。');await refresh().catch(()=>undefined);
-        }
+        }else setNotice(entry?.status==='blocked'?'课记上传已暂停，请核对上方原因；本机填写仍保留。':'课记已保存在本机待上传，服务器确认后才计节数。');
         return;
       }
       await persist({...refs.current,[key]:{...draft,pending:payload}});assertSession();sent=true;
@@ -230,7 +230,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   const validRange=[start,end].every(v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v)&&start<=end;
   const searchSources=(lesson:Lesson)=>lessonSearchSources(lesson,data.knowledge,search);
   const records=active.filter(l=>l.observation.business_date>=start&&l.observation.business_date<=end&&(!teachersOnly||Boolean(l.observation.teacher_notes))&&(!search||searchSources(l).length>0)).sort((a,b)=>b.observation.business_date.localeCompare(a.observation.business_date)||b.created_at.localeCompare(a.created_at));
-  const totals=validRange?teacherTotals(data.lessons,start,end,today):[];
+  const totals=validRange?lessonTotals(data.lessons,start,end,today,totalsBy):[];
   const draftName=(d:LessonDraft)=>{const a=d.request.action;if(a.kind!=='observation')return '整理或核对';const courseId=a.value.course_id;return data.catalog.find(c=>c.id===courseId)?.input.name??'未选课程';};
   const observe=draft?.request.action.kind==='observation'?draft.request.action.value:undefined;
   return <>
@@ -251,15 +251,16 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
         </>}
 
       </>:mode==='records'?<>
-        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}><Action title="课堂记录" secondary={section!=='classroom'} press={()=>{setSection('classroom');setSelectedTeacher(null);}}/><Action title="课时核对" secondary={section!=='totals'} press={()=>{setSection('totals');setSelectedTeacher(null);}}/></View>
-        <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:8}}><Action title="上个月" press={()=>{setCustomRange(false);section==='totals'?setCountMonth(v=>shiftMonth(v,-1)):setMonth(v=>shiftMonth(v,-1));}}/><Text>{section==='totals'?countMonth:month}</Text><Action title="下个月" press={()=>{setCustomRange(false);section==='totals'?setCountMonth(v=>shiftMonth(v,1)):setMonth(v=>shiftMonth(v,1));}}/></View>
+        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}><Action title="课堂记录" secondary={section!=='classroom'} press={()=>{setSection('classroom');setSelectedGroup(null);}}/><Action title="课时核对" secondary={section!=='totals'} press={()=>{setSection('totals');setSelectedGroup(null);}}/></View>
+        <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:8}}><Action title="上个月" press={()=>{setCustomRange(false);setSelectedGroup(null);section==='totals'?setCountMonth(v=>shiftMonth(v,-1)):setMonth(v=>shiftMonth(v,-1));}}/><Text>{section==='totals'?countMonth:month}</Text><Action title="下个月" press={()=>{setCustomRange(false);setSelectedGroup(null);section==='totals'?setCountMonth(v=>shiftMonth(v,1)):setMonth(v=>shiftMonth(v,1));}}/></View>
         {section==='totals'?<>
-          <Action title={customRange?'收起自定义日期，按整月核对':'自定义课时核对日期'} press={()=>{if(!customRange){setRangeFrom(monthBounds.start);setRangeTo(monthBounds.end);}setCustomRange(v=>!v);setSelectedTeacher(null);}}/>
-          {customRange&&<><DateField label="课时起始日期" value={rangeFrom} onChange={v=>{setRangeFrom(v);setSelectedTeacher(null);}}/><DateField label="课时截止日期" value={rangeTo} onChange={v=>{setRangeTo(v);setSelectedTeacher(null);}}/>{!validRange&&<Text>请完整填写有效起止日期，起始日期不能晚于截止日期。</Text>}</>}
+          <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{(['teacher','course'] as const).map(kind=><Action key={kind} title={kind==='teacher'?'按老师汇总':'按课程汇总'} secondary={totalsBy!==kind} press={()=>{setTotalsBy(kind);setSelectedGroup(null);}}/>)}</View>
+          <Action title={customRange?'收起自定义日期，按整月核对':'自定义课时核对日期'} press={()=>{if(!customRange){setRangeFrom(monthBounds.start);setRangeTo(monthBounds.end);}setCustomRange(v=>!v);setSelectedGroup(null);}}/>
+          {customRange&&<><DateField label="课时起始日期" value={rangeFrom} onChange={v=>{setRangeFrom(v);setSelectedGroup(null);}}/><DateField label="课时截止日期" value={rangeTo} onChange={v=>{setRangeTo(v);setSelectedGroup(null);}}/>{!validRange&&<Text>请完整填写有效起止日期，起始日期不能晚于截止日期。</Text>}</>}
           <Text>每条未撤销／删除的实际课记计一节，待核对仍计入。金额线下计算。</Text>
-          {totals.map(group=><Action key={group.id} title={`${data.catalog.find(c=>c.id===group.id)?.input.name??group.name}：${group.count} 节${group.marked?` · 待核对 ${group.marked}`:''}`} press={()=>setSelectedTeacher(selectedTeacher===group.id?null:group.id)} />)}
+          {totals.map(group=><Action key={group.id} title={`${data.catalog.find(c=>c.id===group.id)?.input.name??group.name}：${group.count} 节${group.marked?` · 待核对 ${group.marked}`:''}`} press={()=>setSelectedGroup(selectedGroup===group.id?null:group.id)} />)}
           {validRange&&!totals.length&&<Text>{customRange?'这个时间段还没有上课记录。':'这个月还没有上课记录。'}</Text>}
-          {totals.find(g=>g.id===selectedTeacher)?.records.map(l=><LessonCard key={l.id} lesson={l} open={()=>setDetail(l.id)}/>)}
+          {totals.find(g=>g.id===selectedGroup)?.records.map(l=><LessonCard key={l.id} lesson={l} open={()=>setDetail(l.id)}/>)}
         </>:<>
           <Field label="搜索课堂观察和老师建议" value={search} change={setSearch} multiline={false} placeholder="输入课程、老师或观察中的词"/><Check title="只看老师建议" checked={teachersOnly} press={()=>setTeachersOnly(!teachersOnly)}/>
           {[...new Set(records.map(l=>l.course.id))].map(courseId=><View key={courseId} style={{gap:10}}><Text style={{fontSize:18,fontWeight:'600'}}>{data.catalog.find(c=>c.id===courseId)?.input.name??records.find(l=>l.course.id===courseId)?.course.name}</Text>{records.filter(l=>l.course.id===courseId).map(l=><LessonCard key={l.id} lesson={l} matchSource={search?searchSources(l).join('、'):teachersOnly?'老师建议':undefined} open={()=>setDetail(l.id)}/>)}</View>)}
@@ -279,7 +280,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
         <CatalogChoice kind="course" value={observe.course_id} relatedId={observe.teacher_id} change={course_id=>patch({course_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
         <CatalogChoice kind="teacher" value={observe.teacher_id} relatedId={observe.course_id} change={teacher_id=>patch({teacher_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
         {active.filter(l=>l.id!==draft.request.id&&l.observation.business_date===observe.business_date&&l.course.id===observe.course_id&&l.teacher.id===observe.teacher_id).map(l=><Text key={l.id}>同日已有记录：{l.creator_name}，{new Date(l.created_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai'})}；确实是另一节仍可提交。</Text>)}
-        <HelpButton/>{draft.phase==='basic'?<Action title="补充观察" disabled={busy||Boolean(draft.pending)} press={()=>void persist({...refs.current,[editor!]:{...draft,phase:'observation'}})}/>:<ObservationFields value={observe} change={patch} disabled={busy||Boolean(draft.pending)}/>}
+        {draft.phase==='basic'?<Action title="补充观察" disabled={busy||Boolean(draft.pending)} press={()=>void persist({...refs.current,[editor!]:{...draft,phase:'observation'}})}/>:<ObservationFields value={observe} change={patch} disabled={busy||Boolean(draft.pending)}/>}
       </>}
       {draft.request.action.kind==='organization'&&remote&&<OrganizationFields openKnowledge={openKnowledge} value={draft.request.action.value} change={patch} data={options} lesson={remote} source={draft.source} actorId={actorId} disabled={busy||Boolean(draft.pending)}/>}
       {draft.phase==='administration'&&<Text>{draft.request.action.kind==='withdraw'?'确认撤销这条课记？撤销后不计节数。':draft.request.action.kind==='delete'?'确认删除课记？需要管理员权限，已有派生引用时会阻止操作。':draft.request.action.kind==='acknowledge'?'告诉记录者“看到了，谢谢”，不会将待办标为已处理。':'标记记错会保留节数，待管理员核对。'}</Text>}

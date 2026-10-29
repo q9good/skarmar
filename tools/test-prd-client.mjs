@@ -41,7 +41,8 @@ test('multiple drafts and exact pending operations survive serialization; malfor
   assert.deepEqual(decodeDrafts(null),{});
 });
 
-import { commonChoices, rankedCatalogChoices, decodeLessonDrafts, emptyObservation, lessonSearchSources, monthRange, shiftMonth, teacherTotals } from '../apps/client/src/prd-lessons.ts';
+import { commonChoices, rankedCatalogChoices, decodeLessonDrafts, emptyObservation, lessonSearchSources, monthRange, shiftMonth, teacherTotals, lessonTotals } from '../apps/client/src/prd-lessons.ts';
+import {goalMethodHierarchy} from '../apps/client/src/goal-method-hierarchy.ts';
 const lesson=(id,day,teacher='t',course='c',status='recorded')=>({id,version:1,observation_version:1,organization_version:1,created_at:day+'T00:00:00Z',creator_id:'u',creator_name:'测试',acknowledgements:[],request_generation:0,requested_by:null,request_name:null,request_message:'',status,marked_error:false,observation:{...emptyObservation(day),course_id:course,teacher_id:teacher},teacher:{id:teacher,name:'旧名称',kind:'teacher',version:1},course:{id:course,name:'课程',kind:'course',version:1},organization:{seen_observation_version:0,targets:[],methods:[],focus_goals:[],processed_request_generation:0,state:'pending',claimed_by:null,claimed_name:null,outcome:''}});
 test('lesson totals use stable teacher identity, include marked errors, exclude tombstones and respect calendar bounds',()=>{
   const rows=[lesson('one','2024-02-01'),{...lesson('two','2024-02-29'),marked_error:true,teacher:{id:'t',name:'新名称'}},lesson('three','2024-02-20','t','c','withdrawn'),lesson('four','2024-02-20','t','c','deleted'),lesson('five','2024-03-01')];
@@ -178,6 +179,39 @@ function outboxFixture(overrides={}) {
 }
 const queuedLesson=(id='q',course='c',teacher='t')=>({kind:'lesson',value:{id,operation_id:'op-'+id,expected_version:null,action:{kind:'observation',value:{...emptyObservation('2026-10-24'),course_id:course,teacher_id:teacher}}}});
 const queuedCatalog=(id,kind)=>({kind:'catalog',value:{id,operation_id:'op-'+id,expected_version:null,change_note:'',mutation:{kind:'catalog',value:{kind,name:'新选项'+id,active:true}}}});
+test('a submission flush scans newly enqueued records even while an older released scan is settling',async()=>{
+ let hold=false,scanned,release;
+ const completed=new Promise(r=>scanned=r),settled=new Promise(r=>release=r);
+ const f=outboxFixture({lock:async fn=>{const result=await fn();if(hold){hold=false;scanned();await settled;}return result;}});
+ await f.queue.load();hold=true;
+ const earlier=f.queue.flush();await completed; // The old scan saw an empty queue.
+ await f.queue.enqueue(queuedLesson('just-submitted'));
+ const submitFlush=f.queue.flush();release();await Promise.all([earlier,submitFlush]);
+ assert.equal(f.sent.length,1);assert.equal(f.sent[0].value.id,'just-submitted');assert.equal(f.queue.value.entries['just-submitted'].status,'confirmed');
+});
+test('teacher and course totals use the same formal records, stable IDs and date bounds',()=>{
+ const rows=[lesson('a','2026-09-02','t1','c1'),lesson('b','2026-09-04','t2','c1'),lesson('c','2026-09-05','t1','c2'),lesson('old','2026-08-30','t1','c1'),lesson('future','2026-10-30','t1','c1'),lesson('withdrawn','2026-09-05','t1','c1','withdrawn'),lesson('deleted','2026-09-05','t1','c1','deleted')];
+ rows[1].marked_error=true;rows[1].course.name='历史课程名称';
+ const args=[rows,'2026-09-01','2026-09-30','2026-10-29'];
+ assert.deepEqual(teacherTotals(...args).map(g=>[g.id,g.count]).sort(),[['t1',2],['t2',1]]);
+ const course=lessonTotals(...args,'course');assert.deepEqual(course.map(g=>[g.id,g.count,g.marked]).sort(),[['c1',2,1],['c2',1,0]]);
+ assert.deepEqual(course.find(g=>g.id==='c1').records.map(r=>r.id),['a','b']);assert.equal(rows[1].course.name,'历史课程名称');
+ assert.deepEqual(lessonTotals(rows,'2026-09-10','2026-09-01','2026-10-29','course'),[]);
+});
+test('binding hierarchy preserves goal parents, independent roots and many-to-many methods without inferred selections',()=>{
+ const goal=(id,level,parent_id=null)=>({id,version:1,input:{...newGoal(),title:id,level,parent_id}});
+ const goals=[goal('short','short','medium'),goal('long','long'),goal('medium','medium','long'),goal('independent','short'),goal('orphan','medium','missing')];
+ const method=(id,goal_ids)=>({id,version:1,input:{...newMethod(),title:id,goal_ids}});
+ const methods=[method('shared',['long','short']),method('own',['medium']),method('unlinked',['missing'])];
+ const result=goalMethodHierarchy(goals,methods),root=result.roots.find(r=>r.goal.id==='long');
+ assert.deepEqual(result.roots.map(r=>r.goal.id),['long','orphan','independent']);
+ assert.equal(root.children[0].goal.id,'medium');assert.equal(root.children[0].children[0].goal.id,'short');
+ assert.equal(root.methods[0],root.children[0].children[0].methods[0]);assert.deepEqual(result.unlinked.map(m=>m.id),['unlinked']);
+ assert.deepEqual(methods[0].input.goal_ids,['long','short']);
+ // Invalid/cyclic historical links cannot hide an item or recurse forever.
+ const invalid=goalMethodHierarchy([goal('a','long','b'),goal('b','short','a')],[]);
+ assert.equal(invalid.roots[0].goal.id,'a');assert.equal(invalid.roots[0].children[0].goal.id,'b');
+});
 test('offline lesson is durable but not a server receipt; recovery/reload replays one immutable operation',async()=>{
  const f=outboxFixture();await f.queue.load();f.offline();const w=queuedLesson();await f.queue.enqueue(w);await f.queue.flush();assert.equal(f.sent.length,0);assert.equal(decodeOutbox(f.raw()).entries.q.status,'queued');
  const reopened=new LessonOutbox({user:'u',space:'home'},f.io);await reopened.load();f.online();await Promise.all([reopened.flush(),reopened.flush()]);assert.equal(f.sent.length,1);assert.equal(f.sent[0].value.operation_id,w.value.operation_id);assert.equal(reopened.value.entries.q.status,'confirmed');

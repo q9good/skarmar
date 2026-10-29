@@ -88,14 +88,13 @@ with sync_playwright() as p:
  expect(page.get_by_text(re.compile('^已记下：'+today))).to_be_in_viewport(ratio=1)
  shot('lesson-confirmed');click(page,'完成')
 
- click(page,'跟进');click(page,'新建经验')
+ click(page,'跟进');click(page,'经验库与困难');click(page,'新建经验')
  expect(page.get_by_role('dialog',name='记一条经验',exact=True)).to_be_visible()
  expect(field(page,'修改依据或原因')).to_have_count(0)
  expect(page.get_by_role('combobox',name='经验状态',exact=True)).to_have_count(0)
  field(page,'经验名称（必填）').fill('合成示范心得');field(page,'做法与依据').fill('合成熟悉场景中，示范后愿意尝试')
  click(page,'选择关联目标与方法');
  target=page.get_by_role('checkbox',name='关联目标：'+goals[1]['input']['title'],exact=True)
- if not target.count():click(page,'更多可关联目标（5）')
  target.click();click(page,'关闭关联目标与方法')
  page.get_by_role('combobox',name='经验阶段',exact=True).select_option('try')
  click(page,'补充条件、成人回应与比较口径');field(page,'依据和条件（可选）').fill('合成条件：熟悉材料');click(page,'补充条件、成人回应与比较口径')

@@ -109,7 +109,14 @@ export class LessonOutbox {
     const next=decodeOutbox(await this.io.read());if(next.entries[id]?.status!=='confirmed')return;
     delete next.entries[id];await this.save(next);
   });}
-  async flush(){if(this.busy)return this.busy;this.busy=this.run().finally(()=>{this.busy=null;});return this.busy;}
+  async flush(){
+    // A submission can be enqueued while an earlier scan owns the storage lock.
+    // Joining that old scan can leave the new record waiting for the timer.
+    // Each requested flush therefore gets a scan after all earlier scans finish.
+    const task=(this.busy??Promise.resolve()).catch(()=>undefined).then(()=>this.run());
+    this.busy=task;
+    try{await task;}finally{if(this.busy===task)this.busy=null;}
+  }
   private async run(){
     if(!this.ready||!this.io.online()||!this.io.active())return;
     await this.io.lock(async()=>{

@@ -13,7 +13,7 @@ with sync_playwright() as p:
  btn('目标').click();btn('新建目标').click();reveal_control(page,'textbox','本领名称').fill('原账号未提交填写');expect(page.get_by_text('草稿已存本机',exact=True)).to_be_visible()
  # Emulate a cookie change in another tab while this page has not polled yet.
  call('/auth/login',{'username':'other','password':'s'});btn('保存').click();expect(page.get_by_role('textbox',name='账号',exact=True)).to_be_visible();state=ctx.request.get(BASE+'/api/prd/state').json();assert not state['goals'],state
- reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');btn('登录').click();expect(btn('继续填写：原账号未提交填写')).to_be_visible();btn('继续填写：原账号未提交填写').click();expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('原账号未提交填写');btn('保存').click();expect(page.get_by_role('dialog',name='填写目标',exact=True)).to_have_count(0);state=ctx.request.get(BASE+'/api/prd/state').json();assert len(state['goals'])==1
+ reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');btn('登录').click();btn('目标').click();expect(btn('继续填写：原账号未提交填写')).to_be_visible();btn('继续填写：原账号未提交填写').click();expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('原账号未提交填写');btn('保存').click();expect(page.get_by_role('dialog',name='填写目标',exact=True)).to_have_count(0);state=ctx.request.get(BASE+'/api/prd/state').json();assert len(state['goals'])==1
  gid=state['goals'][0]['id'];h=ctx.request.get(BASE+'/api/prd/records/'+gid+'/history').json();assert h[0]['actor_id']==owner
  # A committed request with a lost response must remain exactly retryable across
  # a rejected cookie-switched retry and reauthentication of its original owner.
@@ -25,7 +25,7 @@ with sync_playwright() as p:
   return page.evaluate("""owner=>{const k=Object.keys(localStorage).find(k=>k.includes(':'+owner+':')&&k.endsWith('prd-drafts:v1'));if(!k)throw new Error('missing goal draft key');return Object.values(JSON.parse(localStorage.getItem(k))).find(v=>v.pending)?.pending??null;}""",owner)
  original=pending();assert original,original
  call('/auth/login',{'username':'other','password':'s'});btn('重试同一次保存').click();expect(page.get_by_role('textbox',name='账号',exact=True)).to_be_visible();assert pending()==original,(pending(),original)
- reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');btn('登录').click();btn('继续填写：已提交响应丢失的目标').click();expect(btn('重试同一次保存')).to_be_enabled();btn('重试同一次保存').click();expect(page.get_by_role('dialog',name='填写目标',exact=True)).to_have_count(0)
+ reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');btn('登录').click();btn('目标').click();btn('继续填写：已提交响应丢失的目标').click();expect(btn('重试同一次保存')).to_be_enabled();btn('重试同一次保存').click();expect(page.get_by_role('dialog',name='填写目标',exact=True)).to_have_count(0)
  state=ctx.request.get(BASE+'/api/prd/state').json();rows=[v for v in state['goals'] if v['input']['title']=='已提交响应丢失的目标'];assert len(rows)==1;history=ctx.request.get(BASE+'/api/prd/records/'+rows[0]['id']+'/history').json();assert len(history)==1,history
  # Block local persistence, then change the app's authenticated identity before
  # the old async handler can send. A global identity read at send time is unsafe.

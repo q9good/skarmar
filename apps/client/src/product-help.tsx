@@ -11,10 +11,10 @@ const sections=[
  ['自然结果与小步挑战','没有仅凭“自然结果”这个名字即可认定有效或无效的独立分类。记录具体做法、支持、条件及孩子的反应，优先保持温和、愉快、可求助和可休息。'],
 ];
 const sources=[['NCAEP 2020报告','https://ncaep.fpg.unc.edu/research-resources'],['AFIRM实践模块','https://afirm.fpg.unc.edu/'],['NICE儿童与青少年支持建议','https://www.nice.org.uk/guidance/cg170/chapter/recommendations'],['AAP 2020临床报告','https://doi.org/10.1542/peds.2019-3447']];
-export function HelpButton({title='查看说明'}:{title?:string}){
+export function HelpButton({title='使用说明与手机桌面入口'}:{title?:string}){
  const [open,setOpen]=useState(false),[needs,setNeeds]=useState<EvidenceRecord|null>(null),[error,setError]=useState('');
  useEffect(()=>{if(!open)return;let live=true;setError('');void request<{items:EvidenceRecord[]}>('/prd/process?view=observations&object_kind=needs').then(v=>{if(live)setNeeds(v.items.find(r=>!r.deleted)??null);}).catch(()=>{if(live)setError('共享需要说明暂未读到，可以稍后在我的账号中查看。');});return()=>{live=false;};},[open]);
- return <><Pressable accessibilityRole="button" onPress={()=>setOpen(true)} style={{padding:12,minHeight:48,borderRadius:10,backgroundColor:'#E9F2E9'}}><Text>{title}</Text></Pressable>{open&&<DetailOverlay title="使用与方法说明" close={()=>setOpen(false)}>
+ return <><Pressable accessibilityRole="button" accessibilityLabel={title} onPress={()=>setOpen(true)} style={{padding:12,minHeight:48,width:48,alignItems:'center',borderRadius:24,backgroundColor:'#E9F2E9'}}><Text style={{fontSize:20,fontWeight:'600'}}>?</Text></Pressable>{open&&<DetailOverlay title="使用与方法说明" close={()=>setOpen(false)}>
   <Text style={{fontSize:20,fontWeight:'600'}}>看见进展，帮助调整</Text><Text>这份记录帮助家人围绕沟通、生活参与、自主与舒适度观察变化。记录次数表示覆盖，不等于能力进步；没有记录也不等于没有陪伴。软件不作诊断或治疗承诺。</Text>
   <Text style={{fontSize:18,fontWeight:'600'}}>怎样理解方法的证据</Text><Text>以下是PRD已核对资料的分类摘要，注明原始年份，不声称是持续自动更新的临床指南。循证实践仍需结合孩子、家庭目标、专业指导及实际反应来选择。</Text>{sections.map(([heading,body])=><View key={heading} style={{gap:5}}><Text style={{fontWeight:'600'}}>{heading}</Text><Text>{body}</Text></View>)}
   <Text>涉及药物、饮食限制、补充剂、仪器或排毒类做法，先与合适的专业人员讨论。治疗共存的身体问题与改善ASD核心特征是不同的目的；这里不会根据方法名称阻止保存。</Text>
