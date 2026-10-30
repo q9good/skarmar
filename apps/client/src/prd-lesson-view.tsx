@@ -1,5 +1,5 @@
 import {Disclosure} from './disclosure';
-import {SectionButton,ContentGroup} from './section-tabs';
+import {SectionButton,SectionTabs,ContentGroup} from './section-tabs';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
 import {DraftRecovery} from './draft-recovery';
@@ -256,10 +256,10 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
         </>}
 
       </>:mode==='records'?<>
-        <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}><Action title="课堂记录" secondary={section!=='classroom'} press={()=>{setSection('classroom');setSelectedGroup(null);}}/><Action title="课时核对" secondary={section!=='totals'} press={()=>{setSection('totals');setSelectedGroup(null);}}/></View>
+        <SectionTabs label="机构记录视图" value={section} change={value=>{setSection(value);setSelectedGroup(null);}} items={[{value:'classroom',title:'课堂记录',tone:'classroom'},{value:'totals',title:'课时核对',tone:'classroom'}]}/>
         <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:8}}><Action title="上个月" press={()=>{setCustomRange(false);setSelectedGroup(null);section==='totals'?setCountMonth(v=>shiftMonth(v,-1)):setMonth(v=>shiftMonth(v,-1));}}/><Text>{section==='totals'?countMonth:month}</Text><Action title="下个月" press={()=>{setCustomRange(false);setSelectedGroup(null);section==='totals'?setCountMonth(v=>shiftMonth(v,1)):setMonth(v=>shiftMonth(v,1));}}/></View>
         {section==='totals'?<>
-          <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{(['teacher','course'] as const).map(kind=><Action key={kind} title={kind==='teacher'?'按老师汇总':'按课程汇总'} secondary={totalsBy!==kind} press={()=>{setTotalsBy(kind);setSelectedGroup(null);}}/>)}</View>
+          <SectionTabs label="课时汇总口径" value={totalsBy} change={value=>{setTotalsBy(value);setSelectedGroup(null);}} items={[{value:'teacher',title:'按老师汇总',tone:'classroom'},{value:'course',title:'按课程汇总',tone:'classroom'}]}/>
           <Action title={customRange?'收起自定义日期，按整月核对':'自定义课时核对日期'} press={()=>{if(!customRange){setRangeFrom(monthBounds.start);setRangeTo(monthBounds.end);}setCustomRange(v=>!v);setSelectedGroup(null);}}/>
           {customRange&&<><DateField label="课时起始日期" value={rangeFrom} onChange={v=>{setRangeFrom(v);setSelectedGroup(null);}}/><DateField label="课时截止日期" value={rangeTo} onChange={v=>{setRangeTo(v);setSelectedGroup(null);}}/>{!validRange&&<Text>请完整填写有效起止日期，起始日期不能晚于截止日期。</Text>}</>}
           <Text>每条未撤销／删除的实际课记计一节，待核对仍计入。</Text>

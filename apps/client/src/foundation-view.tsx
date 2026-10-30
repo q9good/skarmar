@@ -1,5 +1,5 @@
 import {Disclosure} from './disclosure';
-import {SectionButton,ContentGroup} from './section-tabs';
+import {SectionTabs,ContentGroup} from './section-tabs';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
 import {DraftRecovery} from './draft-recovery';
@@ -328,7 +328,7 @@ export function FoundationWorkspace() {
               <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Text style={{flex:1,fontSize:16,fontWeight:'600'}}>长期关注</Text><Text style={{fontSize:14}}>{longDirections.length>3?`另有 ${longDirections.length-3} 项 ▾`:'▾'}</Text></View>
               <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>{longDirections.slice(0,3).map(g=><Text key={g.id} numberOfLines={1} style={{fontSize:14,paddingVertical:5,paddingHorizontal:8,borderWidth:1,borderColor:'#B3C9BA',borderRadius:6,backgroundColor:'#FFFFFF',maxWidth:'100%'}}>{g.input.title}</Text>)}</View>{!longDirections.length&&<Text style={s.hint}>先写下想长期关注的方向</Text>}
             </Pressable>}
-            {tab==='records'&&<View style={{flexDirection:'row',gap:8}}><SectionButton title="机构课程" tone="classroom" selected={recordKind==='lessons'} press={()=>setRecordKind('lessons')}/><SectionButton title="家庭干预" tone="family" selected={recordKind==='family'} press={()=>setRecordKind('family')}/></View>}
+            {tab==='records'&&<SectionTabs label="记录类型" value={recordKind} change={setRecordKind} items={[{value:'lessons',title:'机构课程',tone:'classroom'},{value:'family',title:'家庭干预',tone:'family'}]}/>}
             {tab==='records'&&recordKind==='family'?sessionHub('records'):<LessonHub openKnowledge={id=>setRequestedFollowup({kind:'knowledge',id,nonce:uuid()})} inboxManaged requested={requestedLesson} onRequested={()=>setRequestedLesson(null)} openAction={id=>setRequestedFollowup({kind:'action',id,nonce:uuid()})} interventionEntry={tab==='today'?<>{sessionHub('today')}{followupHub('today')}</>:undefined} data={data} actorId={auth.identity.user.id} actorName={auth.identity.user.display_name} admin={auth.identity.user.role === 'admin'} mode={tab === 'today' ? 'today' : 'records'} refresh={refresh}
               savedLesson={lesson => setData(current => mergeSnapshot(current, { ...emptySnapshot, lessons: [lesson] }))}
               catalogSaved={saved => setData(current => acceptSaved(current, saved))} openGoal={id => void openDetail(id)} openMethod={id => void openDetail(id)} scrollTop={() => scroll.current?.scrollTo({y:0,animated:false})} />}

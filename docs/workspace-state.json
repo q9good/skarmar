@@ -409,6 +409,13 @@
       "status": "done",
       "evidence": "docs/review-feedback-2026-10-30.md",
       "verification": "2026-10-30接收原25条JSON并核对其应用摘要与T56一致，原字节保存。按15条需调整及2条有具体内容的待审核意见实施，7条可用流程保留；缺真实数据的环图提供明确合成的零次/非零次样本待用户复审。课堂/家庭蓝棕配色、共享长期优先级、计划覆盖前置与目标/方法提醒、总结可选反馈及两类新增/修订、两项记课选择与三类观察、详情分组和目标跳转、课时明细标题、家庭列表/月历及经验困难子分段均完成。long_priority和helpful_notes为既有JSON可选字段，原生和DO同源，无新表/schema/依赖/配置。163Rust、62客户端、14规划/6工作流、27组Web、类型/正式Web构建、原生/Wasm Clippy及真实SQLite/Rust Worker DO完整合约与重启通过，无SKIP；新增共享优先级部分更新/非法和旧版本/回执保护及好方法来源进入复盘的合约；另实际补查新增空字段不改变旧请求序列化，旧回执可重放且操作ID重用改优先级仍拒绝。浏览器前14组通过后旧说明断言受阻，按本次简化改为两项选择；后8组通过后旧面板外快捷项断言受阻，改为验证面板内双向完整顺序后末5组全部通过，原保存/并发/权限/离线断言保留。去除未使用导入后重新类型/Web构建；补上旧请求身份保护后，最终原生/Wasm重跑163项Rust、完整双运行环境、原生/Wasm Clippy和课堂/总结/离线/审核四组，得到17张最终合成截图，逐张检查且原字节登记SHA。新版单文件HTML通过17图解码、搜索、批注保存/导出及应用摘要、原图放大、320/390/1440与0JS异常；新旧批注隔离。PRD0.10同步，59条AC编号/附录D不变；不是用户/Opus/真机正式验收。仅本地提交，不推送/部署/读写生产，线上仍T57；三项旧UX建议、Opus/真机和implementationCommit保留。"
+    },
+    {
+      "id": "T59",
+      "title": "调整成对选项为平级视觉并覆盖HTML评审页后推送",
+      "status": "done",
+      "evidence": "docs/review-feedback-2026-10-30.md",
+      "verification": "2026-10-30按用户最新意见，将记录类型、机构记录视图、课时汇总口径、跟进内容和经验/困难共5组改为共享底框、等宽、相同白底/文字/字重，只以统一绿色下划线表示选中；分类色收为小圆点。今天两个记录入口同底色、字号、尺寸与字重，分类仅留细边。封装SectionTabs，不改选择值或保存/统计口径；显式aria-pressed供Web辅助技术读取，native仍保留selected状态。类型检查、正式Web构建、62客户端及6组本机浏览器全部通过；新增实际两种状态的同宽同高/同底色字体/选中语义断言，保留关联、共享修订、离线回执和双口径核对。首轮发现RNWeb未映射selected状态，补显式aria-pressed后整6组通过。原路径覆盖17张逐张核对的合成截图、checks和内嵌HTML，批注命名空间随应用摘要变化，保留原25条JSON和旧52图历史；HTML复验图片解码/搜索/保存导出及摘要/放大/320-390-1440。118项产物SHA更新并通过。PRD0.10补充平级约定，59条AC/附录D不变。此次无Rust/数据库/依赖/配置或业务变化，不重复称全量Rust/27组/真机已复验；implementationCommit与Opus/真机待办保留。按用户要求推送同分支，包含此前本地T58；普通提交不带发布标记，不部署，不读写生产。"
     }
   ],
   "artifacts": [
@@ -1001,13 +1008,13 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/01-today.png",
       "title": "今天：课堂与家庭入口",
       "synthetic": true,
-      "sha256": "b19237fe2f918d8c1fd565b700274de4e2a05185b5eea9889e785a70c4c96381"
+      "sha256": "e364895b66fba16fe931740bd22dd9cb67ea7b389cca34b65edf4a30e0ce6dd0"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/02-plan-coverage.png",
       "title": "计划先看近期覆盖",
       "synthetic": true,
-      "sha256": "415f6eac0a31c1559e7d3c22a6429e8a377489e5ec172ee02474a57ec02c9d16"
+      "sha256": "556317fe56423c95258e6dcb13cd899db0cd35f06a9b62f2106ef76d3bbf9169"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/03-plan-target-method.png",
@@ -1019,7 +1026,7 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/04-summary-basic.png",
       "title": "总结先记实际表现",
       "synthetic": true,
-      "sha256": "22154b72a26dad0fbac3e003ee6b6b296b128fcb7b8bbf6d59bb113d47c86196"
+      "sha256": "80ebc68440bcca4789f02b81c87ee92e06fa917de50d2e4525ede65b7d86e454"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/05-summary-new-knowledge.png",
@@ -1061,13 +1068,13 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/11-experience-tab.png",
       "title": "经验单独成库",
       "synthetic": true,
-      "sha256": "f5b6b712a922ac327b5e76fcf491faccd4d7e7e7b2d8f6ae1009027bb412c303"
+      "sha256": "e1b005e65ffa6236e3ef28756c103998e5e29ebaa56081043d83cada8efd81e6"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/12-difficulty-tab.png",
       "title": "困难单独成库",
       "synthetic": true,
-      "sha256": "6784748372e263e7ff00eb4903054387e738eaf517a2f74c1d015024524f4909"
+      "sha256": "55a1101032588583025c14b3b04b0eb490bd4e75dbf3cd265eff0dcecf396a4a"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/13-review-purpose.png",
@@ -1079,7 +1086,7 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/14-total-detail.png",
       "title": "汇总下方明确标出明细",
       "synthetic": true,
-      "sha256": "1c6deb92428051b79c44a252f61a7b60d499eee1e5663478169bc5c4545a9507"
+      "sha256": "0d4d861146f5982cec677c18c6ea731c39b47d132c91225eab3e7526f98ecbd1"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/15-long-priority.png",
@@ -1097,19 +1104,19 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/17-family-calendar.png",
       "title": "家庭干预月历",
       "synthetic": true,
-      "sha256": "1514b74e58a9e353d6efc87bb24c82709121c758c03e222262739168d0440aeb"
+      "sha256": "ed5a9dc0414c852379d5a4f681208d8d3fb61aed6f029173552e0a32c89832e0"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/checks.json",
       "title": "本轮审核整改流程与17图SHA",
       "synthetic": true,
-      "sha256": "aab2e499f6744e164f5622cf4c6e3189e9a0b410ea748bd58468800f3b1144c3"
+      "sha256": "00c550f505f13807b7c69b2fd28dd40dbe998b434e8ae50a0a66d2f4fe158898"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/review.html",
       "title": "内嵌17图及独立批注的单文件复审页",
       "synthetic": true,
-      "sha256": "1906986007f736a2b22c148930d8cf0fc3106b1c9ed50f0200dbf90414881c8d"
+      "sha256": "48b518b697ebb4320ecb48e9d980af34ef0a63c50e904c7c9be7f3289c02949f"
     }
   ]
 }

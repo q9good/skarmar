@@ -1,5 +1,5 @@
 import {Disclosure} from './disclosure';
-import {SectionButton} from './section-tabs';
+import {SectionButton,SectionTabs} from './section-tabs';
 import {GoalMethodPicker} from './goal-method-picker';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
@@ -150,8 +150,8 @@ export function FollowupHub({data,mode,refresh,requested,onRequested,adjustMetho
  {draftRecovery()}{Object.entries(drafts).map(([key,d])=><Button key={key} title={`继续跟进填写：${d.command.kind==='knowledge'?`经验或困难 · ${(d.command.value.details.title||d.command.value.input?.content||'尚未命名').slice(0,40)}`:d.command.kind==='action'?`下一步 · ${d.command.value.input.content.slice(0,40)}`:d.command.kind==='feedback'?`实践反馈 · ${(d.command.value.input?.observation||d.command.value.note||'待核对').slice(0,40)}`:d.command.kind==='review'?`复盘 · ${titleFor(d.command.value)}`:'家庭日程'}`} press={()=>{setEditor(key);setError('')}}/>)}
  {notice&&<Text role="status">{notice}</Text>}{error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}
  {mode==='full'&&<>
- <View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}><SectionButton title="要处理的" tone="tasks" selected={section==='tasks'} press={()=>setSection('tasks')}/><SectionButton title="经验库与困难" tone="experience" selected={section==='library'} press={()=>setSection('library')}/></View>
- {section==='library'&&<><View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}><SectionButton title="经验" tone="experience" selected={libraryKind==='experience'} press={()=>setLibraryKind('experience')}/><SectionButton title="困难" tone="difficulty" selected={libraryKind==='difficulty'} press={()=>setLibraryKind('difficulty')}/></View><SectionButton title={libraryKind==='experience'?'新建经验':'新建困难'} tone={libraryKind} disabled={!ready} press={()=>startKnowledge(libraryKind)}/></>}
+ <SectionTabs label="跟进内容" value={section} change={setSection} items={[{value:'tasks',title:'要处理的',tone:'tasks'},{value:'library',title:'经验库与困难',tone:'experience'}]}/>
+ {section==='library'&&<><SectionTabs label="资料类型" value={libraryKind} change={setLibraryKind} items={[{value:'experience',title:'经验',tone:'experience'},{value:'difficulty',title:'困难',tone:'difficulty'}]}/><SectionButton title={libraryKind==='experience'?'新建经验':'新建困难'} tone={libraryKind} disabled={!ready} press={()=>startKnowledge(libraryKind)}/></>}
  {section==='tasks'?<>
  <Check title="显示已完成或取消的下一步" checked={showClosedActions} press={()=>setShowClosedActions(v=>!v)}/>
  {data.actions.filter(a=>showClosedActions||['pending','in_plan'].includes(a.status)).map(a=><View key={a.input.id} style={{gap:5}}><Text>下一步：{a.input.content} · {a.assignee_name??'家人待认领'}</Text><Button title={`维护下一步：${a.input.content}`} press={()=>open({kind:'action',value:{id:a.input.id,operation_id:uuid(),expected_version:a.version,input:structuredClone(a.input),state:a.status,note:''}})}/></View>)}
