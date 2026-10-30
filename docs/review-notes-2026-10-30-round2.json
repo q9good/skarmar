@@ -1,0 +1,18 @@
+{
+  "review": "skarmar 2026-10-30",
+  "application_sha256": "3b9c7edc5cd37febefdbc14271b520a6f8b980f90948addab62d81b348dce228",
+  "notes": {
+    "01-today.png": {
+      "status": "需调整",
+      "note": "记录家庭、记录课堂要居中，要有一些元素说明是可点击操作的"
+    },
+    "06-lesson-basic.png": {
+      "status": "可用",
+      "note": ""
+    },
+    "11-experience-tab.png": {
+      "status": "需调整",
+      "note": "经验和困难用两种不同的颜色，同一个tab下的页面用不同色阶表示"
+    }
+  }
+}

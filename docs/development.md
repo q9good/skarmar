@@ -30,7 +30,29 @@ Rust。API 同时提供 Web 静态资源，开发端口为 3001，仅监听 127.
 为与原 checkout 的开发服务并行，可在此 worktree 根目录使用 `SKARMA_PORT=3002 bash tools/start-local.sh`。
 脚本默认使用 `.local/demo.db`，仅在没有目标时加入明确的示例目标，不清空现有数据库。
 首次使用先执行上面的 `admin-init`，隐藏输入密码；账号与启动服务使用同一数据库。已有账号时跳过初始化。
+
+没有内置默认密码；`owner`只是上述命令明确创建的用户名。无参数启动不会替你创建账号；已有管理员时使用当时设置的账号密码，不要为登录而删除数据库。
 首次安装 Rust 时按 rust-toolchain.toml 安装对应版本及 rustfmt、clippy。
+
+### 查看当前PRD新版界面
+
+`start-local.sh`没有指定`SKARMA_MODEL`时仍采用配置默认的旧模型`legacy`。
+本轮截图和新功能运行在`prd_v1`。若要查看新版，使用独立开发数据库，避免把原`.local/demo.db`直接作为另一种模型打开：
+
+```bash
+export SKARMA_MODEL=prd_v1
+export SKARMA_DEMO=0
+export SKARMA_DATABASE=.local/prd-dev.db
+bash tools/start-local.sh admin-init --username owner --name 家长
+```
+
+完成隐藏密码输入后，在同一个终端继续执行：
+
+```bash
+bash tools/start-local.sh
+```
+
+已有该数据库的账号则跳过初始化。重新打开终端后需再次设置相同三项变量；账号属于所选数据库，线上、本地旧库和这个新开发库不会自动同步账号。以上仅说明显式启动方式，没有修改脚本默认值或迁移任何数据库。
 
 UI 修改需要热更新时，保持 API 运行，在 `apps/client` 执行：
 

@@ -49,16 +49,36 @@ with sync_playwright() as p:
  for days in [1,3]:
   id=str(uuid4());call('PUT','/prd/sessions/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'action':'complete','input':{'business_date':(date.fromisoformat(today)-timedelta(days=days)).isoformat(),'time_slot':'晚上','targets':[{'goal_id':a['id'],'role':'main'}],'summary':{'targets':[{'goal_id':a['id'],'performed':True,'observation':'合成历史：示范后愿意轮流'}],'confirmation':'used','methods':[{'id':m['id'],'version':1}]}},'change_note':''})
  page.reload();expect(btn('记录课堂')).to_be_enabled()
- def assert_peers(label,left,right,selected):
+ def assert_peers(label,left,right,selected,colored=False):
   group=page.get_by_role('group',name=label,exact=True);expect(group).to_be_visible()
   controls=[group.get_by_role('button',name=n,exact=True) for n in [left,right]]
   boxes=[control.bounding_box() for control in controls];assert abs(boxes[0]['width']-boxes[1]['width'])<=1 and abs(boxes[0]['height']-boxes[1]['height'])<=1;assert all(b['height']>=44 for b in boxes)
-  styles=[control.evaluate("e=>{const s=getComputedStyle(e),t=getComputedStyle(e.querySelector('div:last-child'));return [s.backgroundColor,t.color,t.fontWeight,t.fontSize]}") for control in controls];assert styles[0]==styles[1],styles
+  styles=[control.evaluate("e=>{const s=getComputedStyle(e),t=getComputedStyle(e.querySelector('div:last-child'));return [s.backgroundColor,t.color,t.fontWeight,t.fontSize]}") for control in controls];assert styles[0][2:]==styles[1][2:],styles
+  if colored:assert styles[0][0]!=styles[1][0] and styles[0][1]!=styles[1][1],styles
+  else:assert styles[0]==styles[1],styles
   for control,name in zip(controls,[left,right]):assert control.get_attribute('aria-pressed')==str(name==selected).lower()
   return group
  classroom=btn('记录课堂');family=btn('记录家庭');assert classroom.evaluate('e=>getComputedStyle(e).backgroundColor')==family.evaluate('e=>getComputedStyle(e).backgroundColor')
  assert classroom.bounding_box()['width']==family.bounding_box()['width'];assert classroom.bounding_box()['height']==family.bounding_box()['height']
  assert classroom.evaluate('e=>getComputedStyle(e).borderLeftColor')!=family.evaluate('e=>getComputedStyle(e).borderLeftColor')
+ for control,title in [(classroom,'记录课堂'),(family,'记录家庭')]:
+  caption=control.get_by_text(title,exact=True);expect(caption).to_have_css('text-align','center');expect(control.get_by_text('›',exact=True)).to_be_visible()
+  centre=caption.evaluate("e=>{const r=document.createRange();r.selectNodeContents(e);const b=r.getBoundingClientRect();return b.x+b.width/2}");box=control.bounding_box();assert abs(centre-(box['x']+box['width']/2))<3,(title,centre,box)
+  assert control.evaluate('e=>getComputedStyle(e).cursor')=='pointer'
+ def library_shades(kind,id,title):
+  surface=page.get_by_test_id('knowledge-library');card=page.get_by_test_id('knowledge-card-'+id);action=btn('查看知识：'+title)
+  backgrounds=[el.evaluate('e=>getComputedStyle(e).backgroundColor') for el in [surface,card,action]];assert len(set(backgrounds))==3,backgrounds
+  # Labels remain readable on the category's deeper action shade.
+  colour=action.evaluate("e=>getComputedStyle(e.querySelector('div:last-child')).color")
+  def lum(raw):
+   rgb=[int(n)/255 for n in re.findall(r'\d+',raw)[:3]];linear=[n/12.92 if n<=.04045 else ((n+.055)/1.055)**2.4 for n in rgb];return sum(a*b for a,b in zip(linear,[.2126,.7152,.0722]))
+  a,b=sorted([lum(colour),lum(backgrounds[-1])]);assert (b+.05)/(a+.05)>=4.5,(colour,backgrounds[-1])
+  click('查看知识：'+title);heading=page.get_by_role('heading',name='经验与困难详情',exact=True);frame=heading.locator('..').locator('..');expect(frame).to_have_css('background-color',backgrounds[0]);click('关闭经验与困难详情')
+  click('新建经验' if kind=='experience' else '新建困难');heading=page.get_by_role('heading',name='记一条经验' if kind=='experience' else '记一条困难',exact=True);expect(heading.locator('..').locator('..')).to_have_css('background-color',backgrounds[0])
+  assert btn('保存跟进').evaluate('e=>getComputedStyle(e).backgroundColor')==colour
+  click('放弃这份本机跟进草稿');expect(page.get_by_role('dialog')).to_have_count(0)
+  return backgrounds
+
  shot('01-today')
  click('查看长期关注');click('调整关注优先级：'+long['input']['title']);select('长期关注优先级','2');shot('15-long-priority');click('保存');expect(page.get_by_role('dialog')).to_have_count(0)
  assert next(g for g in state()['goals'] if g['id']==long['id'])['input']['long_priority']==2
@@ -91,8 +111,8 @@ with sync_playwright() as p:
  click('完成');click('查看课记：合成课程：认知 · 合成老师：唐唐');click('整理这条记录');expect(page.get_by_text('把课堂线索用于下一次家庭干预',exact=True)).to_be_visible();check(a['input']['title']);check('实际方法：'+m['input']['title']);shot('08-lesson-links');click('保存整理');expect(page.get_by_role('dialog')).to_have_count(0)
  click('目标');click('查看目标：'+a['input']['title']);expect(page.get_by_role('heading',name='关联方法',exact=True)).to_be_visible();expect(page.get_by_role('heading',name='可参考的经验',exact=True)).to_be_visible();expect(page.get_by_role('heading',name='需要跟进的困难',exact=True)).to_be_visible();shot('09-goal-groups');close_all()
  click('方法');expect(btn('查看方法关联目标：'+a['input']['title'])).to_be_visible();shot('10-method-goals');click('查看方法关联目标：'+a['input']['title']);expect(page.get_by_role('dialog')).to_have_count(1);close_all()
- click('跟进');assert_peers('跟进内容','要处理的','经验库与困难','要处理的');expect(btn('新建经验')).to_have_count(0);click('经验库与困难');assert_peers('跟进内容','要处理的','经验库与困难','经验库与困难');assert_peers('资料类型','经验','困难','经验');expect(btn('新建经验')).to_be_visible();expect(btn('新建困难')).to_have_count(0);expect(page.get_by_text('困难：合成困难：换材料时需要支持',exact=True)).to_have_count(0);shot('11-experience-tab')
- click('困难');assert_peers('资料类型','经验','困难','困难');expect(btn('新建困难')).to_be_visible();expect(btn('新建经验')).to_have_count(0);expect(page.get_by_text('经验：合成经验：先选喜欢的材料',exact=True)).to_have_count(0);shot('12-difficulty-tab')
+ click('跟进');assert_peers('跟进内容','要处理的','经验库与困难','要处理的');expect(btn('新建经验')).to_have_count(0);click('经验库与困难');assert_peers('跟进内容','要处理的','经验库与困难','经验库与困难');assert_peers('资料类型','经验','困难','经验',colored=True);expect(btn('新建经验')).to_be_visible();expect(btn('新建困难')).to_have_count(0);expect(page.get_by_text('困难：合成困难：换材料时需要支持',exact=True)).to_have_count(0);experience_shades=library_shades('experience',exp['input']['id'],exp['details']['title']);shot('11-experience-tab')
+ click('困难');assert_peers('资料类型','经验','困难','困难',colored=True);expect(btn('新建困难')).to_be_visible();expect(btn('新建经验')).to_have_count(0);expect(page.get_by_text('经验：合成经验：先选喜欢的材料',exact=True)).to_have_count(0);difficulty_shades=library_shades('difficulty',diff['input']['id'],diff['details']['title']);assert all(a!=b for a,b in zip(experience_shades,difficulty_shades));shot('12-difficulty-tab')
  click('目标');click('查看目标：'+a['input']['title']);click('现在复盘这个对象');expect(page.get_by_text('当前观察标准：'+a['input']['criteria'],exact=True)).to_be_visible();click('复盘要解决什么');shot('13-review-purpose');click('复盘要解决什么')
  field('复盘依据与说明').fill('合成决定：熟悉材料继续轮流，新材料先示范');click('新增复盘下一步');field('复盘下一步 1').fill('合成下一步：只换一种新球');click('保存复盘');expect(page.get_by_role('dialog',name='逐项复盘',exact=True)).to_have_count(0);close_all()
  s=state();assert any(a['input']['content']=='合成下一步：只换一种新球' for a in s['actions'])

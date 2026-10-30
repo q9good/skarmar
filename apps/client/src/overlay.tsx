@@ -31,7 +31,7 @@ function pop() {
 }
 
 /** An explicitly opened detail; closing never unmounts the underlying form. */
-export function DetailOverlay({ title, close, children, footer }: { title: string; close: () => void; children: React.ReactNode;footer?:React.ReactNode }) {
+export function DetailOverlay({ title, close, children, footer, colors }: { title: string; close: () => void; children: React.ReactNode;footer?:React.ReactNode;colors?:{background:string;control:string;ink:string} }) {
   const renewal=useContext(SessionRenewalContext);
   const [viewport,setViewport]=useState<number|null>(null);
   useEffect(()=>{
@@ -75,11 +75,11 @@ export function DetailOverlay({ title, close, children, footer }: { title: strin
   return <Modal visible={historyReady} transparent accessibilityLabel={title} animationType="none" onRequestClose={() => closeRef.current()}>
     <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':undefined} style={{flex:1}}><View ref={frame} aria-hidden={!front} pointerEvents={front ? 'auto' : 'none'} style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0008', padding: 12,...(viewport?{height:viewport,maxHeight:viewport,flexGrow:0,flexShrink:0,flexBasis:'auto'}:{}) }}>
       <View accessibilityViewIsModal
-        style={{ width: '100%', maxWidth: 700, height:footer?(viewport?Math.floor(viewport*.92):'92%'):undefined,maxHeight: '92%', backgroundColor: '#F6F5EF', borderRadius: 16, padding: 16, gap: 12 }}>
+        style={{ width: '100%', maxWidth: 700, height:footer?(viewport?Math.floor(viewport*.92):'92%'):undefined,maxHeight: '92%', backgroundColor: colors?.background??'#F6F5EF', borderRadius: 16, padding: 16, gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12,flexShrink:0 }}>
-          <Text accessibilityRole="header" style={{ flex: 1, fontSize: 20, fontWeight: '600' }}>{title}</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel={`关闭${title}`} onPress={close} style={{ padding: 10, backgroundColor: '#E9F2E9', borderRadius: 10 }}>
-            <Text style={{ fontSize: 17 }}>关闭</Text>
+          <Text accessibilityRole="header" style={{ flex: 1, fontSize: 20, fontWeight: '600',...(colors?{color:colors.ink}:{}) }}>{title}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={`关闭${title}`} onPress={close} style={{ padding: 10, backgroundColor: colors?.control??'#E9F2E9', borderRadius: 10 }}>
+            <Text style={{ fontSize: 17,...(colors?{color:colors.ink}:{}) }}>关闭</Text>
           </Pressable>
         </View>
         {renewal?.expiresSoon&&title!=='续期登录'&&<Pressable accessibilityRole="button" onPress={renewal.renew} style={{padding:10,backgroundColor:'#FFF5DE',borderRadius:8,flexShrink:0}}><Text>登录即将到期，先验证登录再继续填写</Text></Pressable>}

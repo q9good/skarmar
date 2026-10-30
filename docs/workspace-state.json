@@ -416,6 +416,20 @@
       "status": "done",
       "evidence": "docs/review-feedback-2026-10-30.md",
       "verification": "2026-10-30按用户最新意见，将记录类型、机构记录视图、课时汇总口径、跟进内容和经验/困难共5组改为共享底框、等宽、相同白底/文字/字重，只以统一绿色下划线表示选中；分类色收为小圆点。今天两个记录入口同底色、字号、尺寸与字重，分类仅留细边。封装SectionTabs，不改选择值或保存/统计口径；显式aria-pressed供Web辅助技术读取，native仍保留selected状态。类型检查、正式Web构建、62客户端及6组本机浏览器全部通过；新增实际两种状态的同宽同高/同底色字体/选中语义断言，保留关联、共享修订、离线回执和双口径核对。首轮发现RNWeb未映射selected状态，补显式aria-pressed后整6组通过。原路径覆盖17张逐张核对的合成截图、checks和内嵌HTML，批注命名空间随应用摘要变化，保留原25条JSON和旧52图历史；HTML复验图片解码/搜索/保存导出及摘要/放大/320-390-1440。118项产物SHA更新并通过。PRD0.10补充平级约定，59条AC/附录D不变。此次无Rust/数据库/依赖/配置或业务变化，不重复称全量Rust/27组/真机已复验；implementationCommit与Opus/真机待办保留。按用户要求推送同分支，包含此前本地T58；普通提交不带发布标记，不部署，不读写生产。"
+    },
+    {
+      "id": "T60",
+      "title": "修正用户实际使用的原HTML评审入口并推送",
+      "status": "done",
+      "evidence": "docs/review-feedback-2026-10-30.md",
+      "verification": "2026-10-30原入口修正中用户曾说“算了”，当时未推送，保留本机草稿；本轮T61用户随后明确要求改完push，故原入口随新17图一并交付。原docs/artifacts/review-2026-10-29/review.html与validation镜像逐字节相同，旧52图HTML归档且原SHA8f52a6fb0594d489e5e1b145cde637d58aa6f9ad1ffb26c24241b2b990142c76保持不变。原25条批注/旧PNG保留；本轮从两个入口实际验证图片、批注及应用摘要，不把暂停时工作草稿算作已发布。无生产访问或部署。"
+    },
+    {
+      "id": "T61",
+      "title": "按新3条批注完成入口居中、点击提示及经验困难同色阶并推送",
+      "status": "done",
+      "evidence": "docs/review-feedback-2026-10-30.md",
+      "verification": "2026-10-30下载并保存原554字节JSON到docs/review-notes-2026-10-30-round2.json；其应用摘要3b9c7edc…与T59一致。两项需调整、一项可用：今天两入口标题按整体居中，右侧装饰箭头、指针和按下底色反馈；经验绿色/困难暖金，两个tab同框等宽及相同字号字重，页面底/卡片/按钮三层色阶，新建/详情/反馈与筛选标题延续所属主题。图06基础记课流程保留，最终截图与T59原图字节一致。仅可选展示props，无Rust/schema/依赖/配置或统计变动。类型/正式Web构建、62客户端、6组本机浏览器通过；新增真实文字中心误差<3px、箭头/指针、双色但同等字号/尺寸和aria-pressed、三层不同背景及动作文字4.5:1、新建与详情颜色匹配断言，空本机新建草稿明确放弃不产生业务记录。最后筛选标题调整后重新构建并单独复验完整审核流程。17张合成原图逐张查看，原入口和validation镜像HTML一致，批注/导出摘要/17图解码/搜索放大及320/390/1440复验；120项产物SHA登记。之前暂停的T60入口草稿保留并随本轮用户明确授权push完成，旧52图原SHA和25条原批注不改。不宣称全量Rust/27组/真机重验，implementationCommit、Opus/真机待办保留；推送原分支，无部署或生产读写。"
     }
   ],
   "artifacts": [
@@ -972,8 +986,8 @@
     },
     {
       "path": "docs/artifacts/review-2026-10-29/review.html",
-      "title": "52张内嵌截图的单文件交互审核文档",
-      "sha256": "8f52a6fb0594d489e5e1b145cde637d58aa6f9ad1ffb26c24241b2b990142c76",
+      "title": "最新17图评审页（用户原HTML入口，已覆盖）",
+      "sha256": "b03aa7fe4c5bfea55bcbd6fb742de355a23c942115cbf381ae204c1b5f2676e1",
       "synthetic": true
     },
     {
@@ -1008,7 +1022,7 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/01-today.png",
       "title": "今天：课堂与家庭入口",
       "synthetic": true,
-      "sha256": "e364895b66fba16fe931740bd22dd9cb67ea7b389cca34b65edf4a30e0ce6dd0"
+      "sha256": "ca2b20c9ea1a0a7f3b280f9a2de0a7963537ccfd401973a628865ece3064628f"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/02-plan-coverage.png",
@@ -1068,13 +1082,13 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/11-experience-tab.png",
       "title": "经验单独成库",
       "synthetic": true,
-      "sha256": "e1b005e65ffa6236e3ef28756c103998e5e29ebaa56081043d83cada8efd81e6"
+      "sha256": "fc993922369ae990268dccdf63279c436d1f0a18706d966933de119c642d3bdb"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/12-difficulty-tab.png",
       "title": "困难单独成库",
       "synthetic": true,
-      "sha256": "55a1101032588583025c14b3b04b0eb490bd4e75dbf3cd265eff0dcecf396a4a"
+      "sha256": "f20b5482dde74b49f9c6ec534577bb3616ea79dab05b7699bd85c31c72f89af3"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/13-review-purpose.png",
@@ -1086,7 +1100,7 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/14-total-detail.png",
       "title": "汇总下方明确标出明细",
       "synthetic": true,
-      "sha256": "0d4d861146f5982cec677c18c6ea731c39b47d132c91225eab3e7526f98ecbd1"
+      "sha256": "993701027290f2b294934104b256815ad33e3594ca6e6e28123f869ac3db44c6"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/15-long-priority.png",
@@ -1110,13 +1124,25 @@
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/checks.json",
       "title": "本轮审核整改流程与17图SHA",
       "synthetic": true,
-      "sha256": "00c550f505f13807b7c69b2fd28dd40dbe998b434e8ae50a0a66d2f4fe158898"
+      "sha256": "a425d23eadee127af14355791afbd621f6811d9d209be839344009673ffb21b3"
     },
     {
       "path": "docs/artifacts/validation/review-feedback-2026-10-30/review.html",
       "title": "内嵌17图及独立批注的单文件复审页",
       "synthetic": true,
-      "sha256": "48b518b697ebb4320ecb48e9d980af34ef0a63c50e904c7c9be7f3289c02949f"
+      "sha256": "b03aa7fe4c5bfea55bcbd6fb742de355a23c942115cbf381ae204c1b5f2676e1"
+    },
+    {
+      "path": "docs/artifacts/review-2026-10-29/review-historical.html",
+      "title": "原52图历史HTML（原字节归档）",
+      "synthetic": true,
+      "sha256": "8f52a6fb0594d489e5e1b145cde637d58aa6f9ad1ffb26c24241b2b990142c76"
+    },
+    {
+      "path": "docs/review-notes-2026-10-30-round2.json",
+      "title": "用户第二轮3条原批注（不含业务数据）",
+      "synthetic": false,
+      "sha256": "b4b681bfa31b86717c0216d61729c94658b4eddb538581ac58fe244b41553888"
     }
   ]
 }

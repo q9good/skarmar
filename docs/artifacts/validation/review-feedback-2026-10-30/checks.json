@@ -4,10 +4,10 @@
     {
       "path": "01-today.png",
       "title": "今天：课堂与家庭入口",
-      "description": "两个入口同底色、同尺寸和字重；只用蓝／暖棕细边提示类别，长期关注按家人设置的优先级排列。",
+      "description": "两个入口文字居中，右侧箭头及按下反馈提示可点击；同底色和字重，细边区分类别。",
       "width": 390,
       "height": 844,
-      "sha256": "e364895b66fba16fe931740bd22dd9cb67ea7b389cca34b65edf4a30e0ce6dd0"
+      "sha256": "ca2b20c9ea1a0a7f3b280f9a2de0a7963537ccfd401973a628865ece3064628f"
     },
     {
       "path": "02-plan-coverage.png",
@@ -84,18 +84,18 @@
     {
       "path": "11-experience-tab.png",
       "title": "经验单独成库",
-      "description": "与困难保持相同字号、字重和白色底面，统一绿线标出当前选中；经验单独列出与新建。",
+      "description": "经验使用绿色，同一页面按浅色底、中色卡片、深一档按钮分层；文字与困难同等尺寸和字重。",
       "width": 390,
       "height": 844,
-      "sha256": "e1b005e65ffa6236e3ef28756c103998e5e29ebaa56081043d83cada8efd81e6"
+      "sha256": "fc993922369ae990268dccdf63279c436d1f0a18706d966933de119c642d3bdb"
     },
     {
       "path": "12-difficulty-tab.png",
       "title": "困难单独成库",
-      "description": "经验／困难共用等宽分段底框，相同文字底色和统一选中下划线；只显示当前类型及对应新建。",
+      "description": "困难使用暖金色，同框等宽保持平级；页面底、卡片、按钮和详情沿用同色系的深浅层次。",
       "width": 390,
       "height": 844,
-      "sha256": "55a1101032588583025c14b3b04b0eb490bd4e75dbf3cd265eff0dcecf396a4a"
+      "sha256": "f20b5482dde74b49f9c6ec534577bb3616ea79dab05b7699bd85c31c72f89af3"
     },
     {
       "path": "13-review-purpose.png",
@@ -111,7 +111,7 @@
       "description": "标题写明老师或课程、选中的名称、日期范围和节数，支持收起；去掉金额线下计算提示。",
       "width": 390,
       "height": 844,
-      "sha256": "0d4d861146f5982cec677c18c6ea731c39b47d132c91225eab3e7526f98ecbd1"
+      "sha256": "993701027290f2b294934104b256815ad33e3594ca6e6e28123f869ac3db44c6"
     },
     {
       "path": "15-long-priority.png",
@@ -155,7 +155,7 @@
     "calendar_labels"
   ],
   "errors": [],
-  "application_sha256": "3b9c7edc5cd37febefdbc14271b520a6f8b980f90948addab62d81b348dce228",
+  "application_sha256": "d2c820aa82eb4842d030f0e67dac1df53aede09e97e7b4051001738b0825c1f2",
   "source_review_sha256": "bf1a9e217e5bfab5c30c923737a2123a0273a8fe5c1291ec652837cdd35a916a",
   "source_application_sha256": "28effa0107e3455216e499bc90b8367b2b0c371f418dd404fc8b659bd897ffab",
   "deployed": false,
@@ -164,14 +164,13 @@
     "合成数据展示统计，不是孩子真实表现或治疗效果",
     "旧UX03删除确认高度、UX04导入标签和UX05目标默认范围未在本轮改变"
   ],
-  "visual_revision": "equal_peer_choices",
-  "peer_groups": [
-    "记录类型",
-    "机构记录视图",
-    "课时汇总口径",
-    "跟进内容",
-    "资料类型"
-  ],
+  "latest_review": {
+    "path": "docs/review-notes-2026-10-30-round2.json",
+    "application_sha256": "3b9c7edc5cd37febefdbc14271b520a6f8b980f90948addab62d81b348dce228",
+    "notes": 3,
+    "changes": 2,
+    "accepted": 1
+  },
   "current_verification": {
     "typecheck": "passed",
     "web_build": "passed",
@@ -181,10 +180,18 @@
       "smoke_prd_today_web.py",
       "smoke_prd_r15_web.py",
       "smoke_prd_followups_web.py",
-      "smoke_prd_lessons_web.py",
-      "smoke_prd_feedback_web.py"
+      "smoke_prd_overlay_web.py",
+      "smoke_prd_lessons_web.py"
     ],
-    "peer_checks": "same geometry/surface/text, actual toggle and explicit aria-pressed in both states",
+    "targeted_checks": [
+      "centred captions and visible chevrons",
+      "pointer and actual button navigation",
+      "peer geometry and two-state selection",
+      "distinct category colours and three surface depths",
+      "new-form and detail background match category",
+      "action text contrast >= 4.5",
+      "accepted basic lesson screenshot unchanged"
+    ],
     "backend_changes": false,
     "deployed": false
   }
