@@ -10,7 +10,7 @@ with sync_playwright() as p:
  def login(who,trusted=False):
   who.goto(BASE);who.get_by_role('textbox',name='账号',exact=True).fill('owner');who.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');check=who.get_by_role('checkbox',name='在这台家庭设备保持登录约一年',exact=True);expect(check).to_have_attribute('aria-checked','false')
   if trusted:check.click()
-  btn('登录',who).click();expect(btn('记录上课',who)).to_be_enabled()
+  btn('登录',who).click();expect(btn('记录课堂',who)).to_be_enabled()
  login(page,True);cookie=next(c for c in a.cookies() if c['name']=='skarma_session');assert cookie['httpOnly'] and cookie['sameSite']=='Strict';assert cookie['expires']>__import__('time').time()+364*86400
  login(other)
  btn('我的账号').click();btn('退出其他设备').click();btn('取消退出其他设备').click()
@@ -24,7 +24,7 @@ with sync_playwright() as p:
    response=route.fetch();body=response.json();body['session']={'expires_at':__import__('time').time()+seconds,'trusted_device':True};route.fulfill(response=response,json=body)
   return handler
  # Keep server metadata consistent for the whole phase, including concurrent refreshes.
- outside=expires_in(14*86400+60);page.route('**/api/auth/me',outside);page.reload();expect(btn('记录上课')).to_be_enabled();expect(btn('重新验证并继续填写')).to_have_count(0)
+ outside=expires_in(14*86400+60);page.route('**/api/auth/me',outside);page.reload();expect(btn('记录课堂')).to_be_enabled();expect(btn('重新验证并继续填写')).to_have_count(0)
  page.unroute('**/api/auth/me',outside)
  inside=expires_in(14*86400-60);page.route('**/api/auth/me',inside);page.reload();expect(btn('重新验证并继续填写')).to_be_visible();btn('目标').click();btn('继续填写：续期保留填写').click();expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期保留填写')
  # Reauthenticate from the active form itself; it must remain mounted under the renewal overlay.

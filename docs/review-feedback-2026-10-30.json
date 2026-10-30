@@ -1,0 +1,106 @@
+{
+  "review": "skarmar 2026-10-29",
+  "application_sha256": "28effa0107e3455216e499bc90b8367b2b0c371f418dd404fc8b659bd897ffab",
+  "notes": {
+    "03-empty.png": {
+      "status": "需调整",
+      "note": "记录的名字改为：记录课堂、记录家庭，并且用两个不同颜色区分，且颜色主题要和现在的灰绿搭配"
+    },
+    "07-today-small.png": {
+      "status": "可用",
+      "note": ""
+    },
+    "06-today.png": {
+      "status": "待审核",
+      "note": "长期关注应该有个人工可调整的优先级，根据这个显示排序"
+    },
+    "14-plan.png": {
+      "status": "需调整",
+      "note": "需要把全部方向的近况放这里的前面，才能知道哪些需要重点覆盖，这个节目需要调整，内容太复杂了。我的本意是计划目标和方法，如果有经验和困难的话，这时要显示出来"
+    },
+    "15-balance.png": {
+      "status": "待审核",
+      "note": "没有真实数据，无法审核"
+    },
+    "16-summary.png": {
+      "status": "需调整",
+      "note": "这一页提交了图17又怎么进入，用之前的方式有一个选择框，如果有补充的话就弹出录入？"
+    },
+    "17-summary-difficulty.png": {
+      "status": "需调整",
+      "note": "这里是记录经验和困难的，但实际情况/成人回应/原因猜测只勉强能对上困难吧。除了反馈已有经验/困难，还得有新增"
+    },
+    "19-course-picker.png": {
+      "status": "可用",
+      "note": ""
+    },
+    "20-lesson-basic.png": {
+      "status": "需调整",
+      "note": "只保留课程名称、授课老师这两行，及后面的下拉选项"
+    },
+    "21-lesson-saved.png": {
+      "status": "可用",
+      "note": ""
+    },
+    "22-lesson-observation.png": {
+      "status": "需调整",
+      "note": "补充观察的维度不太对，大概是老师明确强调了要去做的/可用的办法，自己看到表现不好需提高的，自己看到的好方法"
+    },
+    "23-lesson-links.png": {
+      "status": "需调整",
+      "note": "这一页干什么的"
+    },
+    "05-goal-form.png": {
+      "status": "可用",
+      "note": ""
+    },
+    "09-goals.png": {
+      "status": "可用",
+      "note": ""
+    },
+    "10-goals-desktop.png": {
+      "status": "可用",
+      "note": ""
+    },
+    "11-goal-links.png": {
+      "status": "需调整",
+      "note": "不同内容全部显示在一起，需要做区分"
+    },
+    "12-methods.png": {
+      "status": "需调整",
+      "note": "没有显示和目标的关联"
+    },
+    "24-classroom.png": {
+      "status": "需调整",
+      "note": "和之前页面一样，颜色主题可以更丰富一点，用另一个颜色表示家庭干预吧"
+    },
+    "25-teacher-totals.png": {
+      "status": "需调整",
+      "note": "金额线下计算可以删掉"
+    },
+    "26-course-totals.png": {
+      "status": "待审核",
+      "note": "为什么底部有认知唐唐，是详情么？"
+    },
+    "27-calendar.png": {
+      "status": "需调整",
+      "note": "已完成的字样完全不必要"
+    },
+    "31-follow-tasks.png": {
+      "status": "需调整",
+      "note": "tab 的显示同之前，用不同颜色"
+    },
+    "32-library.png": {
+      "status": "需调整",
+      "note": "经验和困难也要用tab分开显示，新建也下沉到经验/困难对应的tab里"
+    },
+    "33-new-experience.png": {
+      "status": "可用",
+      "note": ""
+    },
+    "37-review.png": {
+      "status": "需调整",
+      "note": "复盘的目的是什么？现在的内容对其有支持作用么？"
+    }
+  }
+}

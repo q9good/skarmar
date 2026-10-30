@@ -27,7 +27,7 @@ with sync_playwright() as p:
     def shot(name):
         page.evaluate("()=>{for(const e of document.querySelectorAll('*'))if(['auto','scroll'].includes(getComputedStyle(e).overflowY))e.scrollTop=0;}")
         page.screenshot(path=str(OUT/(name+'.png')))
-    page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录上课')).to_be_enabled()
+    page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录课堂')).to_be_enabled()
     today=page.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())")
     long=entity('goal',{'title':'合成交往方向','level':'long'})
     entity('goal',{'title':'合成学习方向','level':'long'});entity('goal',{'title':'合成生活方向','level':'long'})
@@ -41,7 +41,7 @@ with sync_playwright() as p:
     def lesson(day,course,teacher):
         id=str(uuid4());return call('PUT','/prd/lessons/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':{'business_date':day,'course_id':course['id'],'teacher_id':teacher['id']}}})
     for c,t in [(c1,t1),(c1,t2),(c2,t1)]:lesson(last.isoformat(),c,t)
-    page.reload();expect(btn('记录上课')).to_be_enabled()
+    page.reload();expect(btn('记录课堂')).to_be_enabled()
     card=btn('查看长期关注');expect(card).to_contain_text('合成交往方向');expect(card).to_contain_text('合成学习方向');expect(card).to_contain_text('合成生活方向')
     expect(btn('使用说明与手机桌面入口')).to_have_count(0);shot('today-directions')
 
@@ -63,7 +63,7 @@ with sync_playwright() as p:
     click('今天');expect(btn('继续填写：领域 · 未填写名称')).to_have_count(0)
     click('我的账号');click('本机未完成填写');click('继续填写：领域 · 未填写名称');expect(btn('保存')).to_be_disabled()
     click('放弃这份填写');click('继续填写');expect(field('领域名称')).to_be_visible();click('放弃这份填写');click('确认放弃这份填写');click('返回')
-    page.reload();expect(btn('记录上课')).to_be_enabled();click('目标');expect(btn('继续填写：领域 · 未填写名称')).to_have_count(0)
+    page.reload();expect(btn('记录课堂')).to_be_enabled();click('目标');expect(btn('继续填写：领域 · 未填写名称')).to_have_count(0)
     click('新建目标');field('本领名称').fill('合成未提交目标');click('保留草稿并退出');expect(btn('继续填写：合成未提交目标')).to_be_visible()
     click('今天');expect(btn('继续填写：合成未提交目标')).to_have_count(0);click('目标');click('继续填写：合成未提交目标');expect(field('本领名称')).to_have_value('合成未提交目标')
     click('放弃这份填写');click('确认放弃这份填写');assert not any(g['input']['title']=='合成未提交目标' for g in state()['goals'])
@@ -81,7 +81,7 @@ with sync_playwright() as p:
     click('关闭关联目标与方法');page.get_by_role('combobox',name='经验阶段',exact=True).select_option('idea');click('保存跟进');expect(page.get_by_role('dialog')).to_have_count(0)
     k=next(k for k in state()['knowledge'] if k['details']['title']=='合成分层经验')
     assert set(k['input']['goal_ids'])=={long['id'],short['id']} and k['input']['method_ids']==[shared['id']]
-    click('新建困难');field('困难名称（必填）').fill('合成分层困难');field('困难描述').fill('换材料后需要再示范');click('选择关联目标与方法')
+    click('困难');click('新建困难');field('困难名称（必填）').fill('合成分层困难');field('困难描述').fill('换材料后需要再示范');click('选择关联目标与方法')
     click('展开关联层级：合成交往方向');page.get_by_role('checkbox',name='关联目标：合成轮流目标',exact=True).click();click('展开关联层级：合成轮流目标');page.get_by_role('checkbox',name='关联方法：合成小步示范',exact=True).click()
     click('关闭关联目标与方法');click('保存跟进');expect(page.get_by_role('dialog')).to_have_count(0)
     k=next(k for k in state()['knowledge'] if k['details']['title']=='合成分层困难');assert k['input']['goal_ids']==[medium['id']] and k['input']['method_ids']==[own['id']]
@@ -95,7 +95,7 @@ with sync_playwright() as p:
     click('按老师汇总');expect(page.get_by_text('这个月还没有上课记录。',exact=True)).to_be_visible()
     print('PASS teacher default/course toggle uses previous calendar month, matching counts and independent drill-downs without stale selection across months',flush=True)
 
-    click('今天');click('记录上课')
+    click('今天');click('记录课堂')
     click('课程名称（必填）：请选择课程');click('合成认知课',page.get_by_role('dialog',name='选择课程',exact=True))
     click('授课老师（必填）：请选择老师');click('合成甲老师',page.get_by_role('dialog',name='选择老师',exact=True))
     held=[]
@@ -114,7 +114,7 @@ with sync_playwright() as p:
     expect(btn('补充课堂观察')).to_be_visible();expect(page.get_by_text(re.compile('^待上传课记与选项：'))).to_have_count(0)
     latest=next(l for l in state()['lessons'] if l['observation']['business_date']==today)
     assert len(call('GET','/prd/lessons/'+latest['id']+'/history'))==1
-    other=ctx.new_page();other.goto(BASE);expect(btn('记录上课',other)).to_be_enabled()
+    other=ctx.new_page();other.goto(BASE);expect(btn('记录课堂',other)).to_be_enabled()
     expect(other.get_by_text(re.compile('^合成认知课 · 合成甲老师')).first).to_be_visible()
     assert not errors,errors
     print('PASS submit starts a real upload immediately, waits for authoritative receipt before success, creates exactly one server history entry and is visible in another browser page',flush=True)

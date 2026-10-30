@@ -1,5 +1,5 @@
 import type { Catalog, Goal, Method } from './foundation';
-export type Observation = { course_started?:boolean; business_date: string; course_id: string; teacher_id: string; notes: string; teacher_notes: string; progress_notes: string; interest_notes: string; difficulty_notes: string; cause_guess: string; request_review: boolean; review_message: string };
+export type Observation = { helpful_notes?:string;course_started?:boolean; business_date: string; course_id: string; teacher_id: string; notes: string; teacher_notes: string; progress_notes: string; interest_notes: string; difficulty_notes: string; cause_guess: string; request_review: boolean; review_message: string };
 export type CatalogSnapshot = { id: string; version: number; kind: 'course'|'teacher'; name: string };
 export type Target = { goal_id: string; note: string };
 export type Organization = { feedback_ids?:string[]; seen_observation_version: number; targets: { target: Target; goal: Goal; ancestors:Goal[] }[]; methods: Method[]; focus_goals: Goal[]; processed_request_generation: number; state: string; claimed_by: string|null; claimed_name: string|null; outcome: string };
@@ -20,7 +20,7 @@ export function decodeLessonDrafts(raw: string|null): Record<string,LessonDraft>
   const object = (v:unknown):v is Record<string,unknown> => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
   const strings = (v:unknown):v is string[] => Array.isArray(v) && v.every(s=>typeof s==='string');
   const integer = (v:unknown) => Number.isSafeInteger(v) && Number(v)>0;
-  const observation = (v:unknown) => object(v) && (v.course_started===undefined||typeof v.course_started==='boolean') && ['business_date','course_id','teacher_id','notes','teacher_notes','progress_notes','interest_notes','difficulty_notes','cause_guess','review_message'].every(k=>typeof v[k]==='string') && typeof v.request_review==='boolean';
+  const observation = (v:unknown) => object(v) && (v.helpful_notes===undefined||typeof v.helpful_notes==='string') && (v.course_started===undefined||typeof v.course_started==='boolean') && ['business_date','course_id','teacher_id','notes','teacher_notes','progress_notes','interest_notes','difficulty_notes','cause_guess','review_message'].every(k=>typeof v[k]==='string') && typeof v.request_review==='boolean';
   const bindings = (v:Record<string,unknown>) => typeof v.id==='string' && typeof v.content==='string' && strings(v.goal_ids) && strings(v.method_ids);
   const write = (v:unknown):v is LessonWrite => {
     if (!object(v) || typeof v.id!=='string' || !v.id || typeof v.operation_id!=='string' || !v.operation_id || !(v.expected_version===null || integer(v.expected_version)) || !object(v.action)) return false;
@@ -44,7 +44,7 @@ export const emptyObservation = (today: string): Observation => ({ business_date
 export const organizationOf = (l: Lesson): OrganizationInput => ({ seen_observation_version: l.observation_version, targets: l.organization.targets.map(t => t.target), method_ids: l.organization.methods.map(m => m.id), focus_goal_ids: l.organization.focus_goals.map(g => g.id), processing: 'keep', request_generation: l.request_generation, outcome: l.organization.outcome, new_knowledge: [], new_actions: [] });
 export const needsReview = (l: Lesson) => l.status === 'recorded' && l.request_generation > 0 && (l.organization.processed_request_generation < l.request_generation || l.organization.state !== 'done');
 export const countable = (l: Lesson) => l.status === 'recorded';
-export const observationText = (v: Observation) => [v.notes,v.teacher_notes,v.progress_notes,v.interest_notes,v.difficulty_notes,v.cause_guess].filter(Boolean).join('\n');
+export const observationText = (v: Observation) => [v.notes,v.teacher_notes,v.helpful_notes,v.progress_notes,v.interest_notes,v.difficulty_notes,v.cause_guess].filter(Boolean).join('\n');
 export function lessonSearchSources(lesson: Lesson, knowledge: Knowledge[], query: string) {
   const needle=query.trim();
   if(!needle)return [];
@@ -53,7 +53,7 @@ export function lessonSearchSources(lesson: Lesson, knowledge: Knowledge[], quer
   if(lesson.course.name.includes(needle))add('课程');
   if(lesson.teacher.name.includes(needle))add('老师');
   if(lesson.observation.teacher_notes.includes(needle))add('老师建议');
-  if([lesson.observation.notes,lesson.observation.progress_notes,lesson.observation.interest_notes,lesson.observation.difficulty_notes,lesson.observation.cause_guess].some(value=>value.includes(needle)))add('课堂观察');
+  if([lesson.observation.notes,lesson.observation.helpful_notes??'',lesson.observation.progress_notes,lesson.observation.interest_notes,lesson.observation.difficulty_notes,lesson.observation.cause_guess].some(value=>value.includes(needle)))add('课堂观察');
   for(const item of knowledge)if(!item.deleted&&item.source_lesson_id===lesson.id&&item.input.content.includes(needle))add(item.input.kind==='difficulty'?'关联困难':'关联经验');
   return sources;
 }

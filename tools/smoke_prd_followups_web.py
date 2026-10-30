@@ -15,7 +15,7 @@ with sync_playwright() as p:
  def click(page,name):reveal_control(page,'button',name).click()
  def field(page,name):return reveal_control(page,'textbox',name)
  def login(page,user,password):
-  page.goto(BASE);field(page,'账号').fill(user);page.get_by_label('密码',exact=True).fill(password);click(page,'登录');expect(button(page,'记录上课')).to_be_visible()
+  page.goto(BASE);field(page,'账号').fill(user);page.get_by_label('密码',exact=True).fill(password);click(page,'登录');expect(button(page,'记录课堂')).to_be_visible()
  def call(method,path,body=None):
   r=first.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  def state():return call('GET','/prd/state')
@@ -47,7 +47,7 @@ with sync_playwright() as p:
  # Same-object edits never silently overwrite another member.
  click(a,'编辑经验或困难');field(a,'做法与依据').fill('测试：未提交经验内容');click(b,'编辑经验或困难');field(b,'做法与依据').fill('测试：家人更新经验内容');save(b)
  a.evaluate("window.dispatchEvent(new Event('focus'))");expect(a.get_by_text('已有新版本，你的填写仍保留。请核对最新内容后再保存。',exact=True)).to_be_visible();expect(field(a,'做法与依据')).to_have_value('测试：未提交经验内容');expect(button(a,'保存跟进')).to_be_disabled();click(a,'备份填写并载入最新跟进');expect(field(a,'做法与依据')).to_have_value('测试：家人更新经验内容');expect(a.get_by_text('测试：未提交经验内容',exact=True)).to_be_visible();save(a);close(a,'经验与困难详情');close(b,'经验与困难详情')
- click(a,'经验库与困难');click(a,'新建困难');field(a,re.compile(r'^(?:经验|困难)名称（必填）$')).fill('测试等待困难');field(a,'困难描述').fill('测试：等待时还需要支持');fill_bindings(a);click(a,'补充条件、成人回应与比较口径');field(a,'比较口径').fill('每次5次机会');field(a,'比较所用的帮助条件').fill('示范一次');save(a,parent=False);detail(a,'测试等待困难');diff=next(k for k in state()['knowledge'] if k['input']['kind']=='difficulty');did=diff['input']['id']
+ click(a,'经验库与困难');click(a,'困难');click(a,'新建困难');field(a,re.compile(r'^(?:经验|困难)名称（必填）$')).fill('测试等待困难');field(a,'困难描述').fill('测试：等待时还需要支持');fill_bindings(a);click(a,'补充条件、成人回应与比较口径');field(a,'比较口径').fill('每次5次机会');field(a,'比较所用的帮助条件').fill('示范一次');save(a,parent=False);detail(a,'测试等待困难');diff=next(k for k in state()['knowledge'] if k['input']['kind']=='difficulty');did=diff['input']['id']
  for i in range(3):
   click(a,'记录本次困难跟进');reveal_control(a,'combobox','本次结果').select_option('same');field(a,'本次实际观察').fill(f'测试：可比观察{i+1}');reveal_control(a,'checkbox','家人确认：同口径、同帮助条件，可比较').click();save(a)
   if i<2:assert button(a,'查看并确认重点与每周回看').count()==0

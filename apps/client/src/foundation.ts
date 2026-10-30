@@ -2,7 +2,7 @@ import type {Session} from './prd-sessions';
 import type { Lesson, Knowledge, NextAction } from './prd-lessons';
 import type { Level } from './api';
 export type CatalogSnapshot = { id: string; version: number; kind: 'course' | 'teacher' | 'domain'; name: string };
-export type GoalInput = { resume_on?:string|null;title: string; level: Level; meaning: string; parent_id: string | null; domain: CatalogSnapshot | null; criteria: string; support: string;
+export type GoalInput = { long_priority?:number|null;resume_on?:string|null;title: string; level: Level; meaning: string; parent_id: string | null; domain: CatalogSnapshot | null; criteria: string; support: string;
   template: 'count' | 'duration' | 'steps' | 'text' | null; state: 'not_started' | 'active' | 'maintaining' | 'paused' | 'achieved' | null;
   archived: boolean; frequency: 'weekly' | 'fortnightly' | 'monthly' | 'none' | null; attention_start: string | null; due: string | null };
 export type MethodInput = { basis?:{id:string;version:number}[]; resume_on?:string|null;title: string; description: string; steps: string; observe: string; scope: string; goal_ids: string[]; guidance: string;
@@ -44,6 +44,8 @@ export function mutationOf(saved: Saved): Mutation {
 export const nameOf = (mutation: Mutation) => mutation.kind === 'catalog' ? mutation.value.name : mutation.value.title;
 export const levelNames = { long: '长期方向', medium: '中期目标', short: '近期本领' };
 export const goalStateName = (g: GoalInput) => ({ not_started: '未开始', active: g.level === 'long' ? '关注中' : '重点推进', maintaining: '维持', paused: '暂停', achieved: '已达成' }[g.state ?? 'active']);
+export const longDirectionsOf = (data:Snapshot) => data.goals.filter(g=>g.input.level==='long'&&!g.input.archived)
+  .sort((a,b)=>(b.input.long_priority??1)-(a.input.long_priority??1));
 export const examples = { count: '例如：5次轮流机会中，3次只需一次提醒', duration: '例如：一起看绘本4分钟，提示两次', steps: '例如：能自己开水龙头，涂皂时需示范', text: '例如：需要帮助时会主动表达' };
 
 /** Reject malformed local queues without deleting the original browser value. */
@@ -56,7 +58,7 @@ export function decodeDrafts(raw: string | null): Record<string, Draft> {
     if (m.kind === 'goal') {
       const legacyKeys=Object.keys(newGoal()).filter(k=>!['domain','due','support'].includes(k));
       const domain=v.domain;
-      return legacyKeys.every(k => k in v) && typeof v.title === 'string' && typeof v.meaning === 'string' && typeof v.criteria === 'string' && ['long','medium','short'].includes(String(v.level)) && typeof v.archived === 'boolean' &&
+      return legacyKeys.every(k => k in v) && (v.long_priority===undefined||v.long_priority===null||Number.isInteger(v.long_priority)&&Number(v.long_priority)>=0&&Number(v.long_priority)<=2) && typeof v.title === 'string' && typeof v.meaning === 'string' && typeof v.criteria === 'string' && ['long','medium','short'].includes(String(v.level)) && typeof v.archived === 'boolean' &&
         (v.support===undefined||typeof v.support==='string') && (v.due===undefined||v.due===null||typeof v.due==='string') &&
         (domain===undefined||domain===null||record(domain)&&typeof domain.id==='string'&&Number.isSafeInteger(domain.version)&&Number(domain.version)>0&&domain.kind==='domain'&&typeof domain.name==='string');
     }

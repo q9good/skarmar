@@ -883,7 +883,17 @@ pub fn context(db: &dyn Sql, kind: &str, id: &str, page: u32) -> Result<Value> {
         }
         lessons += 1;
         let changes = super::review_changes::lesson(&l);
-        evidence.push(value!({"changes":changes,"source":{"kind":"lesson","id":l.id,"version":l.version},"business_date":l.observation.business_date,"observation":l.observation.notes,"adult":l.observation.teacher_notes,"conditions":l.observation.difficulty_notes,"signals":[]}));
+        let adult = if l.observation.helpful_notes.is_empty() {
+            l.observation.teacher_notes.clone()
+        } else {
+            format!(
+                "{}\n家人观察到的好方法：{}",
+                l.observation.teacher_notes, l.observation.helpful_notes
+            )
+            .trim()
+            .to_owned()
+        };
+        evidence.push(value!({"changes":changes,"source":{"kind":"lesson","id":l.id,"version":l.version},"business_date":l.observation.business_date,"observation":l.observation.notes,"adult":adult,"conditions":l.observation.difficulty_notes,"signals":[]}));
     }
     if kind == "goal" {
         for typ in ["moment", "measurement"] {

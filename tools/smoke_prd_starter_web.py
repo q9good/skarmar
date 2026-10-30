@@ -30,7 +30,7 @@ with sync_playwright() as p:
         field(page, '账号').fill(username)
         page.get_by_label('密码', exact=True).fill('synthetic-prd-ui-password')
         click(page, '登录')
-        expect(button(page, '记录上课')).to_be_enabled()
+        expect(button(page, '记录课堂')).to_be_enabled()
 
     def call(method, path, body=None):
         r = admin_ctx.request.fetch(BASE + '/api' + path, method=method, data=body, headers={'X-Skarma-Request': '1', 'X-Skarma-Contract': 'skarmar.prd.v1'})
@@ -109,7 +109,7 @@ with sync_playwright() as p:
     click(page, '保存')
     expect(page.get_by_role('dialog')).to_have_count(0)
     page.reload()
-    expect(button(page, '记录上课')).to_be_enabled()
+    expect(button(page, '记录课堂')).to_be_enabled()
     page.wait_for_function("Object.keys(localStorage).some(k=>k.endsWith('prd-drafts:v1') && Object.values(JSON.parse(localStorage.getItem(k))).some(d=>d.mutation.value.title==='合成保留的原目标'))")
     assert len(state()['goals']) == 7
     own = next(g for g in state()['goals'] if g['input']['title'] == '合成个体化生活目标')

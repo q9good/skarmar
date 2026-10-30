@@ -17,14 +17,14 @@ with sync_playwright() as p:
     def click(page,name):btn(page,name).click()
     def field(page,name):return page.get_by_role('textbox',name=name,exact=True)
     def login(page,user,password):
-        page.goto(BASE);field(page,'账号').fill(user);page.get_by_label('密码',exact=True).fill(password);click(page,'登录');expect(btn(page,'记录上课')).to_be_enabled()
+        page.goto(BASE);field(page,'账号').fill(user);page.get_by_label('密码',exact=True).fill(password);click(page,'登录');expect(btn(page,'记录课堂')).to_be_enabled()
     def shot(page,key,title,description,focus):
         focus.scroll_into_view_if_needed();page.screenshot(path=str(OUT/(key+'.png')))
         shots.append({'file':key+'.png','title':title,'section':'账号与初始设置','description':description,'width':390,'height':844})
     member.goto(BASE);click(member,'申请注册');field(member,'账号').fill('review-member');field(member,'称呼').fill('审核演示家人');field(member,'邮箱').fill('review-member@example.test');member.get_by_label('密码',exact=True).fill('s');member.get_by_label('再次输入密码',exact=True).fill('s');click(member,'提交注册申请')
     expect(member.get_by_text('注册申请已提交。管理员审批通过后，就可以使用刚设置的密码登录。',exact=True)).to_be_visible()
     shot(member,'registration-receipt','注册实际提交与待审批','实际用单字符合成密码提交成功，没有12位限制；审批前不能登录，邮箱仅作申请人提供的信息。',btn(member,'登录'))
-    member.get_by_label('密码',exact=True).fill('s');click(member,'登录');expect(member.get_by_role('alert').last).to_be_visible();expect(btn(member,'记录上课')).to_have_count(0)
+    member.get_by_label('密码',exact=True).fill('s');click(member,'登录');expect(member.get_by_role('alert').last).to_be_visible();expect(btn(member,'记录课堂')).to_have_count(0)
     login(admin,'owner','synthetic-prd-ui-password');click(admin,'我的账号');expect(btn(admin,'批准')).to_be_visible()
     shot(admin,'account-approval','管理员审批注册申请','管理员实际批准申请后，原密码可登录；拒绝和账号停用／恢复均有独立验证。',btn(admin,'批准'))
     click(admin,'批准');expect(admin.get_by_text('审核演示家人 的申请已批准，可以登录。',exact=True)).to_be_visible()

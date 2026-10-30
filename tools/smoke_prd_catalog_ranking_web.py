@@ -23,7 +23,7 @@ with sync_playwright() as p:
         page.get_by_role('textbox', name='账号', exact=True).fill(user)
         page.get_by_label('密码', exact=True).fill('synthetic-prd-ui-password')
         button(page, '登录').click()
-        expect(button(page, '记录上课')).to_be_enabled()
+        expect(button(page, '记录课堂')).to_be_enabled()
 
     def call(method, path, body=None):
         response = setup.request.fetch(BASE + '/api' + path, method=method, data=body, headers={'X-Skarma-Request': '1', 'X-Skarma-Contract': 'skarmar.prd.v1'})
@@ -73,10 +73,10 @@ with sync_playwright() as p:
     def choose(kind, name, selected=''):
         button(picker(kind, selected), name).click()
 
-    button(page, '记录上课').click()
+    button(page, '记录课堂').click()
     choose('课程', course_names[0])
     expect(button(page, '授课老师（必填）：请选择老师')).to_be_visible()
-    assert order(page.get_by_role('dialog', name='记录上课', exact=True), teacher_names) == teacher_names[:3]
+    assert order(page.get_by_role('dialog', name='记录课堂', exact=True), teacher_names) == [], 'Shortcuts are inside the two-field chooser now'
     panel = picker('老师')
     assert order(panel, teacher_names) == teacher_names, order(panel, teacher_names)
     expect(panel.get_by_text('按这门课程的历史授课次数排序', exact=True)).to_be_visible()
@@ -114,10 +114,10 @@ with sync_playwright() as p:
     expect(button(page, '检查连接并继续上传')).to_have_count(0, timeout=20000)
     saved = [row for row in call('GET', '/prd/state')['lessons'] if row['creator_name'] == '合成排序家人']
     assert len(saved) == 1 and saved[0]['course']['id'] == courses[2]['id'] and saved[0]['teacher']['id'] == paired['id']
-    button(page, '记录上课').click()
+    button(page, '记录课堂').click()
     choose('老师', teacher_names[0])
     expect(button(page, '课程名称（必填）：请选择课程')).to_be_visible()
-    assert order(page.get_by_role('dialog', name='记录上课', exact=True), course_names) == [course_names[1], course_names[0], course_names[2]]
+    assert order(page.get_by_role('dialog', name='记录课堂', exact=True), course_names) == [], 'All ranked choices are inside the selector'
     panel = picker('课程')
     assert order(panel, course_names) == [course_names[1], course_names[0], course_names[2]]
     assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')

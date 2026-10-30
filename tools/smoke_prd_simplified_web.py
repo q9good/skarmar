@@ -15,7 +15,7 @@ with sync_playwright() as p:
  def click(page,name):btn(page,name).click()
  def field(page,name):return page.get_by_role('textbox',name=name,exact=True)
  def login(page,user='owner'):
-  page.goto(BASE);field(page,'账号').fill(user);page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click(page,'登录');expect(btn(page,'记录上课')).to_be_enabled()
+  page.goto(BASE);field(page,'账号').fill(user);page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click(page,'登录');expect(btn(page,'记录课堂')).to_be_enabled()
  def call(ctx,method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,(r.status,r.text());return r.json()
  def entity(kind,value):
@@ -56,17 +56,17 @@ with sync_playwright() as p:
  method=call(ctx,'GET','/prd/state')['methods'][0];assert method['input']['goal_ids']==[goals[1]['id']] and method['input']['observe']=='观察是否主动再试'
  print('PASS compact goal first screens, retained filters and explicit method association/optional input',flush=True)
 
- click(page,'今天');click(page,'记录一次家庭干预');click(page,'选择本次目标')
+ click(page,'今天');click(page,'记录家庭');click(page,'选择本次目标')
  page.get_by_role('checkbox',name='选择目标：'+goals[1]['input']['title'],exact=True).click();click(page,'完成目标选择')
- expect(page.get_by_text(goals[1]['input']['title'],exact=True)).to_be_in_viewport(ratio=1)
+ expect(page.get_by_test_id('plan-coverage-'+goals[1]['id'])).to_be_visible()
  expect(page.get_by_text('留意困难：合成换材料时需要支持',exact=True)).to_be_visible();expect(page.get_by_text('可参考经验：合成先示范并留出等待时间',exact=True)).to_be_visible()
  expect(page.get_by_role('button',name=re.compile('^主要练：'))).to_have_count(0)
  field(page,'准备怎么做').fill('合成计划：一起尝试生活小步骤')
- click(page,'更多干预操作');expect(btn(page,'使用说明与手机桌面入口')).to_have_count(0);expect(btn(page,'查看全部方向的近况')).to_be_visible();click(page,'更多干预操作')
+ expect(btn(page,'查看全部方向的近况')).to_be_visible();click(page,'更多干预操作');expect(btn(page,'使用说明与手机桌面入口')).to_have_count(0);click(page,'更多干预操作')
  click(page,'目标笔记与参考：'+goals[1]['input']['title']);field(page,'计划笔记：'+goals[1]['input']['title']).fill('合成笔记不会因折叠清空');click(page,'目标笔记与参考：'+goals[1]['input']['title'])
  shot('plan');click(page,'保存共享草稿并退出');expect(page.get_by_role('dialog')).to_have_count(0)
  saved=call(ctx,'GET','/prd/state')['sessions'][0];assert saved['status']=='planned' and saved['input']['targets'][0]['note']=='合成笔记不会因折叠清空'
- click(page,'填写今天的总结')
+ click(page,'记录家庭：填写今天的总结')
  for width,height in [(390,844),(360,640)]:
   page.set_viewport_size({'width':width,'height':height});expect(field(page,'实际表现：'+goals[1]['input']['title'])).to_be_in_viewport(ratio=1)
  page.set_viewport_size({'width':390,'height':844});shot('summary')
@@ -83,7 +83,7 @@ with sync_playwright() as p:
  today=saved['input']['business_date']
  for _ in range(4):
   id=str(uuid4());call(ctx,'PUT','/prd/lessons/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':{'business_date':today,'course_id':course['id'],'teacher_id':teacher['id']}}})
- page.reload();expect(btn(page,'记录上课')).to_be_enabled();click(page,'记录上课')
+ page.reload();expect(btn(page,'记录课堂')).to_be_enabled();click(page,'记录课堂')
  click(page,'课程名称（必填）：请选择课程');click(page,'合成课程');click(page,'授课老师（必填）：请选择老师');click(page,'合成老师');click(page,'提交记录')
  expect(page.get_by_role('dialog')).to_have_count(0);expect(btn(page,'补充课堂观察')).to_be_in_viewport(ratio=1)
  expect(page.get_by_text(re.compile('^已记下：'+today))).to_be_in_viewport(ratio=1)

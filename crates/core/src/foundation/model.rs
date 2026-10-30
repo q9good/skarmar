@@ -29,6 +29,10 @@ pub enum ObservationTemplate {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct GoalInput {
+    /// Family-selected display priority for long-term directions (0 low, 1 normal, 2 high).
+    /// Stored with the goal JSON, shared and revisioned like its other fields.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_priority: Option<u8>,
     #[serde(default)]
     pub resume_on: Option<String>,
     pub title: String,

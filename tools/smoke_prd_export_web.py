@@ -15,14 +15,14 @@ with sync_playwright() as p:
  def field(name):return reveal_control(page,'textbox',name)
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
- page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录上课')).to_be_enabled()
+ page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录课堂')).to_be_enabled()
  domain_id=str(uuid4());domain_saved=call('PUT','/prd/records/'+domain_id,{'id':domain_id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'catalog','value':{'kind':'domain','name':'测试领域','active':True}}})['value']
  domain={'id':domain_saved['id'],'version':domain_saved['version'],'kind':'domain','name':domain_saved['input']['name']}
  goal=str(uuid4());call('PUT','/prd/records/'+goal,{'id':goal,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'goal','value':{'title':'=SUM(A1:A9)','level':'short','meaning':'合成业务记录','domain':domain,'due':'2027-01-20','support':'先不提示，需要时再示范'}}})
  options={}
  for kind in ['course','teacher']:
   id=str(uuid4());options[kind]=id;call('PUT','/prd/records/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'catalog','value':{'kind':kind,'name':'测试'+kind,'active':True}}})
- page.reload();expect(btn('记录上课')).to_be_enabled();click('目标');click('新建目标');field('本领名称').fill('LOCAL_UNSUBMITTED_GOAL_9A');click('关闭填写目标');click('今天');click('记录上课')
+ page.reload();expect(btn('记录课堂')).to_be_enabled();click('目标');click('新建目标');field('本领名称').fill('LOCAL_UNSUBMITTED_GOAL_9A');click('关闭填写目标');click('今天');click('记录课堂')
  for prefix,label,kind in [('课程名称','课程','course'),('授课老师','老师','teacher')]:
   click(prefix+'（必填）：请选择'+label);page.get_by_role('dialog',name='选择'+label,exact=True).get_by_role('button',name='测试'+kind,exact=True).click()
  click('补充观察');field('今天课上怎么样？').fill('LOCAL_QUEUED_LESSON_9A');page.route('**/api/prd/queue',lambda r:r.abort('failed'));click('提交记录');expect(page.get_by_role('dialog')).to_have_count(0);expect(btn('检查连接并继续上传')).to_be_visible()

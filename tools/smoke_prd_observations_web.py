@@ -13,7 +13,7 @@ with sync_playwright() as p:
  def call(method,path,body=None):
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  def observe(kind):return call('GET','/prd/process?view=observations&object_kind='+kind)['items']
- page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录上课')).to_be_enabled()
+ page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录课堂')).to_be_enabled()
  gid=str(uuid4());call('PUT','/prd/records/'+gid,{'id':gid,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'goal','value':{'title':'轮流游戏','level':'short','template':'count'}}});page.reload();expect(btn('记一个瞬间')).to_be_visible()
  click('记一个瞬间');field('想记下的瞬间').fill('测试：拿着球邀请家人');click('关联：轮流游戏');click('保存观察');expect(page.get_by_role('dialog')).to_have_count(0);expect(page.get_by_text('测试：拿着球邀请家人',exact=True)).to_be_visible()
  assert not call('GET','/prd/state')['sessions'];assert call('GET','/prd/coverage?days=30&source=family')['records']['selected']==0
@@ -27,7 +27,7 @@ with sync_playwright() as p:
  def lose(route):
   response=route.fetch();assert response.ok;route.abort('failed')
  page.route('**/api/prd/process',lose,times=1);click('保存观察');expect(btn('重试同一次观察保存')).to_be_visible();assert len(observe('measurement'))==3
- page.reload();expect(btn('记录上课')).to_be_enabled();expect(btn(re.compile('^继续观察填写：目标测量'))).to_have_count(0);click('目标');click('查看目标：轮流游戏');click('查看观察与实际测量');expect(btn(re.compile('^继续观察填写：目标测量'))).to_be_visible();btn(re.compile('^继续观察填写：目标测量')).click();click('重试同一次观察保存');expect(page.get_by_role('dialog',name='填写目标测量',exact=True)).to_have_count(0);assert len(observe('measurement'))==3;click('关闭目标观察与测量');click('关闭查看详情与修改记录')
+ page.reload();expect(btn('记录课堂')).to_be_enabled();expect(btn(re.compile('^继续观察填写：目标测量'))).to_have_count(0);click('目标');click('查看目标：轮流游戏');click('查看观察与实际测量');expect(btn(re.compile('^继续观察填写：目标测量'))).to_be_visible();btn(re.compile('^继续观察填写：目标测量')).click();click('重试同一次观察保存');expect(page.get_by_role('dialog',name='填写目标测量',exact=True)).to_have_count(0);assert len(observe('measurement'))==3;click('关闭目标观察与测量');click('关闭查看详情与修改记录')
  print('PASS lost measurement response survives reload and retries without additional record',flush=True)
  click('我的账号');click('共享需要与帮助说明');field('沟通方式').fill('测试：用手势表达休息');field('帮助平静的做法').fill('测试：安静陪伴');click('保存观察');expect(page.get_by_role('dialog')).to_have_count(0);assert observe('needs')[0]['input']['communication']=='测试：用手势表达休息'
  click('共享需要与帮助说明');field('沟通方式').fill('测试：我的未提交说明');current=observe('needs')[0];call('POST','/prd/process',{'kind':'observe','value':{'id':current['id'],'operation_id':str(uuid4()),'expected_version':1,'kind':'needs','action':'save','input':{**current['input'],'communication':'测试：另一位家人更新'},'note':'测试并发'}});click('保存观察');expect(btn('备份填写并采用最新观察')).to_be_visible();expect(field('沟通方式')).to_have_value('测试：我的未提交说明');click('备份填写并采用最新观察');expect(field('沟通方式')).to_have_value('测试：另一位家人更新');expect(page.get_by_text('此前输入备份（可复制）：',exact=True)).to_be_visible();field('观察修订说明').fill('测试：核对后保留');click('保存观察');expect(page.get_by_role('dialog',name='填写需要与帮助',exact=True)).to_have_count(0);assert observe('needs')[0]['version']==3

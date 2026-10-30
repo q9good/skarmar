@@ -9,7 +9,7 @@ with sync_playwright() as p:
  def btn(n):return page.get_by_role('button',name=n,exact=True)
  def call(path,body):
   r=ctx.request.post(BASE+'/api'+path,data=body,headers={'X-Skarma-Request':'1'});assert r.ok,r.text();return r.json()
- page.goto(BASE);reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');btn('登录').click();expect(btn('记录上课')).to_be_enabled();owner=ctx.request.get(BASE+'/api/auth/me').json()['user']['id'];call('/auth/users',{'username':'other','display_name':'另一位家人','password':'s','role':'member'})
+ page.goto(BASE);reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');btn('登录').click();expect(btn('记录课堂')).to_be_enabled();owner=ctx.request.get(BASE+'/api/auth/me').json()['user']['id'];call('/auth/users',{'username':'other','display_name':'另一位家人','password':'s','role':'member'})
  btn('目标').click();btn('新建目标').click();reveal_control(page,'textbox','本领名称').fill('原账号未提交填写');expect(page.get_by_text('草稿已存本机',exact=True)).to_be_visible()
  # Emulate a cookie change in another tab while this page has not polled yet.
  call('/auth/login',{'username':'other','password':'s'});btn('保存').click();expect(page.get_by_role('textbox',name='账号',exact=True)).to_be_visible();state=ctx.request.get(BASE+'/api/prd/state').json();assert not state['goals'],state
@@ -34,7 +34,7 @@ with sync_playwright() as p:
  initial=page.evaluate('key=>JSON.parse(localStorage.getItem(key))',key);entry=next(v for v in initial.values() if v['mutation']['value']['title']=='延迟存储期间的原账号填写')
  holder=ctx.new_page();holder.goto(BASE+'/api/health');holder.evaluate("""key=>{window.lockHeld=false;void navigator.locks.request('skarmar-draft:'+key,async()=>{window.lockHeld=true;await new Promise(r=>window.releaseLock=r);});}""",key);holder.wait_for_function('window.lockHeld===true')
  btn('保存').click();expect(btn('正在保存…')).to_be_disabled();call('/auth/logout',{});page.evaluate("window.dispatchEvent(new Event('focus'))");expect(page.get_by_role('textbox',name='账号',exact=True)).to_be_visible()
- reveal_control(page,'textbox','账号').fill('other');page.get_by_label('密码',exact=True).fill('s');btn('登录').click();expect(btn('记录上课')).to_be_enabled();holder.evaluate('window.releaseLock()')
+ reveal_control(page,'textbox','账号').fill('other');page.get_by_label('密码',exact=True).fill('s');btn('登录').click();expect(btn('记录课堂')).to_be_enabled();holder.evaluate('window.releaseLock()')
  page.wait_for_function("({key,id,op})=>{const d=JSON.parse(localStorage.getItem(key))[id];return !d||(!d.pending&&d.operation_id!==op);}",arg={"key":key,"id":entry["id"],"op":entry["operation_id"]});state=ctx.request.get(BASE+'/api/prd/state').json();assert not any(g['input']['title']=='延迟存储期间的原账号填写' for g in state['goals']),state
  raw=page.evaluate('key=>JSON.parse(localStorage.getItem(key))',key);assert any(v['mutation']['value']['title']=='延迟存储期间的原账号填写' for v in raw.values()),raw;holder.close()
  assert not errors,errors

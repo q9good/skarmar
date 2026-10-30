@@ -1,3 +1,4 @@
+import {reviewFeedbackContract} from './prd-review-feedback-contract.mjs';
 import {starterContract} from './prd-starter-contract.mjs';
 import {transferContract} from './prd-transfer-contract.mjs';
 import {completionContract} from './prd-completion-contract.mjs';
@@ -89,6 +90,7 @@ export async function prdContract(label, send) {
   const importSource=await transferContract(label,send,admin);
   await starterContract(label,send,admin);
   await planningContract(label,send,admin);
+  await reviewFeedbackContract(label,send,admin);
   const completion=await completionContract(label,send,admin);
   await exportContract(label,send,admin);
   const finalSnapshot=(await call('GET','/prd/state',undefined,admin)).data;

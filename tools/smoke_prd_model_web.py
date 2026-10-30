@@ -62,7 +62,7 @@ with sync_playwright() as p:
     assert method['input']['steps']=='测试：先跟着孩子的玩法' and method['input']['observe']=='测试：观察是否愿意再试' and method['input']['scope']=='测试：熟悉的游戏中'
     nav(a,'目标')
     for title in ['测试用筷子','测试长期方向']:
-        a.get_by_role('button',name='查看目标：'+title,exact=True).click();expect(a.get_by_text('关联方法：测试等待示范',exact=True)).to_be_visible();a.get_by_role('button',name='关闭查看详情与修改记录',exact=True).click()
+        a.get_by_role('button',name='查看目标：'+title,exact=True).click();expect(a.get_by_role('button',name='查看关联方法：测试等待示范',exact=True)).to_be_visible();a.get_by_role('button',name='关闭查看详情与修改记录',exact=True).click()
     nav(a,'方法');a.get_by_role('button',name='编辑方法：测试等待示范',exact=True).click()
     reveal_control(a,'textbox','具体做法／必填').fill('测试：先示范，再等待')
     save(a);assert state()['methods'][0]['version']==2

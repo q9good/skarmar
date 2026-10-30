@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
-import { acceptSaved, decodeDrafts, emptySnapshot, mergeSnapshot, newGoal, newMethod } from '../apps/client/src/foundation.ts';
+import { acceptSaved, decodeDrafts, emptySnapshot, mergeSnapshot, newGoal, newMethod, longDirectionsOf } from '../apps/client/src/foundation.ts';
+test('family long-focus priority is shared goal data, stable within a tier and does not reorder the snapshot',()=>{
+ const make=(id,priority,extra={})=>({id,version:1,input:{...newGoal(),title:id,level:'long',...extra,...(priority===undefined?{}:{long_priority:priority})}});
+ const data={...emptySnapshot,goals:[make('normal-old'),make('low',0),make('high',2),make('normal-null',null),make('archived',2,{archived:true}),make('short',2,{level:'short'})]};
+ assert.deepEqual(longDirectionsOf(data).map(g=>g.id),['high','normal-old','normal-null','low']);
+ assert.equal(data.goals[0].id,'normal-old');
+ const g={id:'g',operation_id:'op',expected_version:null,change_note:'',mutation:{kind:'goal',value:{...newGoal(),long_priority:2}}};
+ assert.equal(decodeDrafts(JSON.stringify({g})).g.mutation.value.long_priority,2);
+ for(const priority of [-1,3,1.5,'2'])assert.throws(()=>decodeDrafts(JSON.stringify({g:{...g,mutation:{kind:'goal',value:{...newGoal(),long_priority:priority}}}})));
+});
 import {sessionExpiresSoon,TRUSTED_RENEWAL_NOTICE_SECONDS} from '../apps/client/src/session-renewal.ts';
 import {businessDateLabel,todayRecords} from '../apps/client/src/prd-today.ts';
 test('today records use the Shanghai business date, authors, time slots and sync recency',()=>{

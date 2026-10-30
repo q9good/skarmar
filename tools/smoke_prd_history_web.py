@@ -14,7 +14,7 @@ with sync_playwright() as p:
   r=ctx.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'});assert r.ok,r.text();return r.json()
  def entity(kind,value):
   id=str(uuid4());r={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};r.update({'method_create_mode':'quick'} if kind=='method' else {});return call('PUT','/prd/records/'+id,r)['value']
- page.goto(BASE);reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(button('记录上课')).to_be_enabled()
+ page.goto(BASE);reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(button('记录课堂')).to_be_enabled()
  today=page.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())")
  parent=entity('goal',{'title':'旧中期','level':'medium'});other=entity('goal',{'title':'新中期','level':'medium'});child=entity('goal',{'title':'轮流游戏','level':'short','parent_id':parent['id']});method=entity('method',{'title':'示范后等待','goal_ids':[child['id']]})
  sessions=[]
@@ -23,7 +23,7 @@ with sync_playwright() as p:
   sessions.append(call('PUT','/prd/sessions/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'action':'complete','input':input,'change_note':''}))
  # Reparenting today must not move any historical evidence to the new parent.
  call('PUT','/prd/records/'+child['id'],{'id':child['id'],'operation_id':str(uuid4()),'expected_version':1,'change_note':'测试修改层级','mutation':{'kind':'goal','value':{**child['input'],'parent_id':other['id']}}})
- page.reload();expect(button('记录上课')).to_be_enabled();click('记录');click('家庭干预');click('按目标查看时间分布')
+ page.reload();expect(button('记录课堂')).to_be_enabled();click('记录');click('家庭干预');click('按目标查看时间分布')
  expect(button('查看时间分布：轮流游戏')).to_be_visible();expect(page.get_by_text('最近一次 '+today+'（0天前） · 近90天 3 次',exact=True)).to_be_visible();click('查看时间分布：轮流游戏');expect(page.get_by_text('轮流游戏的记录',exact=True)).to_be_visible()
  reveal_control(page,'combobox','时间明细范围').select_option('30');old=sessions[-1]['input']['business_date'];expect(page.get_by_text(f'最近4次，实际跨度 {old} 至 {today}',exact=True)).to_be_visible()
  button(re.compile('^查看记录依据：')).first.click();expect(page.get_by_role('dialog',name='时间分布记录依据',exact=True)).to_be_visible();expect(page.get_by_text('实际方法：示范后等待（第1版）',exact=True)).to_be_visible();page.go_back();expect(page.get_by_role('dialog',name='记录时间分布',exact=True)).to_be_visible();expect(page.get_by_role('combobox',name='时间明细范围',exact=True)).to_have_value('30')

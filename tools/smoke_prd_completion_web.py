@@ -24,7 +24,7 @@ with sync_playwright() as p:
   id=str(uuid4());body={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});return call('PUT','/prd/records/'+id,body)['value']
  def process(kind,value):return call('POST','/prd/process',{'kind':kind,'value':value})
  def observe(kind,id,value,version=None):return process('observe',{'id':id,'operation_id':str(uuid4()),'expected_version':version,'kind':kind,'action':'save','input':value,'note':'合成观察修订' if version else ''})
- page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录上课')).to_be_enabled()
+ page.goto(BASE);field('账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(btn('记录课堂')).to_be_enabled()
  today=page.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())")
  def ago(n):return (datetime.fromisoformat(today)-timedelta(days=n)).date().isoformat()
  g=entity('goal',{'title':'轮流游戏','level':'short','template':'count'});g2=entity('goal',{'title':'主动表达','level':'short'})
@@ -40,7 +40,7 @@ with sync_playwright() as p:
  observe('metric',metric_id,{**metric,'support':'示范一次'},1)
  observe('measurement',str(uuid4()),{'metric_id':metric_id,'metric_version':2,'business_date':today,'support':'示范一次','opportunities':4,'achieved':2})
  sid=str(uuid4());call('PUT','/prd/sessions/'+sid,{'id':sid,'operation_id':str(uuid4()),'expected_version':None,'action':'complete','input':{'business_date':today,'time_slot':'晚上','targets':[{'goal_id':g['id'],'role':'main'}],'summary':{'targets':[{'goal_id':g['id'],'performed':True,'observation':'合成家庭实际表现'}],'confirmation':'used','methods':[{'id':m['id'],'version':1}],'first_try_ids':[m['id']],'context':'合成家人原文：当天换了材料'}}})
- page.reload();expect(btn('记录上课')).to_be_enabled();click('目标')
+ page.reload();expect(btn('记录课堂')).to_be_enabled();click('目标')
  reveal_control(page,'combobox','目标期限筛选').select_option('long');expect(btn('查看目标：长期共同注意')).to_be_visible();expect(btn('查看目标：轮流游戏')).to_have_count(0)
  reveal_control(page,'combobox','目标期限筛选').select_option('short');reveal_control(page,'combobox','目标展示').select_option('progress')
  expect(btn('查看测量趋势：轮流游戏')).to_be_visible();expect(page.get_by_text('实际进展来自各指标测量',exact=False)).to_be_visible();click('查看测量趋势：轮流游戏')
@@ -72,7 +72,7 @@ with sync_playwright() as p:
  # Explicit due difficulties make deterministic queue groups, no date inference.
  for title,goals,methods in [('困难A',[g['id']],[]),('困难B',[g2['id']],[]),('跨目标困难',[],[m['id']])]:
   id=str(uuid4());process('knowledge',{'id':id,'operation_id':str(uuid4()),'expected_version':None,'action':'create','input':{'id':id,'kind':'difficulty','content':title,'goal_ids':goals,'method_ids':methods,'next_review_date':today},'details':{'title':title}})
- page.reload();expect(btn('记录上课')).to_be_enabled();click('跟进');btn(re.compile('^查看共享复盘队列')).click()
+ page.reload();expect(btn('记录课堂')).to_be_enabled();click('跟进');btn(re.compile('^查看共享复盘队列')).click()
  expect(page.get_by_role('heading',name='围绕目标：轮流游戏',exact=True)).to_be_visible();expect(page.get_by_role('heading',name='围绕目标：主动表达',exact=True)).to_be_visible();expect(btn('开始复盘：跨目标困难')).to_have_count(1);expect(page.get_by_text(re.compile('还关联：.*不重复排期'))).to_be_visible();page.go_back()
  print('PASS grouped deduplicated queue, explicit concurrent context and optional caregiver state persisted',flush=True)
  click('记录');click('家庭干预');click('按目标查看时间分布');expect(page.get_by_role('combobox',name='时间分布粒度',exact=True)).to_have_value('day');expect(page.get_by_role('img',name=re.compile('近90天日分布'))).to_have_count(2)

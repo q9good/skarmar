@@ -13,7 +13,7 @@ with sync_playwright() as p:
  def button(name):return page.get_by_role('button',name=name,exact=True)
  def click(name):reveal_control(page,'button',name).click()
  def state():return ctx.request.get(BASE+'/api/prd/state').json()
- page.goto(BASE);reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(button('记录上课')).to_be_enabled();click('我的账号');click('打开导入工具')
+ page.goto(BASE);reveal_control(page,'textbox','账号').fill('owner');page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');expect(button('记录课堂')).to_be_enabled();click('我的账号');click('打开导入工具')
  def choose():
   with page.expect_file_chooser() as chooser:button(re.compile('^(重新)?选择 Excel／CSV$')).click()
   chooser.value.set_files(filename);click('上传并读取工作表');expect(page.get_by_role('combobox',name='目标：用途',exact=True)).to_be_visible()

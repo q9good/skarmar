@@ -18,8 +18,8 @@ with sync_playwright() as p:
  def marker():
   return page.evaluate("history.state?.skarmarOverlay || null")
  def open_lesson():
-  button('记录上课').click()
-  expect(page.get_by_role('dialog',name='记录上课',exact=True)).to_be_visible()
+  button('记录课堂').click()
+  expect(page.get_by_role('dialog',name='记录课堂',exact=True)).to_be_visible()
  def close_with_back(title):
   page.go_back()
   expect(page.get_by_role('dialog',name=title,exact=True)).to_have_count(0)
@@ -29,7 +29,7 @@ with sync_playwright() as p:
  reveal_control(page,'textbox','账号').fill('owner')
  page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password')
  button('登录').click()
- expect(button('记录上课')).to_be_enabled()
+ expect(button('记录课堂')).to_be_enabled()
  app_url=page.url
 
  # Force stale-sentinel cleanup to remain pending without a timer. Before the fix,
@@ -40,12 +40,12 @@ with sync_playwright() as p:
   history.pushState({...history.state,skarmarOverlay:'skarmar:forced-stale'},'');
   history.back=()=>{window.__overlayBackRequested=true;};
  }""")
- button('记录上课').click()
- expect(page.get_by_role('dialog',name='记录上课',exact=True)).to_have_count(0)
+ button('记录课堂').click()
+ expect(page.get_by_role('dialog',name='记录课堂',exact=True)).to_have_count(0)
  assert page.evaluate('window.__overlayBackRequested===true')
  assert page.url==app_url
  page.evaluate("""()=>{history.back=window.__overlayRealBack;history.back();}""")
- expect(page.get_by_role('dialog',name='记录上课',exact=True)).to_be_visible()
+ expect(page.get_by_role('dialog',name='记录课堂',exact=True)).to_be_visible()
  assert marker() and marker().startswith('skarmar:')
 
  # Nested overlays close one layer per Back; the application URL stays mounted.
@@ -54,9 +54,9 @@ with sync_playwright() as p:
  child_marker=marker()
  page.go_back()
  expect(page.get_by_role('dialog',name='选择课程',exact=True)).to_have_count(0)
- expect(page.get_by_role('dialog',name='记录上课',exact=True)).to_be_visible()
+ expect(page.get_by_role('dialog',name='记录课堂',exact=True)).to_be_visible()
  assert marker()!=child_marker and page.url==app_url
- close_with_back('记录上课')
+ close_with_back('记录课堂')
  assert page.url==app_url
 
  # Forward must not resurrect an orphan overlay sentinel.
@@ -70,18 +70,18 @@ with sync_playwright() as p:
  open_lesson()
  length_before_reload=page.evaluate('history.length')
  page.reload()
- expect(button('记录上课')).to_be_enabled()
+ expect(button('记录课堂')).to_be_enabled()
  expect(page.get_by_role('dialog')).to_have_count(0)
  open_lesson()
  assert page.evaluate('history.length')==length_before_reload
- close_with_back('记录上课')
+ close_with_back('记录课堂')
 
  # Repeated opening/Back reuses one forward slot instead of accumulating sentinels.
  stable_length=None
  for _ in range(8):
   open_lesson()
   assert marker() and marker().startswith('skarmar:')
-  close_with_back('记录上课')
+  close_with_back('记录课堂')
   current=page.evaluate('history.length')
   stable_length=current if stable_length is None else stable_length
   assert current==stable_length

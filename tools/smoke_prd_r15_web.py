@@ -33,7 +33,7 @@ with sync_playwright() as p:
  field('账号').fill('owner')
  page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password')
  button('登录').click()
- expect(button('记录上课')).to_be_enabled()
+ expect(button('记录课堂')).to_be_enabled()
  expect(button('刷新')).to_have_count(0)
 
  # Refresh is available only after an actual sync failure.

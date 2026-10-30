@@ -1,4 +1,5 @@
 import React,{useEffect,useState} from 'react';
+import {Disclosure} from './disclosure';
 import {View} from 'react-native';
 import Svg,{Circle} from 'react-native-svg';
 import {Text,Pressable} from './readability';
@@ -26,11 +27,13 @@ export function CoveragePanel({data,close,chooseGoal,selectedGoals=[],selectedFo
  useEffect(()=>{let cancel=false;setReport(null);setError('');void request<Coverage>(`/prd/coverage?days=${days}&source=${source}`).then(r=>{if(!cancel)setReport(r)}).catch(e=>{if(!cancel)setError(e instanceof Error?e.message:'暂未读到近况，请重试。')});return()=>{cancel=true};},[source,days,retry]);
  const rows=report?coverageItems(data,report,topic,level,unrecorded):[],max=Math.max(1,...rows.map(r=>r.counts.selected));
  return <DetailOverlay title="全部方向的近况" close={close}>
+  <Disclosure title="调整统计范围与图表" summary={`${{family:'家庭',lesson:'机构',combined:'合计'}[source]} · 近${days}天`}>
   <Select label="统计来源" value={source} options={[{value:'family',label:'家庭干预'},{value:'lesson',label:'机构课程'},{value:'combined',label:'合计（分列两种来源）'}]} onChange={v=>setSource(v as typeof source)}/>
   <Select label="统计窗口" value={String(days)} options={[7,30,90].map(n=>({value:String(n),label:`近${n}天`}))} onChange={v=>setDays(Number(v))}/>
   <Select label="近况统计内容" value={topic} onChange={v=>setTopic(v as CoverageTopic)} options={[{value:'goals',label:'目标覆盖'},{value:'methods',label:'实际方法'},{value:'tags',label:'实际活动标签（家庭）'}]}/>
   {topic==='goals'&&<><Select label="近况目标层级" value={level} onChange={setLevel} options={[{value:'short',label:'近期本领'},{value:'medium',label:'中期目标'},{value:'long',label:'长期方向（明确关注）'}]}/><Pressable accessibilityRole="checkbox" accessibilityLabel="只看本窗口尚无记录的目标" accessibilityState={{checked:unrecorded}} aria-checked={unrecorded} onPress={()=>setUnrecorded(v=>!v)} style={{padding:12,backgroundColor:'#E9F2E9',borderRadius:10}}><Text>{unrecorded?'☑':'☐'} 只看本窗口尚无记录的目标</Text></Pressable></>}
   <Select label="近况展示方式" value={chart} onChange={setChart} options={[{value:'bar',label:'条形图'},{value:'ring',label:'环图'},{value:'table',label:'数量明细'}]}/>
+  </Disclosure>
   <Text>次数表示记录覆盖，不代表能力进展；未记录不等于未安排。图表仅包含当前显示项，一条记录可以涉及多个目标、方法或标签，命中数之和可能大于记录场次。</Text>
   {error&&<><Text accessibilityRole="alert">{error}</Text><Button title="重新读取近况" press={()=>setRetry(n=>n+1)}/></>}{!report&&!error&&<Text>正在读取近况…</Text>}
   {report&&<>

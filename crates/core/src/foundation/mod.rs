@@ -262,6 +262,9 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
     let (kind, name, saved) = match merge_update(&request, previous.as_ref())? {
         Mutation::Goal(mut input) => {
             input.title = title(&input.title)?;
+            if input.long_priority.is_some_and(|priority| priority > 2) {
+                return Err(ApiError::invalid("长期关注优先级须为低、普通或高"));
+            }
             if input.state.is_none() {
                 input.state = match &previous {
                     Some(Saved::Goal(old)) => old.input.state.clone(),

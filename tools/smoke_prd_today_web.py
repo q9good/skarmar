@@ -17,7 +17,7 @@ with sync_playwright() as p:
  def button(page,name):
   return page.get_by_role('button',name=name,exact=True)
  def login(page,user,password):
-  page.goto(BASE);reveal_control(page,'textbox','账号').fill(user);page.get_by_label('密码',exact=True).fill(password);button(page,'登录').click();expect(button(page,'记录上课')).to_be_enabled()
+  page.goto(BASE);reveal_control(page,'textbox','账号').fill(user);page.get_by_label('密码',exact=True).fill(password);button(page,'登录').click();expect(button(page,'记录课堂')).to_be_enabled()
  def call(context,method,path,body=None,status=200):
   response=context.request.fetch(BASE+'/api'+path,method=method,data=body,headers={'X-Skarma-Request':'1','X-Skarma-Contract':'skarmar.prd.v1'})
   assert response.status==status,(response.status,response.text())
@@ -26,7 +26,7 @@ with sync_playwright() as p:
   identifier=str(uuid4())
   body={'id':identifier,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});return call(context,'PUT','/prd/records/'+identifier,body)['value']
  def first_screen():
-  lesson=button(owner,'记录上课');family=owner.get_by_role('button',name=re.compile(r'^(记录一次家庭干预|填写今天的总结)$'))
+  lesson=button(owner,'记录课堂');family=owner.get_by_role('button',name=re.compile(r'^(记录家庭|记录家庭：填写今天的总结)$'))
   for item in [lesson,family]:
    expect(item).to_be_in_viewport(ratio=1)
    box=item.bounding_box();assert box['width']>=44 and box['height']>=44
@@ -47,7 +47,7 @@ with sync_playwright() as p:
  for count in [3,6]:
   while len(long_goals)<count:
    long_goals.append(entity(owner_context,'goal',{'title':'合成长线'+str(len(long_goals)+1),'level':'long'}))
-  owner.reload();expect(button(owner,'记录上课')).to_be_enabled();first_screen()
+  owner.reload();expect(button(owner,'记录课堂')).to_be_enabled();first_screen()
  expect(button(owner,'查看长期关注')).to_contain_text('另有 3 项')
 
  member=call(owner_context,'POST','/auth/users',{'username':'family','display_name':'测试家人','password':'s','role':'member'})
@@ -66,7 +66,7 @@ with sync_playwright() as p:
  call(member_context,'POST','/prd/process',{'kind':'observe','value':{'id':moment_id,'operation_id':str(uuid4()),'expected_version':None,'kind':'moment','action':'save','input':{'business_date':today,'text':'合成瞬间观察','goal_ids':[goal['id']]},'note':''}})
 
  # A normal shared refresh reloads the existing state and observation endpoints; no extra poller is introduced.
- owner.reload();expect(button(owner,'记录上课')).to_be_enabled();first_screen()
+ owner.reload();expect(button(owner,'记录课堂')).to_be_enabled();first_screen()
  expect(owner.get_by_role('heading',name='今天已记录',exact=True)).to_be_visible()
  expect(owner.get_by_text('合成语言课 · 合成王老师',exact=True)).to_be_visible()
  expect(owner.get_by_text('合成家庭观察',exact=True)).to_be_visible()
@@ -94,8 +94,8 @@ with sync_playwright() as p:
  for slot,name in [('上午','合成待总结A'),('晚上','合成待总结B')]:
   identifier=str(uuid4())
   plans.append(call(member_context,'PUT','/prd/sessions/'+identifier,{'id':identifier,'operation_id':str(uuid4()),'expected_version':None,'action':'save_draft','input':{'business_date':today,'time_slot':slot,'plan':name,'targets':[{'goal_id':goal['id'],'role':'main'}]}}))
- owner.reload();expect(button(owner,'填写今天的总结')).to_be_enabled()
- button(owner,'填写今天的总结').click()
+ owner.reload();expect(button(owner,'记录家庭：填写今天的总结')).to_be_enabled()
+ button(owner,'记录家庭：填写今天的总结').click()
  choice=owner.get_by_role('dialog',name='家庭干预',exact=True)
  expect(choice.get_by_role('button',name=re.compile('^继续总结：'))).to_have_count(2)
  button(owner,'继续总结：上午 · 合成待总结A').click()

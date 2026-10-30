@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-29",
+  "updatedAt": "2026-10-30",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -402,6 +402,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-29.md",
       "verification": "2026-10-29按用户授权通过既有GitHub Actions普通发布原应用，触发源码87f94d66a30853d3d71fc9ed315046c6cfecd4e7（应用23215ce），run40885836043的validate/release均success，实际类型/Web/Rust测试及Wasm Clippy通过。原版本09d57936-2071-45e8-a4c2-69a46e9645fb，上传并实际激活266022a9-e23d-4916-bda1-52e646badb41，脱敏回执deployed_and_verified/model=prd_v1已保存。runner及云端独立首页/JS字节、health、匿名权限、精确Origin与数据库启动全部通过，未登录真实账号或读取业务数据。受测应用SHA与T56一致；本轮29发布保护/9演示工具保护及96项既有产物通过。沿用原Worker/DO/default/skarma.vip、PRD v7及账号/会话/业务，无清库/初始化/演示恢复/自动补种，无后端/schema/配置变化。发布期间分支不前进，run成功后才收尾；仅给原52图审核文档追加后续发布说明，原图字节不变，当前98项产物SHA登记。五项体验建议仍待用户评审，T12/Opus/真机及implementationCommit不改。"
+    },
+    {
+      "id": "T58",
+      "title": "按25条图文审核意见简化流程并提供17图复审",
+      "status": "done",
+      "evidence": "docs/review-feedback-2026-10-30.md",
+      "verification": "2026-10-30接收原25条JSON并核对其应用摘要与T56一致，原字节保存。按15条需调整及2条有具体内容的待审核意见实施，7条可用流程保留；缺真实数据的环图提供明确合成的零次/非零次样本待用户复审。课堂/家庭蓝棕配色、共享长期优先级、计划覆盖前置与目标/方法提醒、总结可选反馈及两类新增/修订、两项记课选择与三类观察、详情分组和目标跳转、课时明细标题、家庭列表/月历及经验困难子分段均完成。long_priority和helpful_notes为既有JSON可选字段，原生和DO同源，无新表/schema/依赖/配置。163Rust、62客户端、14规划/6工作流、27组Web、类型/正式Web构建、原生/Wasm Clippy及真实SQLite/Rust Worker DO完整合约与重启通过，无SKIP；新增共享优先级部分更新/非法和旧版本/回执保护及好方法来源进入复盘的合约；另实际补查新增空字段不改变旧请求序列化，旧回执可重放且操作ID重用改优先级仍拒绝。浏览器前14组通过后旧说明断言受阻，按本次简化改为两项选择；后8组通过后旧面板外快捷项断言受阻，改为验证面板内双向完整顺序后末5组全部通过，原保存/并发/权限/离线断言保留。去除未使用导入后重新类型/Web构建；补上旧请求身份保护后，最终原生/Wasm重跑163项Rust、完整双运行环境、原生/Wasm Clippy和课堂/总结/离线/审核四组，得到17张最终合成截图，逐张检查且原字节登记SHA。新版单文件HTML通过17图解码、搜索、批注保存/导出及应用摘要、原图放大、320/390/1440与0JS异常；新旧批注隔离。PRD0.10同步，59条AC编号/附录D不变；不是用户/Opus/真机正式验收。仅本地提交，不推送/部署/读写生产，线上仍T57；三项旧UX建议、Opus/真机和implementationCommit保留。"
     }
   ],
   "artifacts": [
@@ -983,6 +990,126 @@
       "path": "docs/artifacts/deployment/cloudflare-release-20261029-independent-checks.json",
       "title": "2026-10-29云端独立公开上线检查（无账号与业务数据）",
       "sha256": "9a1d3b1c17d9894fa0bd5a7ae0c3fb4c812f757f4bbda6b9f65e1d409dba7c55"
+    },
+    {
+      "path": "docs/review-feedback-2026-10-30.json",
+      "title": "用户原25条审核批注（不含业务数据）",
+      "synthetic": false,
+      "sha256": "bf1a9e217e5bfab5c30c923737a2123a0273a8fe5c1291ec652837cdd35a916a"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/01-today.png",
+      "title": "今天：课堂与家庭入口",
+      "synthetic": true,
+      "sha256": "b19237fe2f918d8c1fd565b700274de4e2a05185b5eea9889e785a70c4c96381"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/02-plan-coverage.png",
+      "title": "计划先看近期覆盖",
+      "synthetic": true,
+      "sha256": "415f6eac0a31c1559e7d3c22a6429e8a377489e5ec172ee02474a57ec02c9d16"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/03-plan-target-method.png",
+      "title": "先目标、方法，再写安排",
+      "synthetic": true,
+      "sha256": "5eecdadb2122e53600341f1e61cfbd09539adef088093f658c175e55f18e800d"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/04-summary-basic.png",
+      "title": "总结先记实际表现",
+      "synthetic": true,
+      "sha256": "22154b72a26dad0fbac3e003ee6b6b296b128fcb7b8bbf6d59bb113d47c86196"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/05-summary-new-knowledge.png",
+      "title": "同次新增经验和困难",
+      "synthetic": true,
+      "sha256": "a0730512b8dd4e5fa27714ca98a7a1ae387f03af8ecaccb192a22a779e49463b"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/06-lesson-basic.png",
+      "title": "记课只铺两项主选择",
+      "synthetic": true,
+      "sha256": "891ad194e8b197233b03cf7838f577575802dd060416b8eedf4e5e041eb2e16b"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/07-lesson-observation.png",
+      "title": "三种课堂线索",
+      "synthetic": true,
+      "sha256": "49c793c36d8981f6f6930f41ca7e53ab3f5b566d7ebec0399d609917e76cbfc5"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/08-lesson-links.png",
+      "title": "把课堂线索接到家庭干预",
+      "synthetic": true,
+      "sha256": "c498e6569c947e908e650f623247ce04737b46efcc7e61b47e2e5e590661520b"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/09-goal-groups.png",
+      "title": "目标详情分组",
+      "synthetic": true,
+      "sha256": "913dadd0107b3e7e8d1d49af920ba37404ae430157f45c5c0406ef2f5cf19c6f"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/10-method-goals.png",
+      "title": "方法的关联目标可直接打开",
+      "synthetic": true,
+      "sha256": "4977acb0587e121976abfe50d53a83dd43d14e83f9b990fe304419f7b3ef8e39"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/11-experience-tab.png",
+      "title": "经验单独成库",
+      "synthetic": true,
+      "sha256": "f5b6b712a922ac327b5e76fcf491faccd4d7e7e7b2d8f6ae1009027bb412c303"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/12-difficulty-tab.png",
+      "title": "困难单独成库",
+      "synthetic": true,
+      "sha256": "6784748372e263e7ff00eb4903054387e738eaf517a2f74c1d015024524f4909"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/13-review-purpose.png",
+      "title": "复盘对照标准并留下决定",
+      "synthetic": true,
+      "sha256": "2afbc614bb5b764356467c27687ba7fe52fdfc7c4936875a006213760a4fe81a"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/14-total-detail.png",
+      "title": "汇总下方明确标出明细",
+      "synthetic": true,
+      "sha256": "1c6deb92428051b79c44a252f61a7b60d499eee1e5663478169bc5c4545a9507"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/15-long-priority.png",
+      "title": "家人可调整长期关注优先级",
+      "synthetic": true,
+      "sha256": "a28808f13f47002f37e02460ac454acf4bee3c191f7e3ebf6a31ce1f93382bc1"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/16-balance-with-data.png",
+      "title": "带零次与非零次数据的环图",
+      "synthetic": true,
+      "sha256": "635e2a13e4a8c7cd9cf64d80acf113daba4fb6ef880c395e1cfb5f8d34e56419"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/17-family-calendar.png",
+      "title": "家庭干预月历",
+      "synthetic": true,
+      "sha256": "1514b74e58a9e353d6efc87bb24c82709121c758c03e222262739168d0440aeb"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/checks.json",
+      "title": "本轮审核整改流程与17图SHA",
+      "synthetic": true,
+      "sha256": "aab2e499f6744e164f5622cf4c6e3189e9a0b410ea748bd58468800f3b1144c3"
+    },
+    {
+      "path": "docs/artifacts/validation/review-feedback-2026-10-30/review.html",
+      "title": "内嵌17图及独立批注的单文件复审页",
+      "synthetic": true,
+      "sha256": "1906986007f736a2b22c148930d8cf0fc3106b1c9ed50f0200dbf90414881c8d"
     }
   ]
 }

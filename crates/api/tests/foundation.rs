@@ -989,3 +989,63 @@ fn field_presence_survives_transport_distinguishes_reused_operations_and_replays
     invalid["provided_fields"] = serde_json::json!(["meaning"]);
     assert!(serde_json::from_value::<Write>(invalid).is_err());
 }
+
+#[test]
+fn added_optional_fields_preserve_prior_pending_request_serialization() {
+    // These literal commands predate the priority/helpful-observation additions.
+    // Empty additions must not enter the canonical command used as the saved
+    // operation identity: a queued old request must still retrieve its receipt.
+    let goal: GoalInput = serde_json::from_value(serde_json::json!({
+        "title": "合成旧待确认目标", "level": "long"
+    }))
+    .unwrap();
+    assert!(
+        !serde_json::to_value(&goal)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .contains_key("long_priority")
+    );
+    let observation: skarma_core::foundation::lesson_model::ObservationInput =
+        serde_json::from_value(serde_json::json!({
+            "business_date": "2026-10-01", "course_id": id(), "teacher_id": id()
+        }))
+        .unwrap();
+    assert!(
+        !serde_json::to_value(&observation)
+            .unwrap()
+            .as_object()
+            .unwrap()
+            .contains_key("helpful_notes")
+    );
+    let mut db = database();
+    let member = actor();
+    let identifier = id();
+    let command = write(&identifier, None, Mutation::Goal(goal));
+    let receipt = store::write_foundation(&mut db, &member, command.clone()).unwrap();
+    let encoded: String = db
+        .query_row(
+            "SELECT request FROM prd_operations WHERE id=?1",
+            [&command.operation_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(!encoded.contains("long_priority"));
+    // Exact old requests replay, but reusing their operation ID for a new
+    // priority is a conflict, not a silently accepted configuration change.
+    let replay = store::write_foundation(&mut db, &member, command.clone()).unwrap();
+    assert_eq!(
+        serde_json::to_value(receipt).unwrap(),
+        serde_json::to_value(replay).unwrap()
+    );
+    let mut changed = command;
+    if let Mutation::Goal(value) = &mut changed.mutation {
+        value.long_priority = Some(2);
+    }
+    assert_eq!(
+        store::write_foundation(&mut db, &member, changed)
+            .unwrap_err()
+            .0,
+        StatusCode::CONFLICT
+    );
+}

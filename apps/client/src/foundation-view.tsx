@@ -1,4 +1,5 @@
 import {Disclosure} from './disclosure';
+import {SectionButton,ContentGroup} from './section-tabs';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
 import {DraftRecovery} from './draft-recovery';
@@ -40,7 +41,7 @@ import {SessionHub} from './prd-session-view';
 import { LessonHub } from './prd-lesson-view';
 import { Pressable, Text, TextInput } from './readability';
 import { acceptSaved, decodeDrafts, emptySnapshot, examples, findSaved, goalStateName, levelNames, mergeSnapshot, mutationOf,
-  nameOf, newGoal, newMethod, type Catalog, type CatalogSnapshot, type Draft, type GoalInput, type MethodInput, type Mutation, type Revision, type Saved, type Snapshot, type Write } from './foundation';
+  nameOf, newGoal, newMethod, longDirectionsOf, type Catalog, type CatalogSnapshot, type Draft, type GoalInput, type MethodInput, type Mutation, type Revision, type Saved, type Snapshot, type Write } from './foundation';
 const messageOf = (e: unknown) => e instanceof Error ? e.message : '保存未完成，请保留填写后重试。';
 function Action({ title, press, disabled = false, secondary = false, quiet=false, label }: { title: string; press: () => void; disabled?: boolean; secondary?: boolean; quiet?:boolean;label?:string }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }} disabled={disabled} onPress={press} style={[s.action, secondary && s.secondary,quiet&&{backgroundColor:'transparent',paddingHorizontal:0}, disabled && { opacity: 0.5 }]}>
@@ -98,6 +99,7 @@ function GoalFields({ value, change, data, id, disabled, existing, catalogSaved,
     }}/>}
     <Select label="目标类型" value={value.level} disabled={disabled || existing} options={Object.entries(levelNames).map(([value, label]) => ({ value, label }))}
       onChange={level => change({ level: level as GoalInput['level'], parent_id: null, state: 'active' })} />
+    {value.level==='long'&&<Select label="长期关注优先级" value={String(value.long_priority??1)} disabled={disabled} options={[{value:'2',label:'高 · 优先显示'},{value:'1',label:'普通'},{value:'0',label:'低 · 靠后显示'}]} onChange={v=>change({long_priority:Number(v)})}/>}
     <Disclosure title="补充目标说明（可选）" summary={value.criteria?'已写观察标准':undefined}>
       <Field label="生活意义" hint="这会帮助哪方面生活？" value={value.meaning} change={meaning => change({ meaning })} placeholder="例如：更独立地吃饭" disabled={disabled} multiline />
       <Select label="观察方式" value={value.template ?? 'text'} disabled={disabled} options={[
@@ -306,7 +308,7 @@ export function FoundationWorkspace() {
   const knowledgeCard=(k:Snapshot['knowledge'][number],goalId?:string,methodId?:string)=><View key={k.input.id} style={{gap:6}}><Text>{k.input.kind==='difficulty'?'关联困难':'关联经验'}：{k.input.content}</Text><Text style={s.hint}>{knowledgeRelation(data,k,goalId,methodId)}</Text><Text style={s.hint}>{knowledgeSource(data,k)}</Text><Action title={`查看关联知识：${k.details?.title||k.input.content}`} secondary press={()=>setRequestedFollowup({kind:'knowledge',id:k.input.id,nonce:uuid()})}/></View>;
   const today=localDate();
   const goals = data.goals.filter(g => (goalLevel==='all'||g.input.level===goalLevel)&&(showHidden || !g.input.archived)&&[g.input.title,g.input.meaning,g.input.criteria,g.input.support??'',g.input.domain?.name??'',g.input.due??''].some(v=>v.includes(goalSearch)));
-  const longDirections = data.goals.filter(g => g.input.level === 'long' && !g.input.archived);
+  const longDirections = longDirectionsOf(data);
   const methods = [...data.methods].filter(m => (showHidden || m.input.state === 'active')&&[m.input.title,methodSteps(m.input),m.input.observe??'',methodScope(m.input)].some(v=>v.includes(methodSearch))).sort((a,b)=>(methodOrder.findIndex(r=>r.id===a.id)<0?999:methodOrder.findIndex(r=>r.id===a.id))-(methodOrder.findIndex(r=>r.id===b.id)<0?999:methodOrder.findIndex(r=>r.id===b.id)));
   const followupHub=(mode:'today'|'full'|'hidden')=><FollowupHub planActions={ids=>setRequestedPlanActions({ids,nonce:uuid()})} data={data} mode={mode} openLesson={id=>void refresh().then(()=>setRequestedLesson({id,nonce:uuid()})).catch(e=>setSyncError(messageOf(e)))} refresh={refresh} adjustMethod={(mid,kid,version)=>{const method=data.methods.find(m=>m.id===mid);if(!method)return;if(draftsRef.current[mid]){setEditor(mid);setError('先核对已有方法填写，再根据这条知识调整。');return;}begin({kind:'method',value:{...method.input,basis:[...(method.input.basis??[]).filter(b=>b.id!==kid),{id:kid,version}]}},{kind:'method',value:method});}} requested={requestedFollowup} onRequested={()=>setRequestedFollowup(null)}/>;
   const todayRecords=<TodayRecords data={data} moments={todayMoments} today={today} open={(kind,id)=>kind==='lesson'?setRequestedLesson({id,nonce:uuid(),view:'detail'}):setRequestedSession({id,nonce:uuid()})}/>;
@@ -326,7 +328,7 @@ export function FoundationWorkspace() {
               <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Text style={{flex:1,fontSize:16,fontWeight:'600'}}>长期关注</Text><Text style={{fontSize:14}}>{longDirections.length>3?`另有 ${longDirections.length-3} 项 ▾`:'▾'}</Text></View>
               <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>{longDirections.slice(0,3).map(g=><Text key={g.id} numberOfLines={1} style={{fontSize:14,paddingVertical:5,paddingHorizontal:8,borderWidth:1,borderColor:'#B3C9BA',borderRadius:6,backgroundColor:'#FFFFFF',maxWidth:'100%'}}>{g.input.title}</Text>)}</View>{!longDirections.length&&<Text style={s.hint}>先写下想长期关注的方向</Text>}
             </Pressable>}
-            {tab==='records'&&<View style={{flexDirection:'row',gap:8}}><Action title="机构课程" secondary={recordKind!=='lessons'} press={()=>setRecordKind('lessons')}/><Action title="家庭干预" secondary={recordKind!=='family'} press={()=>setRecordKind('family')}/></View>}
+            {tab==='records'&&<View style={{flexDirection:'row',gap:8}}><SectionButton title="机构课程" tone="classroom" selected={recordKind==='lessons'} press={()=>setRecordKind('lessons')}/><SectionButton title="家庭干预" tone="family" selected={recordKind==='family'} press={()=>setRecordKind('family')}/></View>}
             {tab==='records'&&recordKind==='family'?sessionHub('records'):<LessonHub openKnowledge={id=>setRequestedFollowup({kind:'knowledge',id,nonce:uuid()})} inboxManaged requested={requestedLesson} onRequested={()=>setRequestedLesson(null)} openAction={id=>setRequestedFollowup({kind:'action',id,nonce:uuid()})} interventionEntry={tab==='today'?<>{sessionHub('today')}{followupHub('today')}</>:undefined} data={data} actorId={auth.identity.user.id} actorName={auth.identity.user.display_name} admin={auth.identity.user.role === 'admin'} mode={tab === 'today' ? 'today' : 'records'} refresh={refresh}
               savedLesson={lesson => setData(current => mergeSnapshot(current, { ...emptySnapshot, lessons: [lesson] }))}
               catalogSaved={saved => setData(current => acceptSaved(current, saved))} openGoal={id => void openDetail(id)} openMethod={id => void openDetail(id)} scrollTop={() => scroll.current?.scrollTo({y:0,animated:false})} />}
@@ -354,7 +356,7 @@ export function FoundationWorkspace() {
             </Disclosure>
             {rankingBusy&&<Text>正在读取方法…</Text>}
             {!rankingBusy&&methods.map(m => <View key={m.id} style={s.card} testID={`prd-method-${m.id}`}><View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看方法：${m.input.title}`} onPress={()=>void openDetail(m.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{m.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑方法：${m.input.title}`} label="编辑" quiet press={()=>begin({kind:'method',value:m.input},{kind:'method',value:m})}/></View>
-              <Text>{methodOrder.find(r=>r.id===m.id)?.reason??'新加入的方法，稍后可按近况重排'}</Text><Text>关联目标：{m.input.goal_ids.map(id => data.goals.find(g => g.id === id)?.input.title ?? '待核对目标').join('、')}</Text>
+              <Text>{methodOrder.find(r=>r.id===m.id)?.reason??'新加入的方法，稍后可按近况重排'}</Text><View style={{gap:4,padding:10,backgroundColor:'#E8EFF5',borderRadius:8}}><Text style={{fontWeight:'600'}}>用于这些目标</Text>{m.input.goal_ids.map(id=><Action key={id} title={`查看方法关联目标：${data.goals.find(g=>g.id===id)?.input.title??'待核对目标'}`} label={data.goals.find(g=>g.id===id)?.input.title??'待核对目标'} quiet press={()=>void openDetail(id)}/>)}</View>
               <Text>{methodSteps(m.input) || '快捷创建，具体做法待补充'}</Text>
               <Text style={s.hint}>经验 {relatedKnowledge(undefined,m.id).filter(k=>k.input.kind==='experience').length} · 困难 {relatedKnowledge(undefined,m.id).filter(k=>k.input.kind==='difficulty').length}</Text>
 </View>)}
@@ -376,6 +378,7 @@ export function FoundationWorkspace() {
     </ScrollView>
     {!account && <View style={s.navigation}>{(['today', 'goals', 'methods', 'records', 'followups'] as const).map(kind => <Action key={kind} title={{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进' }[kind]} secondary={tab !== kind} press={() => { setTab(kind); setShowHidden(false);setError('');setNotice(''); }} />)}</View>}
     {showDirections && <DetailOverlay title="长期关注" close={()=>setShowDirections(false)}>
+      <Text style={s.hint}>按家人设置的高、普通、低优先级排列；同级保留原顺序。修改会同步给家人。</Text>
       {longDirections.map(g=>{
         const evidence=objectEvidence(data,{kind:'goal',id:g.id},today);
         return <View key={g.id} style={s.card}><Text style={s.heading}>{g.input.title}</Text><Text>{g.input.meaning||g.input.criteria||'可以在目标页补充想支持的方向。'}</Text>
@@ -385,7 +388,7 @@ export function FoundationWorkspace() {
         })}
         {evidence.filter(e=>e.kind==='lesson').slice(0,2).map(e=><Text key={e.id}>最近课堂观察：{e.date} · {e.note}</Text>)}
         {relatedKnowledge(g.id).map(k=>knowledgeCard(k,g.id))}
-        <Action title={`查看目标：${g.input.title}`} secondary press={()=>{setShowDirections(false);void openDetail(g.id);}}/>
+        <Action title={`查看目标：${g.input.title}`} secondary press={()=>{setShowDirections(false);void openDetail(g.id);}}/><Action title={`调整关注优先级：${g.input.title}`} secondary press={()=>{setShowDirections(false);begin({kind:"goal",value:g.input},{kind:"goal",value:g});}}/>
       </View>;})}
       {!longDirections.length&&<Action title="新建长期方向" press={()=>{setShowDirections(false);setTab('goals');begin({kind:'goal',value:{...newGoal(),level:'long'}});}}/>}
     </DetailOverlay>}
@@ -415,11 +418,11 @@ export function FoundationWorkspace() {
     {detail && <DetailOverlay title="查看详情与修改记录" close={() => { ++detailSequence.current; setDetailId(null); setHistory([]); }}>
       <Text style={s.heading}>{nameOf(mutationOf(detail))}</Text>
       {detail.kind === 'goal' ? <><Text>{detail.value.input.meaning || '尚未补充生活意义'}</Text><Text>{detail.value.input.criteria || '尚未设置观察标准'}</Text><Text>预期帮助条件：{detail.value.input.support||'未填写'}</Text><Text>领域：{detail.value.input.domain?.name||'未选择'}；目标日期：{detail.value.input.due||'未设置'}</Text>
-        {data.methods.filter(m => m.input.goal_ids.includes(detail.value.id)).map(m => <Text key={m.id}>关联方法：{m.input.title}</Text>)}</> : detail.kind === 'method' ? <>
+        <ContentGroup title="关联方法" tone="classroom">{data.methods.filter(m=>m.input.goal_ids.includes(detail.value.id)).map(m=><Action key={m.id} title={`查看关联方法：${m.input.title}`} label={m.input.title} secondary press={()=>void openDetail(m.id)}/>)}{!data.methods.some(m=>m.input.goal_ids.includes(detail.value.id))&&<Text>尚未关联方法。</Text>}</ContentGroup></> : detail.kind === 'method' ? <>
         <Text>具体做法：{methodSteps(detail.value.input)||'快捷创建，待补充'}</Text><Text>观察意图：{detail.value.input.observe||'未补充'}；适用条件：{methodScope(detail.value.input)||'未补充'}</Text><Text>当前说明第{detail.value.version}版；指导来源：{detail.value.input.guidance||'未补充'}</Text><MethodUsage data={data} id={detail.value.id} openVersion={version=>setDistribution({id:detail.value.id,kind:'method',version})}/>{detail.value.basis_snapshots?.map(b=><Text key={`${b.id}:${b.version}`}>调整依据：{b.content}（知识第{b.version}版）{b.conditions?`；当时条件：${b.conditions}`:''}</Text>)}
         {detail.value.input.goal_ids.map(id => <Text key={id}>关联目标：{data.goals.find(g => g.id === id)?.input.title}</Text>)}
       </> : null}
-      {relatedKnowledge(detail.kind==='goal'?detail.value.id:undefined,detail.kind==='method'?detail.value.id:undefined).map(k=>knowledgeCard(k,detail.kind==='goal'?detail.value.id:undefined,detail.kind==='method'?detail.value.id:undefined))}
+      {(['experience','difficulty'] as const).map(kind=>{const items=relatedKnowledge(detail.kind==='goal'?detail.value.id:undefined,detail.kind==='method'?detail.value.id:undefined).filter(k=>k.input.kind===kind);return items.length>0?<ContentGroup key={kind} title={kind==='experience'?'可参考的经验':'需要跟进的困难'} tone={kind}>{items.map(k=>knowledgeCard(k,detail.kind==='goal'?detail.value.id:undefined,detail.kind==='method'?detail.value.id:undefined))}</ContentGroup>:null;})}
       {(detail.kind==='goal'||detail.kind==='method')&&<ObjectContext key={detail.value.id} data={data} object={{id:detail.value.id,kind:detail.kind}} openAction={id=>setRequestedFollowup({kind:'action',id,nonce:uuid()})} openSession={id=>setRequestedSession({id,nonce:uuid()})} openLesson={id=>setRequestedLesson({id,nonce:uuid(),view:'detail'})}/>}
       {(detail.kind==='goal'||detail.kind==='method')&&<Action title="记一条心得" secondary press={()=>setRequestedFollowup({kind:'new_experience',id:detail.value.id,object_kind:detail.kind as 'goal'|'method',nonce:uuid()})}/>}
       {(detail.kind==='goal'||detail.kind==='method')&&<Action title="现在复盘这个对象" secondary press={()=>setRequestedFollowup({kind:'review',id:detail.value.id,object_kind:detail.kind as 'goal'|'method',nonce:uuid()})}/>}

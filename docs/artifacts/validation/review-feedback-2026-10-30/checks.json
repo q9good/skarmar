@@ -1,0 +1,167 @@
+{
+  "synthetic": true,
+  "screenshots": [
+    {
+      "path": "01-today.png",
+      "title": "今天：课堂与家庭入口",
+      "description": "课堂蓝、家庭暖棕，与灰绿底色协调；长期关注按家人设置的优先级排列。",
+      "width": 390,
+      "height": 844,
+      "sha256": "b19237fe2f918d8c1fd565b700274de4e2a05185b5eea9889e785a70c4c96381"
+    },
+    {
+      "path": "02-plan-coverage.png",
+      "title": "计划先看近期覆盖",
+      "description": "真实合成记录显示一个目标2次、另一个0次。家庭与机构分列，未读到不会误显示为0。",
+      "width": 390,
+      "height": 844,
+      "sha256": "415f6eac0a31c1559e7d3c22a6429e8a377489e5ec172ee02474a57ec02c9d16"
+    },
+    {
+      "path": "03-plan-target-method.png",
+      "title": "先目标、方法，再写安排",
+      "description": "保留相关经验和困难提示；完整做法及其他补充按需展开，最终写一句整体安排。",
+      "width": 390,
+      "height": 844,
+      "sha256": "5eecdadb2122e53600341f1e61cfbd09539adef088093f658c175e55f18e800d"
+    },
+    {
+      "path": "04-summary-basic.png",
+      "title": "总结先记实际表现",
+      "description": "实际方法仍需明确确认，补充经验与困难属于可选步骤；计划方法不自动成为实际使用。",
+      "width": 390,
+      "height": 844,
+      "sha256": "22154b72a26dad0fbac3e003ee6b6b296b128fcb7b8bbf6d59bb113d47c86196"
+    },
+    {
+      "path": "05-summary-new-knowledge.png",
+      "title": "同次新增经验和困难",
+      "description": "两类表单有独立标题；经验写做法与条件，困难写实际情况和成人回应，折叠不丢文字。",
+      "width": 390,
+      "height": 844,
+      "sha256": "a0730512b8dd4e5fa27714ca98a7a1ae387f03af8ecaccb192a22a779e49463b"
+    },
+    {
+      "path": "06-lesson-basic.png",
+      "title": "记课只铺两项主选择",
+      "description": "课程和老师各一个下拉面板，内部可搜索／新增并按历史排序。日期默认今天，修改按需展开。",
+      "width": 390,
+      "height": 844,
+      "sha256": "891ad194e8b197233b03cf7838f577575802dd060416b8eedf4e5e041eb2e16b"
+    },
+    {
+      "path": "07-lesson-observation.png",
+      "title": "三种课堂线索",
+      "description": "老师交代的练习、需要支持的地方、自己看到的好方法可多选；旧的自由观察、进展及兴趣线索保留在其他观察。",
+      "width": 390,
+      "height": 844,
+      "sha256": "49c793c36d8981f6f6930f41ca7e53ab3f5b566d7ebec0399d609917e76cbfc5"
+    },
+    {
+      "path": "08-lesson-links.png",
+      "title": "把课堂线索接到家庭干预",
+      "description": "明确说明整理用途：关联目标／实际方法、沉淀经验困难及下一步；不会根据文字自动生成关系或判断有效。",
+      "width": 390,
+      "height": 844,
+      "sha256": "c498e6569c947e908e650f623247ce04737b46efcc7e61b47e2e5e590661520b"
+    },
+    {
+      "path": "09-goal-groups.png",
+      "title": "目标详情分组",
+      "description": "方法、经验、困难、行动及实际记录有独立标题和分隔。关联经验保留直接／经方法的关系来源。",
+      "width": 390,
+      "height": 844,
+      "sha256": "913dadd0107b3e7e8d1d49af920ba37404ae430157f45c5c0406ef2f5cf19c6f"
+    },
+    {
+      "path": "10-method-goals.png",
+      "title": "方法的关联目标可直接打开",
+      "description": "目标名称集中在明显的色块中，可跳转目标详情并返回。排序不改动关联。",
+      "width": 390,
+      "height": 844,
+      "sha256": "4977acb0587e121976abfe50d53a83dd43d14e83f9b990fe304419f7b3ef8e39"
+    },
+    {
+      "path": "11-experience-tab.png",
+      "title": "经验单独成库",
+      "description": "经验子分段只显示经验和新建经验；搜索改为单行。",
+      "width": 390,
+      "height": 844,
+      "sha256": "f5b6b712a922ac327b5e76fcf491faccd4d7e7e7b2d8f6ae1009027bb412c303"
+    },
+    {
+      "path": "12-difficulty-tab.png",
+      "title": "困难单独成库",
+      "description": "困难子分段只显示困难和新建困难，与经验使用不同配色；待办分段不出现新建。",
+      "width": 390,
+      "height": 844,
+      "sha256": "6784748372e263e7ff00eb4903054387e738eaf517a2f74c1d015024524f4909"
+    },
+    {
+      "path": "13-review-purpose.png",
+      "title": "复盘对照标准并留下决定",
+      "description": "对象当前标准可见，解释按需展开。查看实际观察后决定继续／调整／暂停，下一步能接回计划。",
+      "width": 390,
+      "height": 844,
+      "sha256": "2afbc614bb5b764356467c27687ba7fe52fdfc7c4936875a006213760a4fe81a"
+    },
+    {
+      "path": "14-total-detail.png",
+      "title": "汇总下方明确标出明细",
+      "description": "标题写明老师或课程、选中的名称、日期范围和节数，支持收起；去掉金额线下计算提示。",
+      "width": 390,
+      "height": 844,
+      "sha256": "1c6deb92428051b79c44a252f61a7b60d499eee1e5663478169bc5c4545a9507"
+    },
+    {
+      "path": "15-long-priority.png",
+      "title": "家人可调整长期关注优先级",
+      "description": "高、普通、低随目标共享保存；不同家人刷新后看到相同优先顺序，并保留修改记录。",
+      "width": 390,
+      "height": 844,
+      "sha256": "a28808f13f47002f37e02460ac454acf4bee3c191f7e3ebf6a31ce1f93382bc1"
+    },
+    {
+      "path": "16-balance-with-data.png",
+      "title": "带零次与非零次数据的环图",
+      "description": "筛选控件默认收起；环图对应合成库正式记录，空白目标仍显示0次，不绘制假比例。",
+      "width": 390,
+      "height": 844,
+      "sha256": "635e2a13e4a8c7cd9cf64d80acf113daba4fb6ef880c395e1cfb5f8d34e56419"
+    },
+    {
+      "path": "17-family-calendar.png",
+      "title": "家庭干预月历",
+      "description": "暖棕色表示次数；待总结单列，正式总结不再在每行重复已完成字样。",
+      "width": 390,
+      "height": 844,
+      "sha256": "1514b74e58a9e353d6efc87bb24c82709121c758c03e222262739168d0440aeb"
+    }
+  ],
+  "checks": [
+    "shared_priority",
+    "entry_colours",
+    "real_coverage_zero_and_nonzero",
+    "plan_knowledge",
+    "optional_summary_and_revision",
+    "minimal_lesson",
+    "three_observation_prompts",
+    "lesson_goal_method_link",
+    "grouped_goal_detail",
+    "method_goal_navigation",
+    "separate_library_tabs",
+    "review_decision_and_action",
+    "labelled_total_details",
+    "calendar_labels"
+  ],
+  "errors": [],
+  "application_sha256": "cd16fbee310c1fe20015ac34c25ef4d3f1776700ba6169c6362ad7b89673b150",
+  "source_review_sha256": "bf1a9e217e5bfab5c30c923737a2123a0273a8fe5c1291ec652837cdd35a916a",
+  "source_application_sha256": "28effa0107e3455216e499bc90b8367b2b0c371f418dd404fc8b659bd897ffab",
+  "deployed": false,
+  "limitations": [
+    "本机桌面Chromium手机尺寸，未替代iOS/Android真机或Opus验收",
+    "合成数据展示统计，不是孩子真实表现或治疗效果",
+    "旧UX03删除确认高度、UX04导入标签和UX05目标默认范围未在本轮改变"
+  ]
+}

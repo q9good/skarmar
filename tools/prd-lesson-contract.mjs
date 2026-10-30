@@ -9,11 +9,11 @@ export async function lessonContract(label,send,admin){
  const member=(await call('POST','/auth/users',{username:'lesson-family',display_name:'测试记录家人',password:'s',role:'member'})).data;
  const memberCookie=(await call('POST','/auth/login',{username:'lesson-family',password:'s'})).cookie;
  const command=(id,version,kind,value)=>({id,operation_id:randomUUID(),expected_version:version,action:value===undefined?{kind}:{kind,value}});
- const observation={business_date:'2020-01-01',course_id:course,teacher_id:teacher,notes:'原始课堂观察',teacher_notes:'老师建议回家试试',request_review:true};
+ const observation={business_date:'2020-01-01',course_id:course,teacher_id:teacher,notes:'原始课堂观察',teacher_notes:'老师建议回家试试',helpful_notes:'合成看到的好方法：先选材料再示范',request_review:true};
  const id=randomUUID(),original=command(id,null,'observation',observation);
  let lesson=(await call('PUT','/prd/lessons/'+id,original,memberCookie)).data;
  await call('PUT','/prd/lessons/'+id,original,memberCookie);
- assert.equal(lesson.observation_version,1);assert.equal(lesson.request_generation,1);
+ assert.equal(lesson.observation.helpful_notes,observation.helpful_notes);assert.equal(lesson.observation_version,1);assert.equal(lesson.request_generation,1);
  let capability=(await call('GET','/prd/lessons/'+id+'/withdrawal-capability',undefined,memberCookie)).data;assert.equal(capability.allowed,true);assert.equal(capability.reason_code,'allowed');
  capability=(await call('GET','/prd/lessons/'+id+'/withdrawal-capability')).data;assert.equal(capability.allowed,false);assert.equal(capability.reason_code,'not_creator');
  const organization={seen_observation_version:1,targets:[{goal_id:goal,note:'测试一次课堂表现'}],method_ids:[method],focus_goal_ids:[],processing:'keep',request_generation:1,outcome:'',new_knowledge:[],new_actions:[]};
@@ -21,6 +21,7 @@ export async function lessonContract(label,send,admin){
  await call('PUT','/prd/lessons/'+id,changed,memberCookie);
  lesson=(await call('PUT','/prd/lessons/'+id,command(id,1,'organization',organization))).data;
  assert.equal(lesson.observation.notes,'家人后来补充的观察');assert.equal(lesson.organization.seen_observation_version,1);assert.equal(lesson.organization_version,2);
+ const review=(await call('GET','/prd/process?view=review_context&id='+goal+'&object_kind=goal')).data;assert(review.evidence.find(e=>e.source.id===id)?.adult.includes(observation.helpful_notes),'observed helpful practice remains labelled in review evidence');
  await call('PUT','/prd/lessons/'+id,command(id,1,'organization',organization),admin,409);
  const source={id:randomUUID(),kind:'difficulty',content:'测试需要解决的困难',goal_ids:[goal],method_ids:[method],stage:null,next_review_date:null};
  const next={id:randomUUID(),content:'测试下一步',goal_ids:[goal],method_ids:[],assignee_id:member.id};

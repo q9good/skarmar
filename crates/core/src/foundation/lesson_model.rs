@@ -13,6 +13,8 @@ pub struct ObservationInput {
     pub notes: String,
     #[serde(default)]
     pub teacher_notes: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub helpful_notes: String,
     #[serde(default)]
     pub progress_notes: String,
     #[serde(default)]

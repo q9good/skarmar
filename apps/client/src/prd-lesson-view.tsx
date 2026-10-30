@@ -1,3 +1,5 @@
+import {Disclosure} from './disclosure';
+import {SectionButton,ContentGroup} from './section-tabs';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
 import {DraftRecovery} from './draft-recovery';
@@ -10,7 +12,7 @@ import {LessonPractice} from './lesson-practice-view';
 import {SaveStatus,trackLocalSave} from './save-status';
 import {ExampleHint} from './input-guidance';
 import {useLessonOutbox} from './prd-outbox-view';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError, request } from './api';
@@ -20,19 +22,19 @@ import { useAuth } from './auth';
 import { DetailOverlay } from './overlay';
 import { Pressable, Text, TextInput } from './readability';
 import type { Catalog, Saved, Snapshot } from './foundation';
-import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, monthRange, shiftMonth, lessonTotals, commonChoices, rankedCatalogChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
+import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, monthRange, shiftMonth, lessonTotals, rankedCatalogChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
 const queues = new Map<string, Promise<void>>();
 const labelsForFeedback=(v:string)=>({helpful:'有帮助',uncertain:'不确定',unhelpful:'没帮上'} as Record<string,string>)[v]??v;
 const note = (e: unknown) => e instanceof Error ? e.message : '操作未完成，请保留填写后重试';
 function Action({ title, press, disabled, secondary = true }: { title: string; press: () => void; disabled?: boolean; secondary?: boolean }) {
-  return <Pressable accessibilityRole="button" disabled={disabled} accessibilityState={{ disabled }} onPress={press} style={{ padding: 12, borderRadius: 10, backgroundColor: secondary ? '#E9F2E9' : '#34765B', opacity: disabled ? .5 : 1 }}><Text style={{ color: secondary ? '#34765B' : '#FFFFFF', fontSize: 17 }}>{title}</Text></Pressable>;
+  return <Pressable accessibilityRole="button" disabled={disabled} accessibilityState={{ disabled }} onPress={press} style={{ padding: 12, borderRadius: 10, backgroundColor: secondary ? '#E8EFF5' : '#315C78', opacity: disabled ? .5 : 1 }}><Text style={{ color: secondary ? '#315C78' : '#FFFFFF', fontSize: 17 }}>{title}</Text></Pressable>;
 }
 function Field({ label, question, value, change, placeholder, disabled, multiline = true }: { label: string; question?: string; value: string; change: (v:string)=>void; placeholder?: string; disabled?: boolean; multiline?: boolean }) {return <GuidedField label={label} value={value} change={change} question={question} placeholder={placeholder} disabled={disabled} multiline={multiline}/>;}
 function Check({ title, checked, press, disabled }: { title: string; checked: boolean; press: () => void; disabled?: boolean }) {
-  return <Pressable accessibilityRole="checkbox" accessibilityLabel={title} aria-checked={checked} accessibilityState={{ checked, disabled }} onPress={press} disabled={disabled} style={{ padding: 10, backgroundColor: '#E9F2E9', borderRadius: 8 }}><Text>{checked ? '☑' : '☐'} {title}</Text></Pressable>;
+  return <Pressable accessibilityRole="checkbox" accessibilityLabel={title} aria-checked={checked} accessibilityState={{ checked, disabled }} onPress={press} disabled={disabled} style={{ padding: 10, backgroundColor: '#E8EFF5', borderRadius: 8 }}><Text>{checked ? '☑' : '☐'} {title}</Text></Pressable>;
 }
 function ReadObservation({ value }: { value: Observation }) {
-  return <View style={{ gap: 8 }}>{value.course_started&&<Text>家人明确标记：这门课程刚开始上。</Text>}{[value.notes, value.teacher_notes && `老师的做法和建议：${value.teacher_notes}`, value.progress_notes && `进展与泛化：${value.progress_notes}`, value.interest_notes && `兴趣与互动：${value.interest_notes}`, value.difficulty_notes && `困难与成人回应：${value.difficulty_notes}`, value.cause_guess && `原因猜测（待验证）：${value.cause_guess}`].filter(Boolean).map((text,i) => <Text selectable key={i}>{text}</Text>)}{!observationText(value) && <Text>还没有补充课堂观察。</Text>}</View>;
+  return <View style={{ gap: 8 }}>{value.course_started&&<Text>家人明确标记：这门课程刚开始上。</Text>}{[value.notes, value.teacher_notes && `老师的做法和建议：${value.teacher_notes}`, value.helpful_notes && `我看到的好方法：${value.helpful_notes}`, value.progress_notes && `进展与泛化：${value.progress_notes}`, value.interest_notes && `兴趣与互动：${value.interest_notes}`, value.difficulty_notes && `困难与成人回应：${value.difficulty_notes}`, value.cause_guess && `原因猜测（待验证）：${value.cause_guess}`].filter(Boolean).map((text,i) => <Text selectable key={i}>{text}</Text>)}{!observationText(value) && <Text>还没有补充课堂观察。</Text>}</View>;
 }
 function CatalogChoice({ kind, value, relatedId, change, data, accepted, lesson, disabled }: { kind: 'course'|'teacher'; value: string; relatedId: string; change: (v:string)=>void; data: Snapshot; accepted: (s:Saved)=>void; lesson?: Lesson; disabled: boolean }) {
   const outbox=useLessonOutbox();
@@ -40,13 +42,10 @@ function CatalogChoice({ kind, value, relatedId, change, data, accepted, lesson,
   const pending = useRef<Parameters<typeof request>[2]>(undefined);
   const label = kind === 'course' ? '课程' : '老师';
   const options = data.catalog.filter(c => c.input.kind === kind && (c.input.active || c.id === value));
-  // Re-rank shortcuts after an explicit counterpart change, not a background refresh.
-  const shortcuts=useMemo(()=>commonChoices(data.lessons,data.catalog,kind,localDate(),relatedId),[kind,relatedId]);
   const [pickerOptions,setPickerOptions]=useState<Catalog[]>([]);
   const optionLabel = (c:Catalog) => lesson?.[kind].id === c.id ? `${lesson[kind].name}${lesson[kind].name !== c.input.name ? '（历史名称）' : ''}` : c.input.name;
   return <View style={{ gap: 8 }}>
     <Action title={`${kind==='course'?'课程名称（必填）':'授课老师（必填）'}：${options.find(c=>c.id===value)?optionLabel(options.find(c=>c.id===value)!):`请选择${label}`}`} disabled={disabled} press={()=>{setPickerOptions(rankedCatalogChoices(data.lessons,data.catalog,kind,localDate(),relatedId));setSearch('');setPanel(true);}} />
-    <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{shortcuts.map(c => <Action key={c.id} title={data.catalog.find(row=>row.id===c.id)?.input.name??c.input.name} disabled={disabled||!data.catalog.some(row=>row.id===c.id&&row.input.active)} press={() => change(c.id)} />)}</View>
     {panel && <DetailOverlay title={`选择${label}`} close={() => { if (!saving) setPanel(false); }}>
       {relatedId&&<Text>{kind==='teacher'?'按这门课程的历史授课次数排序':'按这位老师的历史上课次数排序'}</Text>}
       <Field label={`搜索${label}`} value={search} change={setSearch} multiline={false} />
@@ -65,23 +64,30 @@ function CatalogChoice({ kind, value, relatedId, change, data, accepted, lesson,
   </View>;
 }
 const themes = [
-  ['teacher_notes','老师的做法和建议','老师怎样帮助或提醒？哪些建议可以带回家？','例如：老师先示范，再留时间让他尝试'],
+  ['teacher_notes','老师交代的练习或建议','老师明确说回家要练什么？建议怎样帮助孩子？','例如：回家玩轮流游戏，先示范再等待回应'],
+  ['difficulty_notes','我看到需要支持或提高的','当时想做什么？哪一步遇到了困难？怎样帮助后有什么变化？','例如：换材料时离开，大人陪他休息后再试'],
+  ['helpful_notes','我看到的好方法','老师或孩子用了什么做法？在什么情况下有帮助？','例如：先让孩子选材料，再示范一步，他愿意接着试'],
   ['progress_notes','做得更好了／在别处也会了','和以前比有什么变化？换材料或换人时也会吗？','例如：换一本书，也会主动指给人看'],
   ['interest_notes','感兴趣、主动尝试、和人互动的','什么吸引了他？他怎样主动表达或邀请别人？','例如：拿着新玩具来找我一起玩'],
-  ['difficulty_notes','遇到的困难','当时做什么？大人怎样回应，后来怎么样？','例如：等候时离开，大人陪他休息后再试'],
 ] as const;
 function ObservationFields({ value, change, disabled }: { value: Observation; change: (v:Partial<Observation>)=>void; disabled: boolean }) {
   const [open, setOpen] = useState<string[]>(() => themes.filter(([key]) => value[key]).map(([key])=>key));
+  const themeField=([key,title,question,example]:typeof themes[number])=><View key={key} style={{gap:8}}>
+    <Check title={title} checked={open.includes(key)} disabled={disabled} press={()=>setOpen(old=>old.includes(key)?old.filter(k=>k!==key):[...old,key])}/>
+    <View style={{display:open.includes(key)?'flex':'none',gap:8}}><Field label={title} question={question} value={value[key]??''} change={v=>change({[key]:v})} placeholder={example} disabled={disabled}/></View>
+    {key==='difficulty_notes'&&open.includes(key)&&<Field label="原因猜测（可选）" question="这是待核实的想法，与看到的事实分开记。" value={value.cause_guess} change={cause_guess=>change({cause_guess})} disabled={disabled} placeholder="例如：也许是在等候时需要休息"/>}
+  </View>;
   return <>
-    <Field label="今天课上怎么样？" question="记下看到的或老师说的。可以用输入法的话筒说话。" value={value.notes} change={notes => change({ notes })} placeholder="例如：今天一起玩了轮流游戏" disabled={disabled} />
-    <Text>想多说一点？以下内容都可以跳过。</Text>
-    {themes.map(([key,title,question,example]) => <View key={key} style={{ gap: 8 }}><Action title={`${title}${value[key] ? ' · 已写' : ''}`} disabled={disabled} press={() => setOpen(old => old.includes(key) ? old.filter(k=>k!==key) : [...old,key])} />
-      {open.includes(key) && <Field label={title} question={question} value={value[key]} change={v=>change({ [key]: v })} placeholder={example} disabled={disabled} />}
-    </View>)}
-    {open.includes('difficulty_notes') && <Field label="原因猜测（可选）" question="这是待核实的想法，与看到的事实分开记。" value={value.cause_guess} change={cause_guess=>change({ cause_guess })} disabled={disabled} placeholder="例如：也许是在等候时需要休息" />}
-    <Check title="这门课程刚开始上（家人明确标记，可选）" checked={value.course_started===true} disabled={disabled} press={()=>change({course_started:!value.course_started})}/><Text>第一次录入不等于第一次上课；只有明确标记才进入复盘的同期变化。</Text>
-    <Check title="请爸爸妈妈看看" checked={value.request_review} disabled={disabled} press={()=>change({ request_review: !value.request_review })} />
-    {value.request_review && <Field label="给家人的留言（可选）" value={value.review_message} change={review_message=>change({ review_message })} disabled={disabled} placeholder="不写留言也可以发出查看请求" />}
+    <Text>想补充哪些线索给家人？可多选，也可以全部跳过。记录后仍可再补。</Text>
+    {themes.slice(0,3).map(themeField)}
+    <Disclosure title="其他课堂观察（可选）" defaultOpen={Boolean(value.notes||value.progress_notes||value.interest_notes||value.course_started)}>
+      <Field label="今天课上怎么样？" question="记下看到的或老师说的，也可以用输入法的话筒。" value={value.notes} change={notes=>change({notes})} placeholder="例如：今天一起玩了轮流游戏" disabled={disabled}/>
+      {themes.slice(3).map(themeField)}
+      <Check title="这门课程刚开始上（家人明确标记，可选）" checked={value.course_started===true} disabled={disabled} press={()=>change({course_started:!value.course_started})}/>
+      <Text>第一次录入不等于第一次上课。</Text>
+    </Disclosure>
+    <Check title="请爸爸妈妈看看" checked={value.request_review} disabled={disabled} press={()=>change({request_review:!value.request_review})}/>
+    {value.request_review&&<Field label="给家人的留言（可选）" value={value.review_message} change={review_message=>change({review_message})} disabled={disabled} placeholder="不写留言也可以发出查看请求"/>}
   </>;
 }
 function Bindings({ data, goalIds, methodIds, change, disabled }: { data:Snapshot; goalIds:string[]; methodIds:string[]; change:(g:string[],m:string[])=>void; disabled:boolean }) {return <><Text>关联目标</Text><RelationPicker label="关联目标" options={data.goals.map(g=>({id:g.id,label:g.input.title}))} selected={goalIds} disabled={disabled} toggle={id=>change(goalIds.includes(id)?goalIds.filter(v=>v!==id):[...goalIds,id],methodIds)}/><Text>关联方法</Text><RelationPicker label="关联方法" options={data.methods.map(m=>({id:m.id,label:m.input.title}))} selected={methodIds} disabled={disabled} toggle={id=>change(goalIds,methodIds.includes(id)?methodIds.filter(v=>v!==id):[...methodIds,id])}/></>;}
@@ -92,7 +98,7 @@ function OrganizationFields({ value, change, data, lesson, actorId, source, disa
   const selected=value.targets.map(t=>t.goal_id);
   const modifyKnowledge=(index:number,patch:Partial<NewKnowledge>)=>change({ new_knowledge:value.new_knowledge.map((k,i)=>i===index?{...k,...patch}:k) });
   return <>
-    <Text style={{fontSize:18,fontWeight:'600'}}>整理时依据的课堂观察</Text><ReadObservation value={source ?? lesson.observation} />
+    <ContentGroup title="把课堂线索用于下一次家庭干预" tone="classroom"><Text>先核对原观察，再明确关联目标和实际方法；有价值的线索可以记为经验、困难或下一步。仅选目标不会把老师的建议当成已经训练，也不会自动判断方法有效。</Text></ContentGroup><Text style={{fontSize:18,fontWeight:'600'}}>整理时依据的课堂观察</Text><ReadObservation value={source ?? lesson.observation} />
     {value.seen_observation_version!==lesson.observation_version && <><Text>原观察后来有补充。已有经验保留原内容，可核对后使用最新观察。</Text><Action title="改用最新观察继续整理" disabled={disabled} press={()=>change({seen_observation_version:lesson.observation_version})} /></>}
     <Text style={{fontSize:18,fontWeight:'600'}}>这堂课明确涉及的目标</Text>
     <RelationPicker label="课堂目标" options={data.goals.filter(g=>g.input.level!=='long').map(g=>({id:g.id,label:g.input.title}))} selected={selected} disabled={disabled} toggle={id=>change({targets:selected.includes(id)?value.targets.filter(t=>t.goal_id!==id):[...value.targets,{goal_id:id,note:''}]})}/>
@@ -131,8 +137,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   const [drafts,setDrafts]=useState<Record<string,LessonDraft>>({}), [editor,setEditor]=useState<string|null>(null), [ready,setReady]=useState(false), [error,setError]=useState(''), [notice,setNotice]=useState(''), [busy,setBusy]=useState(false), [receipt,setReceipt]=useState<string|null>(null), [detail,setDetail]=useState<string|null>(null);
   const [historyPage,setHistoryPage]=useState(0),[historyMore,setHistoryMore]=useState(false),[historyLoading,setHistoryLoading]=useState(false);const historySequence=useRef(0);
   const [customRange,setCustomRange]=useState(false),[rangeFrom,setRangeFrom]=useState(''),[rangeTo,setRangeTo]=useState('');
-  const [otherTasks,setOtherTasks]=useState(false),[intro,setIntro]=useState(false);
-  useEffect(()=>{void AsyncStorage.getItem(storageKey+':introduced').then(v=>{if(!v)setIntro(true);}).catch(()=>undefined);},[storageKey]);
+  const [otherTasks,setOtherTasks]=useState(false);
   const [discard,setDiscard]=useState(false), [historyOpen,setHistoryOpen]=useState(false), [history,setHistory]=useState<import('./prd-lessons').LessonRevision[]>([]), [historyError,setHistoryError]=useState('');
   const [totalsBy,setTotalsBy]=useState<'teacher'|'course'>('teacher');
   const [section,setSection]=useState<'classroom'|'totals'>('classroom'), [month,setMonth]=useState(()=>localDate().slice(0,7)), [countMonth,setCountMonth]=useState(()=>shiftMonth(localDate().slice(0,7),-1)), [selectedGroup,setSelectedGroup]=useState<string|null>(null), [search,setSearch]=useState(''), [teachersOnly,setTeachersOnly]=useState(false);
@@ -235,7 +240,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   const observe=draft?.request.action.kind==='observation'?draft.request.action.value:undefined;
   return <>
     <View style={{gap:14}}>
-      {mode!=='drafts'&&<Action title="记录上课" secondary={false} disabled={!ready||!outbox.ready||busy} press={()=>open()} />}
+      {mode!=='drafts'&&<SectionButton title="记录课堂" tone="classroom" primary disabled={!ready||!outbox.ready||busy} press={()=>open()}/> }
       {error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}{notice&&(!confirmed||notice!=='已记下，家人刷新即可看到。')&&<Text role="status">{notice}</Text>}
       {confirmed&&<View style={{gap:10,padding:16,backgroundColor:'#FFFFFF',borderRadius:12}}><Text style={{fontSize:18,fontWeight:'600'}}>已记下：{confirmed.observation.business_date} · {confirmed.course.name} · {confirmed.teacher.name}</Text>
         <Action title="补充课堂观察" press={()=>open(confirmed,'observation')} /><Action title="完成" press={()=>{setReceipt(null);setNotice('');}} />
@@ -257,10 +262,10 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
           <View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>{(['teacher','course'] as const).map(kind=><Action key={kind} title={kind==='teacher'?'按老师汇总':'按课程汇总'} secondary={totalsBy!==kind} press={()=>{setTotalsBy(kind);setSelectedGroup(null);}}/>)}</View>
           <Action title={customRange?'收起自定义日期，按整月核对':'自定义课时核对日期'} press={()=>{if(!customRange){setRangeFrom(monthBounds.start);setRangeTo(monthBounds.end);}setCustomRange(v=>!v);setSelectedGroup(null);}}/>
           {customRange&&<><DateField label="课时起始日期" value={rangeFrom} onChange={v=>{setRangeFrom(v);setSelectedGroup(null);}}/><DateField label="课时截止日期" value={rangeTo} onChange={v=>{setRangeTo(v);setSelectedGroup(null);}}/>{!validRange&&<Text>请完整填写有效起止日期，起始日期不能晚于截止日期。</Text>}</>}
-          <Text>每条未撤销／删除的实际课记计一节，待核对仍计入。金额线下计算。</Text>
+          <Text>每条未撤销／删除的实际课记计一节，待核对仍计入。</Text>
           {totals.map(group=><Action key={group.id} title={`${data.catalog.find(c=>c.id===group.id)?.input.name??group.name}：${group.count} 节${group.marked?` · 待核对 ${group.marked}`:''}`} press={()=>setSelectedGroup(selectedGroup===group.id?null:group.id)} />)}
           {validRange&&!totals.length&&<Text>{customRange?'这个时间段还没有上课记录。':'这个月还没有上课记录。'}</Text>}
-          {totals.find(g=>g.id===selectedGroup)?.records.map(l=><LessonCard key={l.id} lesson={l} open={()=>setDetail(l.id)}/>)}
+          {selectedGroup&&totals.find(g=>g.id===selectedGroup)&&<ContentGroup title={`${totalsBy==='teacher'?'老师':'课程'}明细：${data.catalog.find(c=>c.id===selectedGroup)?.input.name??totals.find(g=>g.id===selectedGroup)!.name}`} tone="classroom"><Text>{start} 至 {end}，共 {totals.find(g=>g.id===selectedGroup)!.count} 节；下面每张卡片是一节课。</Text><Action title="收起课时明细" press={()=>setSelectedGroup(null)}/>{totals.find(g=>g.id===selectedGroup)!.records.map(l=><LessonCard key={l.id} lesson={l} open={()=>setDetail(l.id)}/>)}</ContentGroup>}
         </>:<>
           <Field label="搜索课堂观察和老师建议" value={search} change={setSearch} multiline={false} placeholder="输入课程、老师或观察中的词"/><Check title="只看老师建议" checked={teachersOnly} press={()=>setTeachersOnly(!teachersOnly)}/>
           {[...new Set(records.map(l=>l.course.id))].map(courseId=><View key={courseId} style={{gap:10}}><Text style={{fontSize:18,fontWeight:'600'}}>{data.catalog.find(c=>c.id===courseId)?.input.name??records.find(l=>l.course.id===courseId)?.course.name}</Text>{records.filter(l=>l.course.id===courseId).map(l=><LessonCard key={l.id} lesson={l} matchSource={search?searchSources(l).join('、'):teachersOnly?'老师建议':undefined} open={()=>setDetail(l.id)}/>)}</View>)}
@@ -268,14 +273,13 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
         </>}
       </>:null}
     </View>
-    {draft&&<DetailOverlay title={draft.phase==='organization'?'整理课堂记录':draft.phase==='administration'?'核对课记操作':'记录上课'} close={()=>{if(!busy)setEditor(null);}} footer={<><SaveStatus storageKey={storageKey} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy?'正在提交…':draft.pending?'重试同一次课记提交':draft.phase==='organization'?'保存整理':draft.phase==='administration'?'确认操作':'提交记录'} secondary={false} disabled={busy||(conflict&&!draft.pending)||Boolean(observe&&(!observe.course_id||!observe.teacher_id))} press={()=>void submit()}/></>}>
+    {draft&&<DetailOverlay title={draft.phase==='organization'?'整理课堂记录':draft.phase==='administration'?'核对课记操作':'记录课堂'} close={()=>{if(!busy)setEditor(null);}} footer={<><SaveStatus storageKey={storageKey} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy?'正在提交…':draft.pending?'重试同一次课记提交':draft.phase==='organization'?'保存整理':draft.phase==='administration'?'确认操作':'提交记录'} secondary={false} disabled={busy||(conflict&&!draft.pending)||Boolean(observe&&(!observe.course_id||!observe.teacher_id))} press={()=>void submit()}/></>}>
       {error&&<Text accessibilityRole="alert">{error}</Text>}
       {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/>
       {conflict&&remote&&!draft.pending&&<View style={{padding:12,backgroundColor:'#FFFFFF',gap:10}}><Text>这一部分已有新版本，当前填写仍保留。</Text><ReadObservation value={remote.observation}/>
         <Action title="备份填写并载入最新课记" disabled={busy} press={()=>void(async()=>{try{await AsyncStorage.setItem(`${storageKey}:backup:${Date.now()}`,JSON.stringify(draft));const kind=draft.request.action.kind;const nextAction:LessonWrite['action']=kind==='observation'?{kind,value:{...remote.observation,request_review:false,review_message:''}}:kind==='organization'?{kind,value:organizationOf(remote)}:draft.request.action;await persist({...refs.current,[editor!]:{...draft,backup:draft.request,source:remote.observation,request:{...draft.request,expected_version:expected,operation_id:uuid(),action:nextAction}}});setError('');}catch(e){setError(note(e));}})()}/></View>}
       {draft.backup&&<View style={{gap:8}}><Text style={{fontWeight:'600'}}>此前填写的备份，可长按复制</Text>{draft.backup.action.kind==='observation'?<ReadObservation value={draft.backup.action.value}/>:draft.backup.action.kind==='organization'?<>{draft.backup.action.value.new_knowledge.map(k=><Text selectable key={k.id}>{k.content}</Text>)}{draft.backup.action.value.new_actions.map(a=><Text selectable key={a.id}>{a.content}</Text>)}{draft.backup.action.value.feedback?.map(f=><Text selectable key={f.id}>{labelsForFeedback(f.result)}：{f.observation}</Text>)}</>:null}</View>}
       {observe&&<>
-        {intro&&draft.request.expected_version===null&&<View style={{gap:6}}><Text>选好课程和老师即可提交，观察可以稍后补。</Text><Action title="知道了，不再提示" press={()=>void AsyncStorage.setItem(storageKey+':introduced','1').then(()=>setIntro(false))}/></View>}
         <LessonDate value={observe.business_date} today={today} disabled={busy||Boolean(draft.pending)} change={business_date=>patch({business_date})}/>
         <CatalogChoice kind="course" value={observe.course_id} relatedId={observe.teacher_id} change={course_id=>patch({course_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
         <CatalogChoice kind="teacher" value={observe.teacher_id} relatedId={observe.course_id} change={teacher_id=>patch({teacher_id})} data={data} accepted={catalogSaved} lesson={remote} disabled={busy||Boolean(draft.pending)}/>
@@ -310,9 +314,9 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
 function LessonDate({value,today,disabled,change}:{value:string;today:string;disabled:boolean;change:(v:string)=>void}) {
   const yesterday=new Date(Date.parse(today+'T00:00:00Z')-86400000).toISOString().slice(0,10);
   const [other,setOther]=useState(value!==today&&value!==yesterday);
-  return <View style={{gap:8}}><Text>上课日期：{value}</Text><View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
+  return <Disclosure title={`上课日期：${value} · 修改日期`}><View style={{flexDirection:'row',flexWrap:'wrap',gap:8}}>
     {[['今天',today],['昨天',yesterday]].map(([label,date])=><Action key={label} title={label} disabled={disabled} secondary={value!==date||other} press={()=>{setOther(false);change(date);}}/>)}
     <Action title="其他日期" disabled={disabled} secondary={!other} press={()=>setOther(true)}/></View>
-    {other&&<DateField label="上课日期" value={value} disabled={disabled} onChange={change}/>}</View>;
+    {other&&<DateField label="上课日期" value={value} disabled={disabled} onChange={change}/>}</Disclosure>;
 }
 function LessonCard({lesson:l,open,matchSource}:{lesson:Lesson;open:()=>void;matchSource?:string}) {return <View testID={`prd-lesson-${l.id}`} style={{gap:8,padding:14,borderRadius:12,backgroundColor:'#FFFFFF'}}><Text>{l.observation.business_date} · {l.course.name} · {l.teacher.name}</Text>{matchSource&&<Text>匹配来源：{matchSource}</Text>}<Text>记录者：{l.creator_name}</Text>{l.marked_error&&<Text accessibilityRole="alert" style={{color:'#8A2D1D',fontWeight:'600'}}>标记记错，等待管理员处理 · 本节仍计入课时</Text>}<Text>{l.observation.notes||l.observation.teacher_notes||'尚未补充观察'}</Text><Action title={`查看课记：${l.course.name} · ${l.observation.business_date}`} press={open}/></View>;}
