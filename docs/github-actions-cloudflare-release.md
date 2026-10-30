@@ -1,5 +1,11 @@
 # 从 Codex Cloud 触发现有 Cloudflare 应用发布
 
+2026-10-30最新普通发布已完成：源码`b668c15`（应用`6c8a519`，含T58/T59/T61评审整改），
+[run41066365995](https://github.com/q9good/skarmar/actions/runs/41066365995)的validate／release均success，
+实际激活`b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa`。见[发布记录](cloudflare-release-2026-10-30.md)。
+脱敏回执为deployed_and_verified，runner与云端独立公开检查通过；原账号、会话、业务及v7结构保留。
+本次没有初始化、清库或演示恢复；Cloud原生环境T12故障仍是独立待恢复事项。
+
 2026-10-29最新普通发布已完成：源码`87f94d6`（应用`23215ce`），
 [run40885836043](https://github.com/q9good/skarmar/actions/runs/40885836043)的validate/release均success，实际激活`266022a9-e23d-4916-bda1-52e646badb41`。
 [发布记录](cloudflare-release-2026-10-29.md)及脱敏回执已保存；runner与云端独立公开检查通过，账号和业务数据保留。

@@ -430,6 +430,13 @@
       "status": "done",
       "evidence": "docs/review-feedback-2026-10-30.md",
       "verification": "2026-10-30下载并保存原554字节JSON到docs/review-notes-2026-10-30-round2.json；其应用摘要3b9c7edc…与T59一致。两项需调整、一项可用：今天两入口标题按整体居中，右侧装饰箭头、指针和按下底色反馈；经验绿色/困难暖金，两个tab同框等宽及相同字号字重，页面底/卡片/按钮三层色阶，新建/详情/反馈与筛选标题延续所属主题。图06基础记课流程保留，最终截图与T59原图字节一致。仅可选展示props，无Rust/schema/依赖/配置或统计变动。类型/正式Web构建、62客户端、6组本机浏览器通过；新增真实文字中心误差<3px、箭头/指针、双色但同等字号/尺寸和aria-pressed、三层不同背景及动作文字4.5:1、新建与详情颜色匹配断言，空本机新建草稿明确放弃不产生业务记录。最后筛选标题调整后重新构建并单独复验完整审核流程。17张合成原图逐张查看，原入口和validation镜像HTML一致，批注/导出摘要/17图解码/搜索放大及320/390/1440复验；120项产物SHA登记。之前暂停的T60入口草稿保留并随本轮用户明确授权push完成，旧52图原SHA和25条原批注不改。不宣称全量Rust/27组/真机重验，implementationCommit、Opus/真机待办保留；推送原分支，无部署或生产读写。"
+    },
+    {
+      "id": "T62",
+      "title": "发布T58/T59/T61评审整改版并核验原应用",
+      "status": "done",
+      "evidence": "docs/cloudflare-release-2026-10-30.md",
+      "verification": "2026-10-30按用户明确授权通过既有GitHub Actions普通发布。发布前远端与干净工作区均6c8a5194a44d4c4eac079929b2d78a48cb2d0317，普通run41065522537 validate成功/release跳过；29发布保护、9演示工具保护及120项产物SHA重跑通过，应用摘要d2c820aa82eb4842d030f0e67dac1df53aede09e97e7b4051001738b0825c1f2与最终17图一致。触发源码b668c15df9522e305e176cf8b603d4587a4a3558，run41066365995的validate/release均success，类型/Web构建、Rust测试、Wasm Clippy及原目标元数据检查实际通过。原版本266022a9-e23d-4916-bda1-52e646badb41，上传并实际激活b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa，脱敏回执deployed_and_verified/model=prd_v1。runner及云端独立首页/JS字节、health、匿名权限、精确Origin与数据库启动通过；未登录真实账号或读取业务数据。原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip、账号/会话/业务与schema v7保留，无初始化/清库/演示恢复/自动种入，相关workflow步骤实际skipped。新增JSON可选字段的空值请求身份和旧回执保护沿用T58实测证据。发布期间分支不前进，完成后保存两份脱敏结果并更新文档，122项产物SHA通过；原17图/HTML/checks保留自测时快照，不将deployed:false改写成发布证据。T12、Opus/真机/读屏和正式implementationCommit不变，收尾提交不带发布标记。"
     }
   ],
   "artifacts": [
@@ -1143,6 +1150,16 @@
       "title": "用户第二轮3条原批注（不含业务数据）",
       "synthetic": false,
       "sha256": "b4b681bfa31b86717c0216d61729c94658b4eddb538581ac58fe244b41553888"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261030-receipt.json",
+      "title": "2026-10-30评审整改版实际Cloudflare发布脱敏回执",
+      "sha256": "a731abf8694626fba182b7b0f932ca2fbc1017e6775c8ebe80b8b15e5ba4c5ab"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261030-independent-checks.json",
+      "title": "2026-10-30云端独立公开上线检查（无账号与业务数据）",
+      "sha256": "5b36d33d906f289eee1d1fbd41231d069e7b7621022f0bdccc25c97e7ca3620a"
     }
   ]
 }

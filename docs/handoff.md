@@ -48,6 +48,18 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-10-30：评审整改版已发布（T62）
+
+用户明确要求部署当前已推送版本。源码b668c15（应用6c8a519，包含T58/T59/T61），
+[run41066365995](https://github.com/q9good/skarmar/actions/runs/41066365995)的validate／release均success，
+实际激活`b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa`，原版本266022a9。见[发布记录](cloudflare-release-2026-10-30.md)。
+类型／Web构建、Rust及Wasm Clippy实际通过；runner及云端独立首页／JS字节、health、匿名权限、
+精确Origin和数据库启动通过，回执deployed_and_verified/model=prd_v1。应用摘要与17图复审一致。
+本次普通发布，保留原Worker／DO／default／域名、账号／会话／业务；没有清库、初始化或演示恢复。
+long_priority／helpful_notes为既有JSON可选字段，schema v7不变，旧请求身份及回执保护已验证。
+发布期间分支不前进，完成后才收尾；两份脱敏结果登记后122项产物SHA通过。原截图／HTML保持测试时快照，
+不改写deployed:false。真实账号／手机体验待用户确认，T12、Opus／读屏／真机及implementationCommit不变。
+
 ### 2026-10-30：新JSON两项视觉意见与一项可用确认（T61）
 
 收到[3条原批注](review-notes-2026-10-30-round2.json)，摘要匹配T59的3b9c7edc…。
