@@ -1,6 +1,6 @@
 # 正式启用与数据保留（2026-11-01）
 
-状态：**实现及本机演练已通过，准备触发正式发布；尚未执行线上清理。**
+状态：**已正式上线，一次性清理已完成并核验。** 入口：**https://skarma.vip**。
 
 用户明确要求只保留目标、课程、老师和账号，之后的修改必须保留数据。
 这次是唯一获得授权的试用资料清理；历史测试清理授权不延续到正式数据。
@@ -52,8 +52,36 @@
 初轮DO合成数据缺少必填知识标题，补全后复跑通过；Clippy要求缩并条件后，两目标检查、清理保护及完整合约复验通过。
 这些步骤均只使用独立合成库，没有读取线上业务内容或生产账号。
 
-实际发布结果及脱敏回执待完成后补入。不会以 dry-run 或单纯构建成功代替实际清理确认。
 公开 `GET /api/release/formal-launch` 仅返回固定代际和完成布尔值；不返回记录数量、名称、内容、账号或指纹，亦不提供公共清理命令。
+
+## 实际发布结果
+
+| 项目 | 结果 |
+| --- | --- |
+| 应用源码 | `0f9fc7da558dd3c660d58825b3b7e73bb2f2036c` |
+| 触发／部署源码 | `e5d08845601d41a4c44e0fa1d53cdd702b9b72be` |
+| Actions | [run41303311166](https://github.com/q9good/skarmar/actions/runs/41303311166)，validate／release 均 success |
+| 原版本 | `b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa` |
+| 上传并实际激活 | `96b1cb22-c034-43a6-9f7e-b8c819703af6` |
+| 回执 | [deployed_and_verified](artifacts/deployment/cloudflare-formal-launch-20261101-receipt.json)，formal_launch=completed_and_verified |
+
+准备提交的普通CI [run41303216760](https://github.com/q9good/skarmar/actions/runs/41303216760) validate成功、release跳过。
+正式发布的runner重新通过类型／Web构建、Rust测试、Wasm Clippy及实际合成DO清理／保留／普通升级演练，
+再核对原应用、上传唯一候选、核对绑定和配置、激活100%流量，并确认清理完成。
+没有执行演示恢复、空白模型初始化或合成数据补关联；原账号、存储身份、schema v7和来源保持。
+保留资料在清理事务内逐项比对，试用内容残留和引用检查通过后才原子提交完成标记；实际标记已独立核验。
+
+runner与[云端独立公开检查](artifacts/deployment/cloudflare-formal-launch-20261101-independent-checks.json)均通过：
+
+- 首页只去掉已知的一条CF Analytics注入后与本次构建一致，JavaScript逐字节一致。
+- health200／status ok；匿名me／state401，未知API404。
+- 无账号Cookie的合法Origin logout200，非法Origin或缺请求标记403。
+- 从未签发的随机会话退出检查数据库启动成功，不影响任何家人的现有会话。
+- 正式启用状态为 `{"epoch":"formal-20261101","completed":true}`，确认为已提交的清理，非dry-run。
+
+独立检查没有登录真实账号、读取业务内容或新增生产验收样本；账号保留由事务内比对覆盖，真实设备体验仍由用户确认。
+发布期间共享分支保持不变，run结束后才提交收尾证据；后续普通文档push不再次部署或清理。
+原环境T12、Opus／真机／完整读屏待办及正式验收指针保持原状，不将本次发布说成这些验收已完成。
 
 ## 后续发布约束
 

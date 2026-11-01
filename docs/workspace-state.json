@@ -441,9 +441,9 @@
     {
       "id": "T63",
       "title": "正式启用：保留目标课程老师账号、一次性清理试用内容并保障后续数据",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/formal-launch-2026-11-01.md",
-      "verification": "已实现一次性事务清理、保留资料与引用核对、数据库完成标记、失败回滚、旧页面代际门禁和七类本机缓存隔离。167项Rust、最终4项清理保护、63客户端、28组Web、类型/Web构建、原生/Wasm Clippy、完整双运行环境合约及重启、32发布保护/9演示保护均通过；真实DO演练验证原账号和目标/目录/历史保留、试用内容清空、旧客户端拒绝、新正式记录跨重复钩子及普通二进制升级保留，无SKIP。初轮DO合成困难缺标题已补齐复跑，Clippy要求缩并条件后复验通过；均未访问生产。合成结果SHA已登记。原实例与schema v7不改，普通发布不启用清理且代际不随版本变；AGENTS写入后续正式数据保留规则。尚未执行线上清理或本次发布。"
+      "verification": "2026-11-01按用户明确授权正式启用原实例：仅本次清理试用内容，保留全部目标、课程/老师目录、账号/权限/密码散列/会话及目标必需领域、日历和历史；后续所有新增业务数据均按正式数据保留，AGENTS已写入持久规则。应用0f9fc7da558dd3c660d58825b3b7e73bb2f2036c，触发e5d08845601d41a4c44e0fa1d53cdd702b9b72be，run41303311166 validate/release均success。原版本b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa，上传并实际激活96b1cb22-c034-43a6-9f7e-b8c819703af6；回执deployed_and_verified/model=prd_v1/formal_launch completed_and_verified。runner重新通过类型/Web、Rust/Wasm Clippy和真实合成DO一次性清理/保留/普通升级演练，再核对原目标与候选绑定并激活。数据库事务逐项比对保留资料、核对清空与引用后原子提交完成标记；标记实际返回formal-20261101/completed true。runner及云端独立首页/JS字节、health、匿名权限、精确Origin、数据库启动与清理标记全部通过，未登录真实账号、读出业务数据或写入生产验收样本。无空模型初始化/演示恢复/补种/新资源，原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip和v7结构不变。清理按显式构建确认和数据库标记仅一次；稳定代际隔离七类旧缓存和旧请求，后续普通构建/重启/发布不清理且正式草稿键不变。本机167Rust、最终4清理保护、63客户端、28组Web、完整双运行环境/重启、32/9发布保护及原生/Wasm Clippy均通过无SKIP；初轮缺合成标题和Clippy缩并条件已修正复验。准备普通CI41303216760 validate成功/release跳过，发布期间分支不前进。两份脱敏上线结果登记后125项SHA通过，收尾提交不再次部署；T12、Opus/真机/读屏及implementationCommit保持。"
     }
   ],
   "artifacts": [
@@ -1173,6 +1173,16 @@
       "title": "2026-11-01正式启用前合成清理/保留/普通升级与全量回归结果",
       "synthetic": true,
       "sha256": "8b2ab68c5c3e690b3914733407a8e11b0c1dc15bfb623c09e6df6c1c4f44a7eb"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-formal-launch-20261101-receipt.json",
+      "title": "正式启用实际发布与一次性清理完成脱敏回执",
+      "sha256": "6d60514dab9a62d0299e0c193b2a9425284e96ec6351338df5d7e05573c40d05"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-formal-launch-20261101-independent-checks.json",
+      "title": "正式启用云端独立公开检查（不含业务或账号内容）",
+      "sha256": "c1696794da4447a284cf406b4acbe53fa593060ad8778e75a14992fe262c5537"
     }
   ]
 }
