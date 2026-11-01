@@ -1,3 +1,4 @@
+import {DATA_EPOCH} from './data-epoch';
 export type Level = 'long' | 'medium' | 'short';
 export type Role = 'primary' | 'secondary' | 'review';
 export type Outcome = 'continue' | 'archive' | 'adjust';
@@ -91,7 +92,7 @@ async function fetchResponse(path: string, method = 'GET', body?: unknown, uploa
   let response: Response;
   try { response = await fetch(`${base}/api${path}`, {
     method, credentials: 'include', cache: 'no-store', signal:options?.signal,
-    headers: { 'X-Skarma-Request': '1', ...(identity?{'X-Skarma-Actor':identity.actor,'X-Skarma-Space':identity.space}:{}), ...(path==='/data-transfer'?{'X-Skarma-Transfer':'skarmar.transfer.v1'}:{}), ...(options?.space?{'X-Skarma-Space':options.space}:{}), ...(path.startsWith('/prd/') ? { 'X-Skarma-Contract': 'skarmar.prd.v1' } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+    headers: { 'X-Skarma-Request': '1', 'X-Skarma-Data-Epoch': DATA_EPOCH, ...(identity?{'X-Skarma-Actor':identity.actor,'X-Skarma-Space':identity.space}:{}), ...(path==='/data-transfer'?{'X-Skarma-Transfer':'skarmar.transfer.v1'}:{}), ...(options?.space?{'X-Skarma-Space':options.space}:{}), ...(path.startsWith('/prd/') ? { 'X-Skarma-Contract': 'skarmar.prd.v1' } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     body: upload ?? (body === undefined ? undefined : JSON.stringify(body)),
   }); } catch { throw new ApiError('暂时无法连接，请保留草稿后重试', 503); }
   if (response.status === 401 && epoch === sessionEpoch && path !== '/auth/login' && path !== '/auth/me') unauthorized?.();

@@ -1,3 +1,4 @@
+import {dataKey} from './data-epoch';
 import {Disclosure,OptionalSection} from './disclosure';
 import {PlanCoveragePreview} from './plan-coverage-preview';
 import {SectionButton,ContentGroup} from './section-tabs';
@@ -46,7 +47,7 @@ function Bindings({data,goals,methods,change,disabled}:{data:Snapshot;goals:stri
 
 export function SessionHub({data,mode,refresh,accepted,acceptMethod,openGoal,openAction,requested,onRequested,requestedActions,onRequestedActions,afterPrimary}:{data:Snapshot;mode:'today'|'records'|'drafts';refresh:()=>Promise<void>;accepted:(s:Session)=>void;acceptMethod:(s:Saved)=>void;openGoal:(id:string)=>void;openAction?:(id:string)=>void;requested?:{id:string;nonce:string}|null;onRequested?:()=>void;requestedActions?:{ids:string[];nonce:string}|null;onRequestedActions?:()=>void;afterPrimary?:React.ReactNode}){
  const draftStore=useRef<DraftStore<SessionDraft>|null>(null);
- const auth=useAuth(),actor=auth.identity.user,key=`skarmar:${auth.identity.space}:${actor.id}:session-drafts:v1`;
+ const auth=useAuth(),actor=auth.identity.user,key=dataKey(`skarmar:${auth.identity.space}:${actor.id}:session-drafts:v1`);
  const [distribution,setDistribution]=useState(false),[whenOpen,setWhenOpen]=useState(false);
  const [drafts,setDrafts]=useState<Record<string,SessionDraft>>({}),[ready,setReady]=useState(false),[editor,setEditor]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[choice,setChoice]=useState(false),[detail,setDetail]=useState<string|null>(null),[coverage,setCoverage]=useState(false),[picker,setPicker]=useState(false),[search,setSearch]=useState(''),[more,setMore]=useState(false),[goalQuick,setGoalQuick]=useState(false),[methodName,setMethodName]=useState<string|null>(null),[methodBusy,setMethodBusy]=useState(false),[knowledgeBinding,setKnowledgeBinding]=useState<number|null>(null),[actionBinding,setActionBinding]=useState<number|null>(null),[signalBinding,setSignalBinding]=useState<number|null>(null),[suggestions,setSuggestions]=useState<Coverage|null>(null),[feedbackLatest,setFeedbackLatest]=useState<Record<string,Feedback>>({}),[history,setHistory]=useState<{session:Session;actor_name:string;change_note:string;event:string}[]|null>(null),[day,setDay]=useState<string|null>(null),[month,setMonth]=useState(()=>localDate().slice(0,7));
  useEffect(()=>{if(requested){setDetail(requested.id);setHistory(null);onRequested?.()}},[requested]);

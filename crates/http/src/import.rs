@@ -15,15 +15,18 @@ pub fn preview_command(authorization: Command, input: ImportPreviewInput) -> Res
             token,
             command,
             expected_actor,
+            data_epoch,
         } if matches!(*command, Command::ImportAuthorize) => Ok(Command::Authenticated {
             token,
             expected_actor,
+            data_epoch,
             command: Box::new(Command::ImportPreview(input)),
         }),
         Command::Authenticated {
             token,
             command,
             expected_actor,
+            data_epoch,
         } if matches!(
             *command,
             Command::DataTransfer(skarma_core::foundation::transfer::Command::AuthorizeUpload)
@@ -32,6 +35,7 @@ pub fn preview_command(authorization: Command, input: ImportPreviewInput) -> Res
             Ok(Command::Authenticated {
                 token,
                 expected_actor,
+                data_epoch,
                 command: Box::new(Command::DataTransfer(
                     skarma_core::foundation::transfer::Command::Workbook(input),
                 )),

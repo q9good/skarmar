@@ -22,6 +22,8 @@ pub enum Command {
         token: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         expected_actor: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        data_epoch: Option<String>,
         command: Box<Command>,
     },
     Auth(auth::AuthCommand),
@@ -29,6 +31,7 @@ pub enum Command {
     ImportPreview(import::ImportPreviewInput),
     ImportCommit(import::ImportCommitInput),
     RuntimeInfo,
+    FormalLaunchStatus,
     DataTransfer(foundation::transfer::Command),
     FoundationQueued {
         user_id: String,
@@ -102,6 +105,7 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         && !matches!(
             &command,
             Command::RuntimeInfo
+                | Command::FormalLaunchStatus
                 | Command::DataTransfer(_)
                 | Command::Authenticated { .. }
                 | Command::Auth(_)
@@ -150,10 +154,14 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
             token,
             command,
             expected_actor,
+            data_epoch,
         } => {
             let actor = auth::session(db, &token)?;
             if expected_actor.as_ref().is_some_and(|id| id != &actor.id) {
                 return Err(store::ApiError::conflict(auth::SCOPE_CHANGED));
+            }
+            if prd {
+                foundation::launch::require_epoch(db, data_epoch.as_deref())?;
             }
             if matches!(*command, Command::Auth(_) | Command::Authenticated { .. }) {
                 return Err(store::ApiError::invalid("认证请求不能嵌套"));
@@ -294,6 +302,8 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         Command::RuntimeInfo => {
             serde_json::json!({"model":if prd {"prd_v1"} else {"legacy"},"contract":if prd {"skarmar.prd.v1"} else {"legacy"}})
         }
+        Command::FormalLaunchStatus if prd => foundation::launch::status(db)?,
+        Command::FormalLaunchStatus => return Err(store::ApiError::missing()),
         Command::FoundationQueued { .. }
         | Command::FoundationExportSnapshot
         | Command::FoundationState

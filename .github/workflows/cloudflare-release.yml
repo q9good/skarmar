@@ -71,6 +71,9 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing repository secret CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$SKARMA_WRANGLER_TOML" || { echo '::error::Missing repository secret SKARMA_WRANGLER_TOML (existing private production configuration)'; exit 1; }
+          if [[ "$HEAD_MESSAGE" == *"[formal-launch:20261101]"* ]]; then
+            [[ "$HEAD_MESSAGE" == *"[deploy-cloudflare]"* ]] && [[ "$HEAD_MESSAGE" != *"[verify-cloudflare:"* ]] && test -z "$VERIFY_VERSION" && test "$RESTORE_DEMO" != 'true' && test "$ACTIVATE_PRD_EMPTY" != 'true' || { echo '::error::Formal launch cannot restore demo data, reinitialize the model or verify-only'; exit 1; }
+          fi
           if [ "$RESTORE_DEMO" = 'true' ]; then
             test -z "$VERIFY_VERSION" && [[ "$HEAD_MESSAGE" != *"[verify-cloudflare:"* ]] || { echo '::error::Restore cannot run in verify-only mode'; exit 1; }
             test -n "$SKARMA_TEST_LOGIN" || { echo '::error::Missing repository secret SKARMA_TEST_LOGIN (existing approved application login)'; exit 1; }
@@ -116,6 +119,9 @@ jobs:
           remote_sha=$(git ls-remote origin refs/heads/feat/tencent-informed-web | cut -f1)
           test "$remote_sha" = "$GITHUB_SHA" || { echo '::error::Branch moved before restore'; exit 1; }
           python3 tools/restore_demo_batch.py --phase base --confirm-append skarma-demo-20261023
+      - name: Rehearse formal launch on synthetic Durable Objects
+        if: contains(github.event.head_commit.message, '[formal-launch:20261101]')
+        run: node tools/check-formal-launch.mjs
       - name: Rehearse empty PRD baseline on synthetic local stores
         if: inputs.activate_prd_empty || contains(github.event.head_commit.message, '[activate-prd-empty]')
         run: |
@@ -140,6 +146,9 @@ jobs:
           fi
           if [ "$ACTIVATE_PRD_EMPTY" = 'true' ]; then
             mode_args+=(--activate-prd-empty)
+          fi
+          if [[ "$HEAD_MESSAGE" == *"[formal-launch:20261101]"* ]]; then
+            mode_args+=(--formal-launch-20261101)
           fi
           python3 tools/cloudflare_release.py "${mode_args[@]}" --source-sha "$GITHUB_SHA"
       - name: Link the synthetic courses after confirmed activation

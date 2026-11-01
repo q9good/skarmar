@@ -27,6 +27,9 @@ WORKER = "skarma-web"
 ORIGIN = "https://skarma.vip"
 SHA = re.compile(r"[0-9a-f]{40}")
 UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+FORMAL_ACK = "retain-goals-courses-teachers-accounts-20261101"
+FORMAL_PREVIOUS = "b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa"
+
 PRD_VARS = {"SKARMA_MODEL": "prd_v1", "SKARMA_PRD_BASELINE": "empty_preserve_legacy_v1"}
 
 
@@ -270,7 +273,17 @@ def smoke(initialize_prd=False):
     return checks
 
 
-def run_release(config, source_sha, api, receipt, activate_prd_empty=False):
+def formal_launch_check():
+    status, body = public_request("/api/release/formal-launch")
+    require(status == 200 and json.loads(body) == {"epoch": "formal-20261101", "completed": True},
+            "Formal launch cleanup was not confirmed; do not claim trial data was cleared.")
+    return "completed_and_verified"
+
+
+def run_release(config, source_sha, api, receipt, activate_prd_empty=False, formal_launch=False):
+    require(os.environ.get("SKARMA_FORMAL_LAUNCH") == FORMAL_ACK if formal_launch
+            else "SKARMA_FORMAL_LAUNCH" not in os.environ,
+            "Cleanup builds require the explicit reviewed one-time release mode.")
     deployment_id, previous_id, previous = api.current()
     preserved = validate_live(config, previous)
     expected = copy.deepcopy(preserved)
@@ -285,6 +298,11 @@ def run_release(config, source_sha, api, receipt, activate_prd_empty=False):
         expected["bindings"].sort(key=lambda b: b["name"])
     prd = all({b["name"]: b.get("text") for b in expected["bindings"]}.get(k) == v for k, v in PRD_VARS.items())
     receipt["model"] = "prd_v1" if prd else "legacy"
+    if formal_launch:
+        require(not activate_prd_empty and prd and previous_id == FORMAL_PREVIOUS,
+                "One-time formal launch requires the reviewed existing PRD version; never retry by redeploying.")
+        require(os.environ.get("SKARMA_FORMAL_LAUNCH") == FORMAL_ACK, "Formal build acknowledgment is missing.")
+        receipt["formal_launch"] = "20261101"
     routing = api.routing()
     receipt.update(previous_version=previous_id, state="preflight_passed")
     wrangler(["versions", "upload", "--dry-run", "--keep-vars", *extra_args], "dry-run")
@@ -312,6 +330,8 @@ def run_release(config, source_sha, api, receipt, activate_prd_empty=False):
     for attempt in range(3):
         try:
             receipt["checks"] = smoke(initialize_prd=prd)
+            if formal_launch:
+                receipt["checks"]["formal_launch"] = formal_launch_check()
             receipt["state"] = "deployed_and_verified"
             return
         except ReleaseError as error:
@@ -361,12 +381,18 @@ def main():
     mode.add_argument("--verify-version", help="Only verify this active version; never upload or promote.")
     mode.add_argument("--verify-from-event", action="store_true", help="Read an explicit verify version marker from the GitHub event.")
     parser.add_argument("--activate-prd-empty", action="store_true", help="Explicit one-time empty PRD domain; preserve original auth and legacy tables.")
+    parser.add_argument("--formal-launch-20261101", action="store_true", help="One-time authorized trial cleanup; keep goals, courses, teachers and accounts.")
     args = parser.parse_args()
     receipt = {"worker": WORKER, "origin": ORIGIN, "source_sha": args.source_sha, "state": "not_deployed"}
     os.umask(0o077)
     OUTPUT.mkdir(parents=True, exist_ok=True)
     wrote_config = False
     try:
+        require("SKARMA_FORMAL_LAUNCH" not in os.environ, "Build acknowledgment must be selected only by the explicit formal-launch mode.")
+        require(not args.formal_launch_20261101 or (args.deploy and not args.activate_prd_empty),
+                "Formal launch requires ordinary deploy and cannot initialize another model.")
+        if args.formal_launch_20261101:
+            os.environ["SKARMA_FORMAL_LAUNCH"] = FORMAL_ACK
         require(SHA.fullmatch(args.source_sha) is not None, "Require an exact 40-character source SHA.")
         actual_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         require(actual_sha == args.source_sha, "Checkout does not match the requested source SHA.")
@@ -393,13 +419,15 @@ def main():
         if expected_version:
             verify_existing(config, expected_version, api, receipt)
         else:
-            run_release(config, args.source_sha, api, receipt, activate_prd_empty=args.activate_prd_empty)
+            run_release(config, args.source_sha, api, receipt, activate_prd_empty=args.activate_prd_empty, formal_launch=args.formal_launch_20261101)
     except (ReleaseError, OSError, ValueError, KeyError) as error:
         # Unexpected exceptions/JSON/OS errors can contain private paths or API values.
         receipt["error"] = str(error) if isinstance(error, ReleaseError) else "Release failed; inspect private runner diagnostics."
         print(receipt["error"], file=sys.stderr)
         return 1
     finally:
+        if args.formal_launch_20261101:
+            os.environ.pop("SKARMA_FORMAL_LAUNCH", None)
         if wrote_config:
             CONFIG.unlink(missing_ok=True)
         (OUTPUT / "receipt.json").write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + "\n")

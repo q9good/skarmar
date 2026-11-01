@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
+import {DATA_EPOCH,dataKey} from '../apps/client/src/data-epoch.ts';
+test('formal draft namespace is stable across ordinary releases and isolates every trial cache',()=>{
+ assert.equal(DATA_EPOCH,'formal-20261101');
+ for(const kind of ['prd-drafts','session-drafts','lesson-drafts','observation-drafts','followup-drafts','lesson-queue','snapshot']){
+  const old=`skarmar:default:synthetic-user:${kind}:v1`,key=dataKey(old);
+  assert.notEqual(key,old);assert.equal(key,`${DATA_EPOCH}:${old}`);assert.equal(dataKey(old),key);
+  const cache=new Map([[old,'trial'],[key,'formal']]);assert.equal(cache.get(dataKey(old)),'formal');assert.equal(cache.get(old),'trial');
+ }
+});
 import { acceptSaved, decodeDrafts, emptySnapshot, mergeSnapshot, newGoal, newMethod, longDirectionsOf } from '../apps/client/src/foundation.ts';
 test('family long-focus priority is shared goal data, stable within a tier and does not reorder the snapshot',()=>{
  const make=(id,priority,extra={})=>({id,version:1,input:{...newGoal(),title:id,level:'long',...extra,...(priority===undefined?{}:{long_priority:priority})}});

@@ -167,6 +167,13 @@ pub fn initialize_empty_prd_baseline(db: &Connection) -> Result<()> {
     tx.commit().map_err(|_| ApiError::storage())
 }
 
+/// Explicit offline maintenance/test entry; never called by normal native startup or public HTTP.
+pub fn formal_launch(db: &mut Connection, acknowledgment: &str) -> Result<serde_json::Value> {
+    transaction(db, |sql| {
+        skarma_core::foundation::launch::apply_once(sql, acknowledgment)
+    })
+}
+
 pub fn write_foundation_lesson(
     db: &mut Connection,
     actor: &skarma_core::auth::User,

@@ -141,6 +141,48 @@ class PromotionTests(unittest.TestCase):
                 release.run_release(config(), SOURCE, self.api, self.receipt)
         self.assertNotIn("deployed_version", self.receipt)
 
+    def formal_api(self):
+        self.api.active = release.FORMAL_PREVIOUS
+        self.api.old = version(release.FORMAL_PREVIOUS)
+        extra = [{"type": "plain_text", "name": key, "text": val} for key, val in release.PRD_VARS.items()]
+        self.api.old["resources"]["bindings"].extend(extra)
+        self.api.candidate["resources"]["bindings"].extend(copy.deepcopy(extra))
+
+    def test_formal_cleanup_requires_exact_previous_version_and_explicit_build(self):
+        with self.assertRaises(release.ReleaseError):
+            release.run_release(config(), SOURCE, self.api, self.receipt, formal_launch=True)
+        self.assertEqual(self.commands, [])
+        with patch.dict(release.os.environ, {"SKARMA_FORMAL_LAUNCH": release.FORMAL_ACK}):
+            with self.assertRaises(release.ReleaseError):
+                release.run_release(config(), SOURCE, self.api, self.receipt)
+            with self.assertRaises(release.ReleaseError):
+                release.run_release(config(), SOURCE, self.api, self.receipt, formal_launch=True)
+        self.assertEqual(self.commands, [])
+
+    def test_formal_cleanup_is_confirmed_only_after_activation_and_public_marker(self):
+        self.formal_api()
+        with patch.dict(release.os.environ, {"SKARMA_FORMAL_LAUNCH": release.FORMAL_ACK}), \
+                patch.object(release, "wrangler", side_effect=self.wrangler), \
+                patch.object(release, "smoke", return_value={"synthetic":"passed"}), \
+                patch.object(release, "formal_launch_check", return_value="completed_and_verified"):
+            release.run_release(config(), SOURCE, self.api, self.receipt, formal_launch=True)
+        self.assertEqual(self.commands, ["dry-run", "upload", "promote"])
+        self.assertEqual(self.receipt["checks"]["formal_launch"], "completed_and_verified")
+        self.assertEqual(self.receipt["state"], "deployed_and_verified")
+
+    def test_formal_marker_failure_does_not_redeploy_or_claim_cleanup(self):
+        self.formal_api()
+        with patch.dict(release.os.environ, {"SKARMA_FORMAL_LAUNCH": release.FORMAL_ACK}), \
+                patch.object(release, "wrangler", side_effect=self.wrangler), \
+                patch.object(release, "smoke", return_value={"synthetic":"passed"}), \
+                patch.object(release, "formal_launch_check", side_effect=release.ReleaseError("synthetic marker missing")), \
+                patch.object(release.time, "sleep"):
+            with self.assertRaises(release.ReleaseError):
+                release.run_release(config(), SOURCE, self.api, self.receipt, formal_launch=True)
+        self.assertEqual(self.commands, ["dry-run", "upload", "promote"])
+        self.assertEqual(self.receipt["deployed_version"], NEW)
+        self.assertEqual(self.receipt["state"], "deployed_public_checks_pending")
+
     def test_different_candidate_namespace_never_promoted(self):
         self.api.candidate["resources"]["bindings"][-1]["namespace_id"] = "different-namespace"
         with self.assertRaises(release.ReleaseError):

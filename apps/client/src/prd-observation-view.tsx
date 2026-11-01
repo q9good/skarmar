@@ -1,3 +1,4 @@
+import {dataKey} from './data-epoch';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
 import {DraftRecovery} from './draft-recovery';
@@ -28,7 +29,7 @@ function Field({label,value,change,placeholder='',hint='',disabled=false,numeric
 type Page={items:EvidenceRecord[];has_more:boolean;data_version?:number};
 export function ObservationHub({data,mode,requested,onRequested,changed,reported}:{data:Snapshot;mode:'today'|'records'|'hidden';requested?:{kind:'goal'|'needs'|'moment';id:string;nonce:string}|null;onRequested?:()=>void;changed?:()=>void;reported?:(records:EvidenceRecord[])=>void}){
  const draftStore=useRef<DraftStore<ObserveDraft>|null>(null);
- const auth=useAuth(),actor=auth.identity.user,key=`skarmar:${auth.identity.space}:${actor.id}:observation-drafts:v1`;
+ const auth=useAuth(),actor=auth.identity.user,key=dataKey(`skarmar:${auth.identity.space}:${actor.id}:observation-drafts:v1`);
  const [records,setRecords]=useState<EvidenceRecord[]>([]),[drafts,setDrafts]=useState<Record<string,ObserveDraft>>({}),[ready,setReady]=useState(false),[editor,setEditor]=useState<string|null>(null),[goalPanel,setGoalPanel]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[latest,setLatest]=useState<EvidenceRecord|null>(null),[history,setHistory]=useState<{id:string;items:EvidenceRecord[];page:number;more:boolean}|null>(null),[updates,setUpdates]=useState(false),[pages,setPages]=useState<Record<string,number>>({}),[more,setMore]=useState<Record<string,boolean>>({});
  const refs=useRef(drafts),alive=useRef(true),inFlight=useRef(false),sequence=useRef<Record<string,number>>({});
  const accept=(incoming:EvidenceRecord[])=>setRecords(old=>{const map=new Map(old.map(r=>[r.id,r]));for(const r of incoming)if(!map.has(r.id)||map.get(r.id)!.version<=r.version)map.set(r.id,r);return [...map.values()];});

@@ -1,3 +1,4 @@
+import {dataKey} from './data-epoch';
 import {Disclosure} from './disclosure';
 import {SectionButton,SectionTabs,ContentGroup} from './section-tabs';
 import {authSessionGuard} from './api';
@@ -133,7 +134,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   const scope = `${actorId}`;
   // Space is supplied by the authenticated identity, never by the form.
   const authScope = useAuth().identity.space;
-  const storageKey = `skarmar:${authScope}:${scope}:lesson-drafts:v1`;
+  const storageKey = dataKey(`skarmar:${authScope}:${scope}:lesson-drafts:v1`);
   const [drafts,setDrafts]=useState<Record<string,LessonDraft>>({}), [editor,setEditor]=useState<string|null>(null), [ready,setReady]=useState(false), [error,setError]=useState(''), [notice,setNotice]=useState(''), [busy,setBusy]=useState(false), [receipt,setReceipt]=useState<string|null>(null), [detail,setDetail]=useState<string|null>(null);
   const [historyPage,setHistoryPage]=useState(0),[historyMore,setHistoryMore]=useState(false),[historyLoading,setHistoryLoading]=useState(false);const historySequence=useRef(0);
   const [customRange,setCustomRange]=useState(false),[rangeFrom,setRangeFrom]=useState(''),[rangeTo,setRangeTo]=useState('');

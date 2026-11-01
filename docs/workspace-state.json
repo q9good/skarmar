@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-30",
+  "updatedAt": "2026-11-01",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -437,6 +437,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-10-30.md",
       "verification": "2026-10-30按用户明确授权通过既有GitHub Actions普通发布。发布前远端与干净工作区均6c8a5194a44d4c4eac079929b2d78a48cb2d0317，普通run41065522537 validate成功/release跳过；29发布保护、9演示工具保护及120项产物SHA重跑通过，应用摘要d2c820aa82eb4842d030f0e67dac1df53aede09e97e7b4051001738b0825c1f2与最终17图一致。触发源码b668c15df9522e305e176cf8b603d4587a4a3558，run41066365995的validate/release均success，类型/Web构建、Rust测试、Wasm Clippy及原目标元数据检查实际通过。原版本266022a9-e23d-4916-bda1-52e646badb41，上传并实际激活b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa，脱敏回执deployed_and_verified/model=prd_v1。runner及云端独立首页/JS字节、health、匿名权限、精确Origin与数据库启动通过；未登录真实账号或读取业务数据。原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip、账号/会话/业务与schema v7保留，无初始化/清库/演示恢复/自动种入，相关workflow步骤实际skipped。新增JSON可选字段的空值请求身份和旧回执保护沿用T58实测证据。发布期间分支不前进，完成后保存两份脱敏结果并更新文档，122项产物SHA通过；原17图/HTML/checks保留自测时快照，不将deployed:false改写成发布证据。T12、Opus/真机/读屏和正式implementationCommit不变，收尾提交不带发布标记。"
+    },
+    {
+      "id": "T63",
+      "title": "正式启用：保留目标课程老师账号、一次性清理试用内容并保障后续数据",
+      "status": "in_progress",
+      "evidence": "docs/formal-launch-2026-11-01.md",
+      "verification": "已实现一次性事务清理、保留资料与引用核对、数据库完成标记、失败回滚、旧页面代际门禁和七类本机缓存隔离。167项Rust、最终4项清理保护、63客户端、28组Web、类型/Web构建、原生/Wasm Clippy、完整双运行环境合约及重启、32发布保护/9演示保护均通过；真实DO演练验证原账号和目标/目录/历史保留、试用内容清空、旧客户端拒绝、新正式记录跨重复钩子及普通二进制升级保留，无SKIP。初轮DO合成困难缺标题已补齐复跑，Clippy要求缩并条件后复验通过；均未访问生产。合成结果SHA已登记。原实例与schema v7不改，普通发布不启用清理且代际不随版本变；AGENTS写入后续正式数据保留规则。尚未执行线上清理或本次发布。"
     }
   ],
   "artifacts": [
@@ -1160,6 +1167,12 @@
       "path": "docs/artifacts/deployment/cloudflare-release-20261030-independent-checks.json",
       "title": "2026-10-30云端独立公开上线检查（无账号与业务数据）",
       "sha256": "5b36d33d906f289eee1d1fbd41231d069e7b7621022f0bdccc25c97e7ca3620a"
+    },
+    {
+      "path": "docs/artifacts/validation/formal-launch-2026-11-01/checks.json",
+      "title": "2026-11-01正式启用前合成清理/保留/普通升级与全量回归结果",
+      "synthetic": true,
+      "sha256": "8b2ab68c5c3e690b3914733407a8e11b0c1dc15bfb623c09e6df6c1c4f44a7eb"
     }
   ]
 }

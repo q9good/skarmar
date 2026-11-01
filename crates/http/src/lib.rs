@@ -44,11 +44,13 @@ fn authenticated(proof: Option<Extension<auth::SessionProof>>, command: Command)
     if let Some(Extension(auth::SessionProof {
         token,
         expected_actor,
+        data_epoch,
     })) = proof
     {
         Command::Authenticated {
             token,
             expected_actor,
+            data_epoch,
             command: Box::new(command),
         }
     } else {
@@ -722,6 +724,16 @@ pub fn router_with_auth<R: Repository>(repo: R, config: auth::AuthConfig) -> Rou
         .with_state(repo);
     let api = protected
         .merge(auth::routes(auth_state.clone()))
+        .route(
+            "/release/formal-launch",
+            get({
+                let repo = auth_state.repo.clone();
+                move || {
+                    let repo = repo.clone();
+                    async move { repo.execute(Command::FormalLaunchStatus).await.map(Json) }
+                }
+            }),
+        )
         .route(
             "/health",
             get(|| async { Json(serde_json::json!({"status":"ok"})) }),

@@ -1,3 +1,4 @@
+import {dataKey} from './data-epoch';
 import {DetailOverlay} from './overlay';
 import React,{createContext,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,7 +25,7 @@ async function timed<T>(path:string,method='GET',body?:unknown,space?:string){
   try{return await request<T>(path,method,body,{signal:abort.signal,space});}finally{clearTimeout(timer);}
 }
 export function LessonOutboxProvider({children,accepted,cacheLoaded,data}:{children:React.ReactNode;accepted:(r:Saved|Lesson)=>void;cacheLoaded:(s:Snapshot)=>void;data:Snapshot}){
-  const {identity}=useAuth(),scope=`${identity.space}:${identity.user.id}`,key=`skarmar:${scope}:lesson-queue:v1`,cacheKey=`skarmar:${scope}:snapshot:v1`;
+  const {identity}=useAuth(),scope=`${identity.space}:${identity.user.id}`,key=dataKey(`skarmar:${scope}:lesson-queue:v1`),cacheKey=dataKey(`skarmar:${scope}:snapshot:v1`);
   const [value,setValue]=useState(emptyOutbox),[ready,setReady]=useState(false),[error,setError]=useState('');
   const alive=useRef(true),callbacks=useRef({accepted,cacheLoaded});callbacks.current={accepted,cacheLoaded};
   const queue=useMemo(()=>new LessonOutbox({user:identity.user.id,space:identity.space},{

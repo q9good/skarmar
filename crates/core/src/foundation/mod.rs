@@ -5,6 +5,7 @@ mod comparison;
 pub mod coverage;
 pub mod export;
 pub mod followups;
+pub mod launch;
 pub mod lesson_model;
 pub mod lessons;
 pub mod model;

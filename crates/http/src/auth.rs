@@ -162,6 +162,7 @@ fn identity(user: Value, config: &AuthConfig) -> Value {
 pub(crate) struct SessionProof {
     pub token: String,
     pub expected_actor: Option<String>,
+    pub data_epoch: Option<String>,
 }
 
 pub(crate) async fn require_session<R: Repository>(
@@ -201,9 +202,14 @@ pub(crate) async fn require_session<R: Repository>(
         {
             return ApiError::conflict(skarma_core::auth::SCOPE_CHANGED).into_response();
         }
+        let data_epoch = request
+            .headers()
+            .get("x-skarma-data-epoch")
+            .map(|v| v.to_str().unwrap_or("").to_owned());
         request.extensions_mut().insert(SessionProof {
             token,
             expected_actor,
+            data_epoch,
         });
     }
     next.run(request).await

@@ -14,6 +14,7 @@ fn signed(db: &mut Connection, token: &str, command: Command) -> serde_json::Val
         db,
         Command::Authenticated {
             expected_actor: None,
+            data_epoch: None,
             token: token.into(),
             command: Box::new(command),
         },
@@ -73,6 +74,7 @@ fn denied(db: &mut Connection, token: &str, command: Command) -> axum::http::Sta
         db,
         Command::Authenticated {
             expected_actor: None,
+            data_epoch: None,
             token: token.into(),
             command: Box::new(command),
         },
@@ -508,6 +510,7 @@ fn oversized_serialized_preview_is_rejected_before_storage() {
         &mut db,
         Command::Authenticated {
             expected_actor: None,
+            data_epoch: None,
             token,
             command: Box::new(Command::ImportPreview(input)),
         },
@@ -559,6 +562,7 @@ fn repeated_large_headers_are_bounded_before_source_archive_expansion() {
         &mut db,
         Command::Authenticated {
             expected_actor: None,
+            data_epoch: None,
             token,
             command: Box::new(Command::ImportPreview(input)),
         },

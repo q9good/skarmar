@@ -1,3 +1,4 @@
+import {dataKey} from './data-epoch';
 import {Disclosure} from './disclosure';
 import {SectionTabs,ContentGroup} from './section-tabs';
 import {authSessionGuard} from './api';
@@ -175,7 +176,7 @@ export function FoundationWorkspace() {
   const auth = useAuth();
   const wide=useWindowDimensions().width>=900;
   const scope = `${auth.identity.space}:${auth.identity.user.id}`;
-  const key = `skarmar:${scope}:prd-drafts:v1`;
+  const key = dataKey(`skarmar:${scope}:prd-drafts:v1`);
   const [data, setData] = useState<Snapshot>(emptySnapshot);
   const [todayMoments,setTodayMoments]=useState<EvidenceRecord[]>([]);
   const reportTodayMoments=useCallback((records:EvidenceRecord[])=>setTodayMoments(records),[]);

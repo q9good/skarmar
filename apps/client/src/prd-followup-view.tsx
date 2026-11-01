@@ -1,3 +1,4 @@
+import {dataKey} from './data-epoch';
 import {Disclosure} from './disclosure';
 import {SectionTabs,knowledgeTones} from './section-tabs';
 import {GoalMethodPicker} from './goal-method-picker';
@@ -40,7 +41,7 @@ const nameOf=(k:Knowledge)=>k.details?.title||k.input.content;
 const draftKey=(c:ProcessCommand)=>`${c.kind}:${c.kind==='settings'?'family':c.value.id}`;
 export function FollowupHub({data,mode,refresh,requested,onRequested,adjustMethod,openLesson,planActions}:{data:Snapshot;mode:'today'|'full'|'hidden';refresh:()=>Promise<void>;requested?:{kind:'knowledge'|'review'|'action'|'new_experience';id:string;object_kind?:Schedule['object_kind'];nonce:string}|null;onRequested?:()=>void;adjustMethod?:(methodId:string,knowledgeId:string,version:number)=>void;openLesson?:(id:string)=>void;planActions?:(ids:string[])=>void}){
  const draftStore=useRef<DraftStore<Draft>|null>(null);
- const auth=useAuth(),actor=auth.identity.user,scope=`skarmar:${auth.identity.space}:${actor.id}:followup-drafts:v1`;
+ const auth=useAuth(),actor=auth.identity.user,scope=dataKey(`skarmar:${auth.identity.space}:${actor.id}:followup-drafts:v1`);
  const batchKey=scope+':review-batch:v1',batchRef=useRef<ReviewBatch|null>(null),batchUsable=useRef(false);
  const [batch,setBatch]=useState<ReviewBatch|null>(null),[batchError,setBatchError]=useState('');
  useEffect(()=>{let active=true;void AsyncStorage.getItem(batchKey).then(raw=>{const v=decodeReviewBatch(raw);if(active&&!batchUsable.current){batchUsable.current=true;batchRef.current=v;setBatch(v);}}).catch(e=>{if(active)setBatchError(errorText(e));});return()=>{active=false;};},[batchKey]);

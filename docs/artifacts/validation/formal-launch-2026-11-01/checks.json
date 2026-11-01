@@ -1,0 +1,35 @@
+{
+  "synthetic": true,
+  "application_sha256": "f1f65bcb11b2da2e4d7fe5ec252a016c2aa281cfabca96056cb0adbe0be1b2a0",
+  "date": "2026-11-01",
+  "rust_tests": 167,
+  "final_cleanup_tests": 4,
+  "client_tests": 63,
+  "browser_scripts": 28,
+  "release_guards": 32,
+  "demo_tool_guards": 9,
+  "typecheck": "passed",
+  "web_build": "passed",
+  "native_clippy": "passed",
+  "wasm_clippy": "passed",
+  "runtime_contracts": "native SQLite and actual Rust Wasm/Durable Object complete contracts and restart passed; no SKIP",
+  "formal_launch_rehearsal": {
+    "synthetic": true,
+    "checks": [
+      "preserved_goals_hierarchy_catalog_accounts_histories",
+      "trial_records_cleared",
+      "old_browser_and_outbox_rejected",
+      "new_formal_records_survive_restart",
+      "ordinary_binary_upgrade_preserves_formal_data",
+      "member_password_still_works"
+    ],
+    "errors": []
+  },
+  "browser_generation": "seven old trial caches ignored; no automatic writes; formal draft recovered and saved with epoch",
+  "production_access": "none during these rehearsals",
+  "notes": [
+    "One fixture initially lacked its required knowledge title; completed it and reran the DO rehearsal successfully.",
+    "Clippy initially requested a collapsed condition; fixed it, then both Clippy targets, four cleanup tests and full runtime contracts passed."
+  ],
+  "errors": []
+}

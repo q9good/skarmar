@@ -306,6 +306,12 @@ impl DurableObject for SkarmaSpace {
                     if cfg.demo {
                         skarma_core::store::seed_demo(&sql)?;
                     }
+                    if let Some(ack) = option_env!("SKARMA_FORMAL_LAUNCH") {
+                        if cfg.model != DataModel::PrdV1 || cfg.demo || cfg.space != "default" {
+                            return Err(ApiError::conflict("正式启用只能用于原 default 新模型空间"));
+                        }
+                        skarma_core::foundation::launch::apply_once(&sql, ack)?;
+                    }
                     if let Some((filename, bytes)) = upload {
                         skarma_core::execute(&sql, command.clone())?;
                         let input = skarma_http::import::parse(&filename, &bytes)?;
