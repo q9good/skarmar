@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-01",
+  "updatedAt": "2026-11-03",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -444,6 +444,13 @@
       "status": "done",
       "evidence": "docs/formal-launch-2026-11-01.md",
       "verification": "2026-11-01按用户明确授权正式启用原实例：仅本次清理试用内容，保留全部目标、课程/老师目录、账号/权限/密码散列/会话及目标必需领域、日历和历史；后续所有新增业务数据均按正式数据保留，AGENTS已写入持久规则。应用0f9fc7da558dd3c660d58825b3b7e73bb2f2036c，触发e5d08845601d41a4c44e0fa1d53cdd702b9b72be，run41303311166 validate/release均success。原版本b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa，上传并实际激活96b1cb22-c034-43a6-9f7e-b8c819703af6；回执deployed_and_verified/model=prd_v1/formal_launch completed_and_verified。runner重新通过类型/Web、Rust/Wasm Clippy和真实合成DO一次性清理/保留/普通升级演练，再核对原目标与候选绑定并激活。数据库事务逐项比对保留资料、核对清空与引用后原子提交完成标记；标记实际返回formal-20261101/completed true。runner及云端独立首页/JS字节、health、匿名权限、精确Origin、数据库启动与清理标记全部通过，未登录真实账号、读出业务数据或写入生产验收样本。无空模型初始化/演示恢复/补种/新资源，原Worker/SkarmaSpace/SKARMA_DB/default/skarma.vip和v7结构不变。清理按显式构建确认和数据库标记仅一次；稳定代际隔离七类旧缓存和旧请求，后续普通构建/重启/发布不清理且正式草稿键不变。本机167Rust、最终4清理保护、63客户端、28组Web、完整双运行环境/重启、32/9发布保护及原生/Wasm Clippy均通过无SKIP；初轮缺合成标题和Clippy缩并条件已修正复验。准备普通CI41303216760 validate成功/release跳过，发布期间分支不前进。两份脱敏上线结果登记后125项SHA通过，收尾提交不再次部署；T12、Opus/真机/读屏及implementationCommit保持。"
+    },
+    {
+      "id": "T64",
+      "title": "在当前云端项目安装ConardLi Garden Skills整套六个技能",
+      "status": "done",
+      "evidence": "docs/garden-skills-setup.md",
+      "verification": "2026-11-03确认作者官方ConardLi/garden-skills，固定提交2b9a89340b70f632d31c0f1c69fce94a7912423e。按作者支持的手动复制方式项目级安装6份技能至.agents/skills，并在.codex/skills添加对应兼容链接；6份元数据解析通过、417个原始文件逐项SHA-256与上游一致、每份附MIT许可、链接均解析到规范目录。文件通过本机Git exclude隔离，完整receipt及原始clone留.local；仅当前工作区文件安装，不随Git/pull同步至其他环境。executor技能列表仍为空，明确未注册为平台插件或声称菜单即时刷新；当前agent可按名称直接读取SKILL.md使用。未运行生成脚本/安装可选运行依赖，未改动应用代码/生产服务/环境草案/凭据；正式数据保留规则不变。"
     }
   ],
   "artifacts": [
