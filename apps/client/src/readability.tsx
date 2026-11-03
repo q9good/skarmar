@@ -2,6 +2,8 @@ import React, { createContext, forwardRef, useContext, useEffect, useState } fro
 import { Pressable as NativePressable, StyleSheet, Text as NativeText, TextInput as NativeTextInput, View,
   type PressableProps, type TextProps, type TextInputProps, type TextStyle } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {neutral} from './ui-palette';
+import {useUiPalette} from './ui-theme';
 
 const Context = createContext({ large: false, ready: false, error: '', change: (_large: boolean) => {} });
 const key = 'skarmar:device:large-text';
@@ -31,17 +33,19 @@ function typography(style: TextProps['style'], large: boolean, input = false): T
 }
 export const Text = forwardRef<NativeText, TextProps>(function Text(props, ref) {
   const { large } = useReadability();
-  return <NativeText {...props} ref={ref} style={[{ color: '#243D36' }, props.style, typography(props.style, large)]} />;
+  return <NativeText {...props} ref={ref} style={[{ color: neutral.ink }, props.style, typography(props.style, large)]} />;
 });
 export const TextInput = forwardRef<NativeTextInput, TextInputProps>(function TextInput(props, ref) {
   const { large } = useReadability();
+  const c=useUiPalette(),[focused,setFocused]=useState(false);
   return <NativeTextInput placeholderTextColor="#58695E" {...props} ref={ref}
-    style={[{ color: '#243D36', minHeight: large ? 56 : 44 }, props.style, typography(props.style, large, true)]} />;
+    onFocus={e=>{setFocused(true);props.onFocus?.(e);}} onBlur={e=>{setFocused(false);props.onBlur?.(e);}}
+    style={[{ color: neutral.ink, minHeight: large ? 56 : 44 }, props.style, typography(props.style, large, true),focused&&{borderColor:c.ink,borderWidth:2}]} />;
 });
 export function Pressable({ style, ...props }: PressableProps) {
   const { large } = useReadability();
-  return <NativePressable {...props} style={state => [typeof style === 'function' ? style(state) : style,
-    { minWidth: 44, minHeight: large ? 56 : 44, justifyContent: 'center' }]} />;
+  return <NativePressable {...props} style={state => {const value=typeof style==='function'?style(state):style,flat=StyleSheet.flatten(value)??{};return [value,
+    { minWidth: typeof flat.minWidth==='number'?Math.max(44,flat.minWidth):flat.minWidth??44, minHeight: typeof flat.minHeight==='number'?Math.max(large?56:44,flat.minHeight):flat.minHeight??(large?56:44), justifyContent: 'center' }];}} />;
 }
 export function ReadabilitySettings() {
   const { large, ready, error, change } = useReadability();

@@ -110,7 +110,7 @@ with sync_playwright() as p:
     concurrent_course=str(uuid4());call('PUT','/prd/records/'+concurrent_course,{'id':concurrent_course,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'catalog','value':{'kind':'course','name':'并发引用课','active':True}}})
     concurrent_id=str(uuid4());concurrent=call('PUT','/prd/lessons/'+concurrent_id,{'id':concurrent_id,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':{**l['observation'],'course_id':concurrent_course,'teacher_id':l['teacher']['id'],'notes':'并发引用前可撤销','teacher_notes':'','request_review':False}}})
     a.evaluate("window.dispatchEvent(new Event('focus'))");nav(a,'今天');button(a,'查看课记：并发引用课 · 测试王老师').click();expect(button(a,'撤销这条课记')).to_be_visible()
-    plan_id=str(uuid4());call('PUT','/prd/sessions/'+plan_id,{'id':plan_id,'operation_id':str(uuid4()),'expected_version':None,'action':'save_draft','input':{'business_date':today,'time_slot':'晚上','lesson_sources':[{'id':concurrent_id,'version':concurrent['version']}]}})
+    plan_id=str(uuid4());call('PUT','/prd/sessions/'+plan_id,{'id':plan_id,'operation_id':str(uuid4()),'expected_version':None,'action':'save_draft','input':{'business_date':today,'time_slot':'晚上','plan':'合成：参考课记，尝试轮流活动','lesson_sources':[{'id':concurrent_id,'version':concurrent['version']}]}})
     nav(a,'撤销这条课记');nav(a,'确认操作');expect(a.get_by_role('alert')).to_contain_text('课记已被整理、回应或其他记录引用')
     dismiss(a,'核对课记操作');button(a,'查看课记：并发引用课 · 测试王老师').click();expect(button(a,'撤销这条课记')).to_have_count(0);expect(button(a,'标记记错，请管理员处理')).to_be_visible();dismiss(a,'课记详情')
     assert next(l for l in state()['lessons'] if l['id']==concurrent_id)['status']=='recorded'

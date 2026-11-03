@@ -338,6 +338,7 @@ fn withdrawal_capability_matches_preflight_and_rechecks_concurrent_plan_referenc
             "input":{
                 "business_date":"2020-01-01",
                 "time_slot":"晚上",
+        "plan":"合成：参考这次课记开展家庭活动",
                 "lesson_sources":[{"id":referenced_id,"version":referenced.version}]
             }
         }))

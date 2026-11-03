@@ -1,3 +1,4 @@
+import {UiButton} from './ui-components';
 import React,{useEffect,useState} from 'react';
 import {Disclosure} from './disclosure';
 import {View} from 'react-native';
@@ -11,7 +12,7 @@ import type {Coverage} from './prd-sessions';
 import {coverageItems,coverageColors,coverageLegend,type CoverageTopic,type CoverageItem} from './prd-coverage';
 
 const palette=['#245D48','#315B82','#744C64','#775521','#4A536D','#52622F','#665285','#795047'];
-const Button=({title,press,disabled=false}:{title:string;press:()=>void;disabled?:boolean})=><Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={press} style={{padding:12,borderRadius:10,backgroundColor:'#E9F2E9',opacity:disabled?.5:1}}><Text>{title}</Text></Pressable>;
+const Button=({title,press,disabled=false}:{title:string;press:()=>void;disabled?:boolean})=><UiButton title={title} disabled={disabled} press={press}/>;
 function Ring({items}:{items:CoverageItem[]}){
  const total=items.reduce((n,r)=>n+r.counts.selected,0),circumference=2*Math.PI*70;let offset=0;
  return <View style={{alignItems:'center',gap:8}}>

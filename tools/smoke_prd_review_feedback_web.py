@@ -58,7 +58,7 @@ with sync_playwright() as p:
   else:assert styles[0]==styles[1],styles
   for control,name in zip(controls,[left,right]):assert control.get_attribute('aria-pressed')==str(name==selected).lower()
   return group
- classroom=btn('记录课堂');family=btn('记录家庭');assert classroom.evaluate('e=>getComputedStyle(e).backgroundColor')==family.evaluate('e=>getComputedStyle(e).backgroundColor')
+ classroom=btn('记录课堂');family=btn('记录家庭');assert classroom.evaluate('e=>getComputedStyle(e).backgroundColor')!=family.evaluate('e=>getComputedStyle(e).backgroundColor')
  assert classroom.bounding_box()['width']==family.bounding_box()['width'];assert classroom.bounding_box()['height']==family.bounding_box()['height']
  assert classroom.evaluate('e=>getComputedStyle(e).borderLeftColor')!=family.evaluate('e=>getComputedStyle(e).borderLeftColor')
  for control,title in [(classroom,'记录课堂'),(family,'记录家庭')]:
@@ -85,12 +85,12 @@ with sync_playwright() as p:
  page.reload();expect(btn('查看长期关注')).to_contain_text(long['input']['title']);titles=btn('查看长期关注').inner_text();assert titles.index(long['input']['title'])<titles.index(other['input']['title'])
  call('POST','/auth/users',{'username':'family','display_name':'合成第二位家人','password':'synthetic-prd-ui-password','role':'member'})
  ctx2=browser.new_context();pg2=ctx2.new_page();login(pg2,'family');assert pg2.get_by_role('button',name='查看长期关注',exact=True).inner_text().index(long['input']['title'])<pg2.get_by_role('button',name='查看长期关注',exact=True).inner_text().index(other['input']['title']);ctx2.close()
- print('PASS equal sibling entry surfaces and category accents and shared long-focus priority after reload and second-family login',flush=True)
- click('记录家庭');expect(page.get_by_test_id('plan-coverage-'+a['id'])).to_contain_text('家庭 2 次');expect(page.get_by_test_id('plan-coverage-'+b['id'])).to_contain_text('家庭 0 次');shot('02-plan-coverage');click('查看全部方向的近况');click('调整统计范围与图表');select('近况展示方式','ring');select('统计来源','combined');click('调整统计范围与图表');shot('16-balance-with-data');click('关闭全部方向的近况')
+ print('PASS equal sibling entry geometry with distinct solid colours and shared long-focus priority after reload and second-family login',flush=True)
+ click('记录家庭');click('平衡提醒与其他参考');expect(page.get_by_test_id('plan-coverage-'+a['id'])).to_contain_text('家庭 2 次');expect(page.get_by_test_id('plan-coverage-'+b['id'])).to_contain_text('家庭 0 次');shot('02-plan-coverage');click('查看全部方向的近况');click('调整统计范围与图表');select('近况展示方式','ring');select('统计来源','combined');click('调整统计范围与图表');shot('16-balance-with-data');click('关闭全部方向的近况')
  click('选择本次目标');check('选择目标：'+a['input']['title']);click('完成目标选择')
- check('计划方法：'+m['input']['title']);expect(page.get_by_text('留意困难：合成困难：换材料时需要支持',exact=True).first).to_be_visible();expect(page.get_by_text('可参考经验：合成经验：先选喜欢的材料',exact=True).first).to_be_visible()
- field('准备怎么做').fill('合成安排：用喜欢的球示范轮流，再尝试一个新球')
- shot('03-plan-target-method',field('准备怎么做'));click('保存共享草稿并退出');expect(page.get_by_role('dialog')).to_have_count(0)
+ click('选择计划方法');check('计划方法：'+m['input']['title']);click('完成方法选择');expect(page.get_by_test_id('plan-related-difficulty')).to_contain_text('合成困难：换材料时需要支持');expect(page.get_by_test_id('plan-related-experience')).to_contain_text('合成经验：先选喜欢的材料')
+ field('准备做什么').fill('合成安排：用喜欢的球示范轮流，再尝试一个新球')
+ shot('03-plan-target-method',field('准备做什么'));click('保存计划并退出');expect(page.get_by_role('dialog')).to_have_count(0)
  click('记录家庭：填写今天的总结');field('实际表现：'+a['input']['title']).fill('合成表现：示范后愿意滚球，换球时需要休息');select('实际方法确认','used');check('实际方法：'+m['input']['title'])
  expect(btn('新增本次经验')).to_have_count(0);expect(btn('新增本次困难')).to_have_count(0);shot('04-summary-basic')
  check('补充经验和困难（可选）');click('新增本次经验');field('经验内容 1').fill('合成新增经验：先让他选球');select('经验阶段 1','try')
@@ -112,7 +112,7 @@ with sync_playwright() as p:
  click('目标');click('查看目标：'+a['input']['title']);expect(page.get_by_role('heading',name='关联方法',exact=True)).to_be_visible();expect(page.get_by_role('heading',name='可参考的经验',exact=True)).to_be_visible();expect(page.get_by_role('heading',name='需要跟进的困难',exact=True)).to_be_visible();shot('09-goal-groups');close_all()
  click('方法');expect(btn('查看方法关联目标：'+a['input']['title'])).to_be_visible();shot('10-method-goals');click('查看方法关联目标：'+a['input']['title']);expect(page.get_by_role('dialog')).to_have_count(1);close_all()
  click('跟进');assert_peers('跟进内容','要处理的','经验库与困难','要处理的');expect(btn('新建经验')).to_have_count(0);click('经验库与困难');assert_peers('跟进内容','要处理的','经验库与困难','经验库与困难');assert_peers('资料类型','经验','困难','经验',colored=True);expect(btn('新建经验')).to_be_visible();expect(btn('新建困难')).to_have_count(0);expect(page.get_by_text('困难：合成困难：换材料时需要支持',exact=True)).to_have_count(0);experience_shades=library_shades('experience',exp['input']['id'],exp['details']['title']);shot('11-experience-tab')
- click('困难');assert_peers('资料类型','经验','困难','困难',colored=True);expect(btn('新建困难')).to_be_visible();expect(btn('新建经验')).to_have_count(0);expect(page.get_by_text('经验：合成经验：先选喜欢的材料',exact=True)).to_have_count(0);difficulty_shades=library_shades('difficulty',diff['input']['id'],diff['details']['title']);assert all(a!=b for a,b in zip(experience_shades,difficulty_shades));shot('12-difficulty-tab')
+ click('困难');assert_peers('资料类型','经验','困难','困难',colored=True);expect(btn('新建困难')).to_be_visible();expect(btn('新建经验')).to_have_count(0);expect(page.get_by_text('经验：合成经验：先选喜欢的材料',exact=True)).to_have_count(0);difficulty_shades=library_shades('difficulty',diff['input']['id'],diff['details']['title']);assert all(a!=b for a,b in zip(experience_shades[:2],difficulty_shades[:2]));assert experience_shades[2]==difficulty_shades[2]=='rgb(255, 255, 255)';shot('12-difficulty-tab')
  click('目标');click('查看目标：'+a['input']['title']);click('现在复盘这个对象');expect(page.get_by_text('当前观察标准：'+a['input']['criteria'],exact=True)).to_be_visible();click('复盘要解决什么');shot('13-review-purpose');click('复盘要解决什么')
  field('复盘依据与说明').fill('合成决定：熟悉材料继续轮流，新材料先示范');click('新增复盘下一步');field('复盘下一步 1').fill('合成下一步：只换一种新球');click('保存复盘');expect(page.get_by_role('dialog',name='逐项复盘',exact=True)).to_have_count(0);close_all()
  s=state();assert any(a['input']['content']=='合成下一步：只换一种新球' for a in s['actions'])

@@ -381,7 +381,7 @@ fn actions_have_member_edit_history_and_are_locked_when_reserved_by_a_plan() {
     let mut restore = json!({"id":aid,"operation_id":id(),"expected_version":2,"input":done["input"],"state":"pending","note":"测试恢复待做"});
     call(&mut db, &u, "action", restore.clone()).unwrap();
     let sid = id();
-    store::write_foundation_session(&mut db,&u,serde_json::from_value(json!({"id":sid,"operation_id":id(),"expected_version":null,"action":"save_draft","input":{"business_date":"2020-01-01","time_slot":"晚上","action_ids":[aid]}})).unwrap()).unwrap();
+    store::write_foundation_session(&mut db,&u,serde_json::from_value(json!({"id":sid,"operation_id":id(),"expected_version":null,"action":"save_draft","input":{"business_date":"2020-01-01","time_slot":"晚上","plan":"合成：尝试这条待做行动","action_ids":[aid]}})).unwrap()).unwrap();
     restore["expected_version"] = json!(4);
     restore["operation_id"] = json!(id());
     restore["state"] = json!("cancelled");

@@ -29,7 +29,7 @@ with sync_playwright() as p:
  # Both pages mount each editor before either edits its own draft.
  for page in [a,b]:click(page,'今天')
  for page,title in [(a,'窗口A本机计划'),(b,'窗口B本机计划')]:
-  click(page,'记录家庭');field(page,'准备怎么做').fill(title);saved(page);close_top(page)
+  click(page,'记录家庭');field(page,'准备做什么').fill(title);saved(page);close_top(page)
  verify(':session-drafts:v1','窗口A本机计划','窗口B本机计划')
  for page,title in [(a,'窗口A课堂观察'),(b,'窗口B课堂观察')]:
   click(page,'记录课堂')

@@ -1,3 +1,4 @@
+import {UiButton} from './ui-components';
 import {dataKey} from './data-epoch';
 import {Disclosure} from './disclosure';
 import {SectionButton,SectionTabs,ContentGroup} from './section-tabs';
@@ -27,9 +28,7 @@ import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, 
 const queues = new Map<string, Promise<void>>();
 const labelsForFeedback=(v:string)=>({helpful:'有帮助',uncertain:'不确定',unhelpful:'没帮上'} as Record<string,string>)[v]??v;
 const note = (e: unknown) => e instanceof Error ? e.message : '操作未完成，请保留填写后重试';
-function Action({ title, press, disabled, secondary = true }: { title: string; press: () => void; disabled?: boolean; secondary?: boolean }) {
-  return <Pressable accessibilityRole="button" disabled={disabled} accessibilityState={{ disabled }} onPress={press} style={{ padding: 12, borderRadius: 10, backgroundColor: secondary ? '#E8EFF5' : '#315C78', opacity: disabled ? .5 : 1 }}><Text style={{ color: secondary ? '#315C78' : '#FFFFFF', fontSize: 17 }}>{title}</Text></Pressable>;
-}
+function Action({title,press,disabled,secondary=true}:{title:string;press:()=>void;disabled?:boolean;secondary?:boolean}){return <UiButton title={title} tone="classroom" variant={secondary?'secondary':'primary'} disabled={disabled} press={press}/>;}
 function Field({ label, question, value, change, placeholder, disabled, multiline = true }: { label: string; question?: string; value: string; change: (v:string)=>void; placeholder?: string; disabled?: boolean; multiline?: boolean }) {return <GuidedField label={label} value={value} change={change} question={question} placeholder={placeholder} disabled={disabled} multiline={multiline}/>;}
 function Check({ title, checked, press, disabled }: { title: string; checked: boolean; press: () => void; disabled?: boolean }) {
   return <Pressable accessibilityRole="checkbox" accessibilityLabel={title} aria-checked={checked} accessibilityState={{ checked, disabled }} onPress={press} disabled={disabled} style={{ padding: 10, backgroundColor: '#E8EFF5', borderRadius: 8 }}><Text>{checked ? '☑' : '☐'} {title}</Text></Pressable>;
@@ -47,7 +46,7 @@ function CatalogChoice({ kind, value, relatedId, change, data, accepted, lesson,
   const optionLabel = (c:Catalog) => lesson?.[kind].id === c.id ? `${lesson[kind].name}${lesson[kind].name !== c.input.name ? '（历史名称）' : ''}` : c.input.name;
   return <View style={{ gap: 8 }}>
     <Action title={`${kind==='course'?'课程名称（必填）':'授课老师（必填）'}：${options.find(c=>c.id===value)?optionLabel(options.find(c=>c.id===value)!):`请选择${label}`}`} disabled={disabled} press={()=>{setPickerOptions(rankedCatalogChoices(data.lessons,data.catalog,kind,localDate(),relatedId));setSearch('');setPanel(true);}} />
-    {panel && <DetailOverlay title={`选择${label}`} close={() => { if (!saving) setPanel(false); }}>
+    {panel && <DetailOverlay tone="classroom" title={`选择${label}`} close={() => { if (!saving) setPanel(false); }}>
       {relatedId&&<Text>{kind==='teacher'?'按这门课程的历史授课次数排序':'按这位老师的历史上课次数排序'}</Text>}
       <Field label={`搜索${label}`} value={search} change={setSearch} multiline={false} />
       {pickerOptions.filter(c => c.input.name.includes(search)).map(c => <Action key={c.id} title={c.input.name} disabled={saving||!data.catalog.some(row=>row.id===c.id&&row.input.active)} press={() => { change(c.id); setPanel(false); }} />)}
@@ -122,8 +121,8 @@ function OrganizationFields({ value, change, data, lesson, actorId, source, disa
     <Action title="写下下一步" disabled={disabled} press={()=>change({new_actions:[...value.new_actions,{id:uuid(),content:'',goal_ids:[...selected,...value.focus_goal_ids],method_ids:[...value.method_ids],assignee_id:actorId}]})} />
     <Select label="这条记录如何处理" value={value.processing} disabled={disabled} onChange={processing=>change({processing:processing as OrganizationInput['processing'],request_generation:lesson.request_generation})} options={[{value:'keep',label:'只保存整理，不改变待办'},{value:'claim',label:'我来整理'},{value:'take_over',label:'从其他家人接手'},{value:'complete',label:'已处理'},{value:'reopen',label:'重新留待处理'}]} />
     <Field label="处理说明（可选）" value={value.outcome} change={outcome=>change({outcome})} disabled={disabled} placeholder="例如：已记下困难，下次复盘再看看" />
-    {actionEditor!==null&&value.new_actions[actionEditor]&&<DetailOverlay title="调整下一步的关联" close={()=>setActionEditor(null)}><Bindings data={data} goalIds={value.new_actions[actionEditor].goal_ids} methodIds={value.new_actions[actionEditor].method_ids} disabled={disabled} change={(goal_ids,method_ids)=>change({new_actions:value.new_actions.map((a,i)=>i===actionEditor?{...a,goal_ids,method_ids}:a)})}/></DetailOverlay>}
-    {knowledgeEditor!==null&&value.new_knowledge[knowledgeEditor]&&<DetailOverlay title="调整经验或困难的关联" close={()=>setKnowledgeEditor(null)}><Bindings data={data} goalIds={value.new_knowledge[knowledgeEditor].goal_ids} methodIds={value.new_knowledge[knowledgeEditor].method_ids} disabled={disabled} change={(goal_ids,method_ids)=>modifyKnowledge(knowledgeEditor,{goal_ids,method_ids})} /></DetailOverlay>}
+    {actionEditor!==null&&value.new_actions[actionEditor]&&<DetailOverlay tone="classroom" title="调整下一步的关联" close={()=>setActionEditor(null)}><Bindings data={data} goalIds={value.new_actions[actionEditor].goal_ids} methodIds={value.new_actions[actionEditor].method_ids} disabled={disabled} change={(goal_ids,method_ids)=>change({new_actions:value.new_actions.map((a,i)=>i===actionEditor?{...a,goal_ids,method_ids}:a)})}/></DetailOverlay>}
+    {knowledgeEditor!==null&&value.new_knowledge[knowledgeEditor]&&<DetailOverlay tone="classroom" title="调整经验或困难的关联" close={()=>setKnowledgeEditor(null)}><Bindings data={data} goalIds={value.new_knowledge[knowledgeEditor].goal_ids} methodIds={value.new_knowledge[knowledgeEditor].method_ids} disabled={disabled} change={(goal_ids,method_ids)=>modifyKnowledge(knowledgeEditor,{goal_ids,method_ids})} /></DetailOverlay>}
   </>;
 }
 
@@ -274,7 +273,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
         </>}
       </>:null}
     </View>
-    {draft&&<DetailOverlay title={draft.phase==='organization'?'整理课堂记录':draft.phase==='administration'?'核对课记操作':'记录课堂'} close={()=>{if(!busy)setEditor(null);}} footer={<><SaveStatus storageKey={storageKey} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy?'正在提交…':draft.pending?'重试同一次课记提交':draft.phase==='organization'?'保存整理':draft.phase==='administration'?'确认操作':'提交记录'} secondary={false} disabled={busy||(conflict&&!draft.pending)||Boolean(observe&&(!observe.course_id||!observe.teacher_id))} press={()=>void submit()}/></>}>
+    {draft&&<DetailOverlay tone="classroom" title={draft.phase==='organization'?'整理课堂记录':draft.phase==='administration'?'核对课记操作':'记录课堂'} close={()=>{if(!busy)setEditor(null);}} footer={<><SaveStatus storageKey={storageKey} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy?'正在提交…':draft.pending?'重试同一次课记提交':draft.phase==='organization'?'保存整理':draft.phase==='administration'?'确认操作':'提交记录'} secondary={false} disabled={busy||(conflict&&!draft.pending)||Boolean(observe&&(!observe.course_id||!observe.teacher_id))} press={()=>void submit()}/></>}>
       {error&&<Text accessibilityRole="alert">{error}</Text>}
       {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/>
       {conflict&&remote&&!draft.pending&&<View style={{padding:12,backgroundColor:'#FFFFFF',gap:10}}><Text>这一部分已有新版本，当前填写仍保留。</Text><ReadObservation value={remote.observation}/>
@@ -294,7 +293,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
       {discard&&!draft.pending&&!busy&&<View style={{gap:8}}><Text>只清除此处未提交的填写，已保存的课记保持原样。</Text><Action title="确认放弃未提交填写" press={()=>void(async()=>{const next={...refs.current};delete next[editor!];try{await persist(next);setEditor(null);setDiscard(false);}catch(e){setError(note(e));}})()}/><Action title="继续填写" press={()=>setDiscard(false)}/></View>}
 
     </DetailOverlay>}
-    {selected&&<DetailOverlay title="课记详情" close={()=>setDetail(null)}>
+    {selected&&<DetailOverlay tone="classroom" title="课记详情" close={()=>setDetail(null)}>
       <Text style={{fontSize:18,fontWeight:'600'}}>{selected.observation.business_date} · {selected.course.name} · {selected.teacher.name}</Text><Text>记录者：{selected.creator_name}{selected.marked_error?' · 待核对':''}</Text><ReadObservation value={selected.observation}/><LessonPractice lesson={selected} data={data} openKnowledge={openKnowledge}/>
       {selected.organization.seen_observation_version>0&&selected.organization.seen_observation_version!==selected.observation_version&&<Text>原观察有后续补充，请核对先前整理内容。</Text>}
       <Action title="补充／修改课堂观察" press={()=>open(selected,'observation')}/><Action title="整理这条记录" press={()=>open(selected,'organization')}/>

@@ -1,0 +1,136 @@
+{
+  "synthetic": true,
+  "screenshots": [
+    "01-today.png",
+    "02-plan-first.png",
+    "10-method-picker.png",
+    "11-plan-methods.png",
+    "03-plan-selection.png",
+    "04-plan-knowledge.png",
+    "13-plan-difficulty.png",
+    "05-goals.png",
+    "06-methods.png",
+    "07-classroom.png",
+    "12-lesson-editor.png",
+    "08-experiences.png",
+    "09-difficulties.png"
+  ],
+  "checks": [
+    "solid_peer_actions",
+    "required_first_activity",
+    "goals_then_methods",
+    "conditional_deduplicated_knowledge",
+    "ancestor_principles",
+    "unselected_method_excluded",
+    "main_role_swap_preserves_notes",
+    "nested_back",
+    "draft_refresh_and_real_save",
+    "plan_not_actual_count",
+    "functional_page_themes"
+  ],
+  "errors": [],
+  "date": "2026-11-03",
+  "sourceBaseCommit": "b1d726390cbecc10fedaea3c35032812eb0faa11",
+  "deployed": false,
+  "productionAccess": false,
+  "dataEpoch": "formal-20261101",
+  "schemaChanged": false,
+  "bundle": {
+    "path": "apps/client/dist/_expo/static/js/web/index-b8336dc42dfb7f061920067fd61ee6d6.js",
+    "sha256": "7b555823fe9a18e626e84247ed2b7b3bd2fd8cf46873c3f52839a7dca7311f3a"
+  },
+  "verification": {
+    "typecheck": "passed",
+    "webBuild": "passed",
+    "rust": {
+      "passed": 169,
+      "failed": 0
+    },
+    "client": {
+      "existing": 63,
+      "redesign": 4,
+      "failed": 0
+    },
+    "clippy": {
+      "native": "passed",
+      "wasm": "passed",
+      "denyWarnings": true
+    },
+    "runtimeContract": {
+      "nativeSqlite": "passed",
+      "rustWorkerDurableObject": "passed",
+      "restarts": "passed",
+      "blankPlanAtomicRejection": "passed",
+      "skip": false
+    },
+    "browser": {
+      "groups": 29,
+      "scripts": [
+        "smoke_prd_model_web.py",
+        "smoke_prd_overlay_web.py",
+        "smoke_prd_today_web.py",
+        "smoke_prd_r15_web.py",
+        "smoke_prd_lessons_web.py",
+        "smoke_prd_sessions_web.py",
+        "smoke_prd_followups_web.py",
+        "smoke_prd_offline_web.py",
+        "smoke_prd_history_web.py",
+        "smoke_prd_auth_sessions_web.py",
+        "smoke_prd_observations_web.py",
+        "smoke_prd_export_web.py",
+        "smoke_prd_import_web.py",
+        "smoke_prd_review_pages_web.py",
+        "smoke_prd_polish_web.py",
+        "smoke_prd_completion_web.py",
+        "smoke_prd_balance_web.py",
+        "smoke_prd_gap_fixes_web.py",
+        "smoke_prd_refinement_web.py",
+        "smoke_prd_draft_windows_web.py",
+        "smoke_prd_actor_guard_web.py",
+        "smoke_prd_simplified_web.py",
+        "smoke_prd_catalog_ranking_web.py",
+        "smoke_prd_starter_web.py",
+        "smoke_prd_feedback_web.py",
+        "smoke_prd_account_web.py",
+        "smoke_prd_review_feedback_web.py",
+        "smoke_prd_formal_epoch_web.py",
+        "smoke_prd_ui_redesign_web.py"
+      ],
+      "status": "passed in grouped runs; relevant final-style and screenshot flows rerun"
+    },
+    "reviewHtml": {
+      "synthetic": true,
+      "execution": "same HTML bytes served by localhost; managed Chromium blocks file navigation",
+      "checks": [
+        "13_embedded_images",
+        "navigation",
+        "local_note_refresh",
+        "exported_json_identity_and_note",
+        "360px_reflow",
+        "no_external_requests"
+      ],
+      "errors": []
+    }
+  },
+  "screenshotSha256": {
+    "01-today.png": "50b2ac4a8d2921e78325cba43b14ec0c48aff140ac1dd28546e78ddab9c52a09",
+    "02-plan-first.png": "d11f67f4f2907812ec7788a52ab7c5aeff3963cc1ae8e890ca75103a1927ce4d",
+    "10-method-picker.png": "497f0e92caf2fbe4bc7aee5c9e1e04377a2d39d4e07a9c0a3af32bbdcb396f40",
+    "11-plan-methods.png": "62675ccc39f24673a71f58a85f1e131aa517a726f62d61c0c2d4c10c7363cd09",
+    "03-plan-selection.png": "42c12350a96b221db7eeec325d68678e01885e32642a2bdb9d4320d3368d2f71",
+    "04-plan-knowledge.png": "2785a74886e9f2048eb0dfcaf86ddaf57c0c7576499922d24e874de75e94e125",
+    "13-plan-difficulty.png": "88263bf745a34d60f1ce0ffc521cb2b64e5630feef79813cc333a73bdb130800",
+    "05-goals.png": "243075f850f32381bd14adc816e391bb4ba3d9f533db583e9b0ea0c6b559f0f1",
+    "06-methods.png": "eb79d2cd7c85177bc54d74afe25a8750051c740fd90c8f369c49271e3974f783",
+    "07-classroom.png": "5f6298b3549b88cd34b40b1e45bb86840d4860d4d0e09cf4dc93bd20fa2d7996",
+    "12-lesson-editor.png": "4cc765c76dcba65454006db418fb32f7eb667a6e4c1e54fc0021bf9c75bc6835",
+    "08-experiences.png": "83475145edf9c514aee4dfdd9b794c4428e152e7dd676c26dcac6909bf113ac6",
+    "09-difficulties.png": "4becf640b6c21de0edf1e396f67e93c2d8cf8638aa84403f7aebe4e5afd091c4"
+  },
+  "limits": [
+    "No production deployment or real business data access",
+    "Chromium responsive/keyboard simulations do not replace physical iOS/Android or screenreader acceptance",
+    "Opus independent acceptance remains pending",
+    "Standalone HTML tested via localhost because managed Chromium blocks file navigation"
+  ]
+}

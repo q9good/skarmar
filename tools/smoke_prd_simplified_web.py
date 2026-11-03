@@ -58,13 +58,13 @@ with sync_playwright() as p:
 
  click(page,'今天');click(page,'记录家庭');click(page,'选择本次目标')
  page.get_by_role('checkbox',name='选择目标：'+goals[1]['input']['title'],exact=True).click();click(page,'完成目标选择')
- expect(page.get_by_test_id('plan-coverage-'+goals[1]['id'])).to_be_visible()
- expect(page.get_by_text('留意困难：合成换材料时需要支持',exact=True)).to_be_visible();expect(page.get_by_text('可参考经验：合成先示范并留出等待时间',exact=True)).to_be_visible()
+ expect(page.get_by_test_id('plan-coverage-'+goals[1]['id'])).not_to_be_visible()
+ expect(page.get_by_test_id('plan-related-difficulty')).to_contain_text('合成换材料时需要支持');expect(page.get_by_test_id('plan-related-experience')).to_contain_text('合成先示范并留出等待时间')
  expect(page.get_by_role('button',name=re.compile('^主要练：'))).to_have_count(0)
- field(page,'准备怎么做').fill('合成计划：一起尝试生活小步骤')
- expect(btn(page,'查看全部方向的近况')).to_be_visible();click(page,'更多干预操作');expect(btn(page,'使用说明与手机桌面入口')).to_have_count(0);click(page,'更多干预操作')
+ field(page,'准备做什么').fill('合成计划：一起尝试生活小步骤')
+ click(page,'平衡提醒与其他参考');expect(page.get_by_test_id('plan-coverage-'+goals[1]['id'])).to_be_visible();expect(btn(page,'查看全部方向的近况')).to_be_visible();click(page,'更多干预操作');expect(btn(page,'使用说明与手机桌面入口')).to_have_count(0);click(page,'更多干预操作')
  click(page,'目标笔记与参考：'+goals[1]['input']['title']);field(page,'计划笔记：'+goals[1]['input']['title']).fill('合成笔记不会因折叠清空');click(page,'目标笔记与参考：'+goals[1]['input']['title'])
- shot('plan');click(page,'保存共享草稿并退出');expect(page.get_by_role('dialog')).to_have_count(0)
+ shot('plan');click(page,'保存计划并退出');expect(page.get_by_role('dialog')).to_have_count(0)
  saved=call(ctx,'GET','/prd/state')['sessions'][0];assert saved['status']=='planned' and saved['input']['targets'][0]['note']=='合成笔记不会因折叠清空'
  click(page,'记录家庭：填写今天的总结')
  for width,height in [(390,844),(360,640)]:

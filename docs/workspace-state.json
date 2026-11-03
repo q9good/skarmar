@@ -451,6 +451,13 @@
       "status": "done",
       "evidence": "docs/garden-skills-setup.md",
       "verification": "2026-11-03确认作者官方ConardLi/garden-skills，固定提交2b9a89340b70f632d31c0f1c69fce94a7912423e。按作者支持的手动复制方式项目级安装6份技能至.agents/skills，并在.codex/skills添加对应兼容链接；6份元数据解析通过、417个原始文件逐项SHA-256与上游一致、每份附MIT许可、链接均解析到规范目录。文件通过本机Git exclude隔离，完整receipt及原始clone留.local；仅当前工作区文件安装，不随Git/pull同步至其他环境。executor技能列表仍为空，明确未注册为平台插件或声称菜单即时刷新；当前agent可按名称直接读取SKILL.md使用。未运行生成脚本/安装可选运行依赖，未改动应用代码/生产服务/环境草案/凭据；正式数据保留规则不变。"
+    },
+    {
+      "id": "T65",
+      "title": "应用Garden设计技能重做功能主题/按钮层级及家庭计划清晰主线",
+      "status": "done",
+      "evidence": "docs/ui-redesign-2026-11-03.md",
+      "verification": "已按Garden web-design-engineer实现功能固定主题、主实色/次描边/文字轻操作、焦点/按压/禁用及小视口弹层。家庭计划准备做什么前置且前后端非空校验，目标/方法选择后按明确关联与上级方向去重展示经验困难；保留笔记、角色交换、历史、旧成功回执、直接总结及formal-20261101所有草稿键。PRD0.11更新R01/R02/字段及AC-R02-01，59条编号和统计金标准保留。169Rust、63+4客户端、类型/Web构建、原生/Wasm Clippy、完整双运行环境和重启无SKIP、29组Web分组回归及最终样式重点复验通过；13张已审合成截图和可批注HTML，HTML同字节localhost检查通过（托管浏览器禁file）。本机实现，未部署、未读写生产、未变schema/凭据。T12及Opus/读屏/真机待办、implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1190,6 +1197,96 @@
       "path": "docs/artifacts/deployment/cloudflare-formal-launch-20261101-independent-checks.json",
       "title": "正式启用云端独立公开检查（不含业务或账号内容）",
       "sha256": "c1696794da4447a284cf406b4acbe53fa593060ad8778e75a14992fe262c5537"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/01-today.png",
+      "title": "UI重设计合成截图：01-today.png",
+      "synthetic": true,
+      "sha256": "50b2ac4a8d2921e78325cba43b14ec0c48aff140ac1dd28546e78ddab9c52a09"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/02-plan-first.png",
+      "title": "UI重设计合成截图：02-plan-first.png",
+      "synthetic": true,
+      "sha256": "d11f67f4f2907812ec7788a52ab7c5aeff3963cc1ae8e890ca75103a1927ce4d"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/10-method-picker.png",
+      "title": "UI重设计合成截图：10-method-picker.png",
+      "synthetic": true,
+      "sha256": "497f0e92caf2fbe4bc7aee5c9e1e04377a2d39d4e07a9c0a3af32bbdcb396f40"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/11-plan-methods.png",
+      "title": "UI重设计合成截图：11-plan-methods.png",
+      "synthetic": true,
+      "sha256": "62675ccc39f24673a71f58a85f1e131aa517a726f62d61c0c2d4c10c7363cd09"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/03-plan-selection.png",
+      "title": "UI重设计合成截图：03-plan-selection.png",
+      "synthetic": true,
+      "sha256": "42c12350a96b221db7eeec325d68678e01885e32642a2bdb9d4320d3368d2f71"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/04-plan-knowledge.png",
+      "title": "UI重设计合成截图：04-plan-knowledge.png",
+      "synthetic": true,
+      "sha256": "2785a74886e9f2048eb0dfcaf86ddaf57c0c7576499922d24e874de75e94e125"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/13-plan-difficulty.png",
+      "title": "UI重设计合成截图：13-plan-difficulty.png",
+      "synthetic": true,
+      "sha256": "88263bf745a34d60f1ce0ffc521cb2b64e5630feef79813cc333a73bdb130800"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/05-goals.png",
+      "title": "UI重设计合成截图：05-goals.png",
+      "synthetic": true,
+      "sha256": "243075f850f32381bd14adc816e391bb4ba3d9f533db583e9b0ea0c6b559f0f1"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/06-methods.png",
+      "title": "UI重设计合成截图：06-methods.png",
+      "synthetic": true,
+      "sha256": "eb79d2cd7c85177bc54d74afe25a8750051c740fd90c8f369c49271e3974f783"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/07-classroom.png",
+      "title": "UI重设计合成截图：07-classroom.png",
+      "synthetic": true,
+      "sha256": "5f6298b3549b88cd34b40b1e45bb86840d4860d4d0e09cf4dc93bd20fa2d7996"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/12-lesson-editor.png",
+      "title": "UI重设计合成截图：12-lesson-editor.png",
+      "synthetic": true,
+      "sha256": "4cc765c76dcba65454006db418fb32f7eb667a6e4c1e54fc0021bf9c75bc6835"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/08-experiences.png",
+      "title": "UI重设计合成截图：08-experiences.png",
+      "synthetic": true,
+      "sha256": "83475145edf9c514aee4dfdd9b794c4428e152e7dd676c26dcac6909bf113ac6"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/09-difficulties.png",
+      "title": "UI重设计合成截图：09-difficulties.png",
+      "synthetic": true,
+      "sha256": "4becf640b6c21de0edf1e396f67e93c2d8cf8638aa84403f7aebe4e5afd091c4"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/checks.json",
+      "title": "2026-11-03 UI重设计本机检查结果与13图SHA",
+      "synthetic": true,
+      "sha256": "6da59db713a41122a3fe94d6a697cc06cc9c30d58d924b2e57d5e80419b6b025"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-redesign-2026-11-03/review.html",
+      "title": "13图离线UI评审页，可逐图批注并导出JSON",
+      "synthetic": true,
+      "sha256": "b07cbea97fd8843cf850fe4c6d52fe82c512d1df56cacba442b072f02bf3a91e"
     }
   ]
 }

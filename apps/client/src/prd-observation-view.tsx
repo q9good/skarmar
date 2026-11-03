@@ -1,3 +1,4 @@
+import {UiButton} from './ui-components';
 import {dataKey} from './data-epoch';
 import {authSessionGuard} from './api';
 import {resetAfterFailure} from './pending-request';
@@ -24,7 +25,7 @@ import type {Snapshot} from './foundation';
 import {decodeObservationDrafts,emptyMeasurement,measurementText,needsId,needsFields,normalizedObservation,observeNames,type EvidenceRecord,type ObserveWrite,type ObserveDraft,type ObservationKind} from './prd-observations';
 const persistence=new Map<string,Promise<void>>();
 const errorText=(e:unknown)=>e instanceof Error?e.message:'未能完成，请保留填写后重试。';
-const Action=({title,press,disabled=false}:{title:string;press:()=>void;disabled?:boolean})=><Pressable accessibilityRole="button" disabled={disabled} accessibilityState={{disabled}} onPress={press} style={{padding:12,minHeight:48,borderRadius:10,backgroundColor:'#E9F2E9',opacity:disabled?.5:1}}><Text>{title}</Text></Pressable>;
+const Action=({title,press,disabled=false,primary=false}:{title:string;press:()=>void;disabled?:boolean;primary?:boolean})=><UiButton title={title} variant={primary?'primary':'secondary'} disabled={disabled} press={press}/>;
 function Field({label,value,change,placeholder='',hint='',disabled=false,numeric=false}:{label:string;value:unknown;change:(v:string)=>void;placeholder?:string;hint?:string;disabled?:boolean;numeric?:boolean}){return <GuidedField label={label} value={String(value??'')} change={change} question={hint||undefined} placeholder={placeholder} disabled={disabled} numeric={numeric}/>;}
 type Page={items:EvidenceRecord[];has_more:boolean;data_version?:number};
 export function ObservationHub({data,mode,requested,onRequested,changed,reported}:{data:Snapshot;mode:'today'|'records'|'hidden';requested?:{kind:'goal'|'needs'|'moment';id:string;nonce:string}|null;onRequested?:()=>void;changed?:()=>void;reported?:(records:EvidenceRecord[])=>void}){
@@ -76,7 +77,7 @@ export function ObservationHub({data,mode,requested,onRequested,changed,reported
     {more['measurement'+goalPanel]&&<Action title="更早的测量" press={()=>void load('measurement',goalPanel,(pages['measurement'+goalPanel]??0)+1)}/>}
     <Text style={{fontSize:18,fontWeight:'600'}}>关联的瞬间观察</Text>{moments.filter(r=>(r.input.goal_ids as string[]).includes(goalPanel)).map(readCard)}
   </DetailOverlay>}
-  {command&&p&&<DetailOverlay title={command.action==='delete'?'确认删除观察':`填写${observeNames[command.kind]}`} close={()=>{if(!busy){setEditor(null);setError('');}}} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy?'正在保存观察…':draft.pending?'重试同一次观察保存':command.action==='delete'?'确认删除这条观察':'保存观察'} disabled={busy||Boolean(latest)} press={()=>void submit()}/></>}>{draftRecovery()}<OptionsUpdate changed={candidate.changed||recordChoices.changed} refresh={()=>{candidate.refresh();recordChoices.refresh();}}/><Text>未提交填写保存在当前账号的本机草稿。</Text>{error&&<Text accessibilityRole="alert">{error}</Text>}
+  {command&&p&&<DetailOverlay title={command.action==='delete'?'确认删除观察':`填写${observeNames[command.kind]}`} close={()=>{if(!busy){setEditor(null);setError('');}}} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action primary title={busy?'正在保存观察…':draft.pending?'重试同一次观察保存':command.action==='delete'?'确认删除这条观察':'保存观察'} disabled={busy||Boolean(latest)} press={()=>void submit()}/></>}>{draftRecovery()}<OptionsUpdate changed={candidate.changed||recordChoices.changed} refresh={()=>{candidate.refresh();recordChoices.refresh();}}/><Text>未提交填写保存在当前账号的本机草稿。</Text>{error&&<Text accessibilityRole="alert">{error}</Text>}
     {latest&&<View style={{gap:8}}><Text>已有第 {latest.version} 版，当前输入仍保留。最新内容：</Text>{readValues(latest.input)}<Action title="备份填写并采用最新观察" disabled={busy} press={()=>void persist({...refs.current,[command.id]:{command:{...command,operation_id:uuid(),expected_version:latest.version,input:latest.input,note:'',action:'save'},backup:command}}).then(()=>setLatest(null))}/></View>}
     {draft.backup&&<><Text>此前输入备份（可复制）：</Text>{readValues(draft.backup.input)}</>}
     {command.action==='delete'?<Text>仅管理员可删除。历史版本和已经保存的来源快照仍保留；本次不删除其他业务记录。</Text>:<>

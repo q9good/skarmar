@@ -47,7 +47,7 @@ try {
  await call('POST','/prd/process',{kind:'knowledge',value:{id:knowledge,operation_id:randomUUID(),expected_version:null,action:'create',input:{id:knowledge,kind:'difficulty',content:'试用困难',goal_ids:[goal.id],method_ids:[method.id]},details:{title:'试用困难'},note:''}});
  await newLesson(course,teacher);
  const session=randomUUID();
- await call('PUT','/prd/sessions/'+session,{id:session,operation_id:randomUUID(),expected_version:null,action:'save_draft',input:{business_date:'2020-01-01',time_slot:'晚上',targets:[{goal_id:goal.id,role:'main'}],methods:[{id:method.id,version:method.version}]},change_note:''});
+ await call('PUT','/prd/sessions/'+session,{id:session,operation_id:randomUUID(),expected_version:null,action:'save_draft',input:{business_date:'2020-01-01',time_slot:'晚上',plan:'合成：示范轮流，等待孩子回应',targets:[{goal_id:goal.id,role:'main'}],methods:[{id:method.id,version:method.version}]},change_note:''});
  const before=await state(),users=(await call('GET','/auth/users')).data;
  const history=(await call('GET','/prd/records/'+goal.id+'/history')).data;
  assert(before.methods.length&&before.lessons.length&&before.sessions.length&&before.knowledge.length);

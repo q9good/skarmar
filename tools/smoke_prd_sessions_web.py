@@ -32,13 +32,13 @@ with sync_playwright() as p:
   id=str(uuid4());gids.append(id);call('PUT','/prd/records/'+id,{'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':'goal','value':{'title':title,'level':'short'}}})
  a.reload();click(a,'记录家庭');expect(a.get_by_role('dialog',name='填写干预计划',exact=True)).to_be_visible();select_target(a,'测试轮流');reveal_control(a,'textbox','计划笔记：测试轮流').fill('轮流的原笔记');select_target(a,'测试求助');reveal_control(a,'textbox','计划笔记：测试求助').fill('求助的原笔记')
  reveal_control(a,'combobox','目标角色：测试求助').select_option('main');expect(field(a,'计划笔记：测试轮流')).to_have_value('轮流的原笔记');expect(field(a,'计划笔记：测试求助')).to_have_value('求助的原笔记');reveal_control(a,'combobox','目标角色：测试轮流').select_option('main')
- field(a,'准备怎么做').fill('测试：一起玩滚球，练轮流和求助')
+ field(a,'准备做什么').fill('测试：一起玩滚球，练轮流和求助')
  click(a,'快捷新增计划方法');field(a,'新方法名称').fill('测试先示范')
  def lose_method(route):
   assert route.request.post_data_json['method_create_mode']=='quick'
   response=route.fetch();assert response.ok;route.abort('failed')
  a.route('**/api/prd/records/*',lose_method,times=1);click(a,'保存方法并选入本次');expect(a.get_by_role('alert')).to_be_visible();assert len(state()['methods'])==1 and state()['methods'][0]['input']['steps']=='';click(a,'关闭快捷新增方法');click(a,'关闭填写干预计划');a.reload();click(a,re.compile(r'^继续干预填写：'));click(a,'继续确认快捷新增');click(a,'保存方法并选入本次');expect(a.get_by_role('dialog')).to_have_count(1);assert len(state()['methods'])==1
- save(a,'保存共享草稿并退出');assert len(state()['sessions'])==1 and state()['sessions'][0]['status']=='planned';assert call('GET','/prd/coverage?days=30&source=family')['records']['selected']==0
+ save(a,'保存计划并退出');assert len(state()['sessions'])==1 and state()['sessions'][0]['status']=='planned';assert call('GET','/prd/coverage?days=30&source=family')['records']['selected']==0
  expect(button(a,'记录家庭：填写今天的总结')).to_be_visible();print('PASS phone first screen, target roles swap without lost notes, inline method and shared plan excluded from counts',flush=True)
  login(b,'family','s')
  click(b,'记录家庭：填写今天的总结');field(b,'实际表现：测试轮流').fill('测试：等待了两次，主动把球给我');reveal_control(b,'checkbox','这次做了：测试求助').click()
@@ -72,11 +72,11 @@ with sync_playwright() as p:
  click(a,'查看目标覆盖与实际方法');expect(a.get_by_text(re.compile(r'.*家庭 2 次，机构 0 节$'))).to_be_visible();reveal_control(a,'combobox','统计来源').select_option('combined');expect(a.get_by_text(re.compile(r'^测试轮流 · 1 次'))).to_be_visible();reveal_control(a,'combobox','统计窗口').select_option('7');expect(a.get_by_text(re.compile(r'^近7天固定色阶：'))).to_be_visible();a.screenshot(path=str(OUT/'coverage-360.png'));click(a,'关闭全部方向的近况')
  click(a,re.compile(r'.*总结.*测试：用手势求助两次.*'));click(a,'删除干预（管理员）');save(a,'确认干预操作');assert next(s for s in state()['sessions'] if s['id']==other['id'])['status']=='deleted'
  # A planned action is reserved then released when the plan is cancelled.
- click(a,'今天');click(a,'记录家庭');expect(a.get_by_role('dialog',name='填写干预计划',exact=True)).to_be_visible();select_target(a,'测试轮流');click(a,'补充其他信息（可选）');reveal_control(a,'checkbox','纳入下一步：测试：下次请老师示范等待').click();save(a,'保存共享草稿并退出');assert state()['actions'][0]['status']=='in_plan'
+ click(a,'今天');click(a,'记录家庭');expect(a.get_by_role('dialog',name='填写干预计划',exact=True)).to_be_visible();select_target(a,'测试轮流');field(a,'准备做什么').fill('合成：先示范轮流，再等待孩子回应');click(a,'补充其他信息（可选）');reveal_control(a,'checkbox','纳入下一步：测试：下次请老师示范等待').click();save(a,'保存计划并退出');assert state()['actions'][0]['status']=='in_plan'
  click(a,'记录');click(a,'家庭干预');click(a,re.compile(r'.*待总结计划.*'));click(a,'取消未执行计划');save(a,'确认干预操作');assert state()['actions'][0]['status']=='pending'
  print('PASS monthly history, 7/30 day source-separated coverage, admin delete, and cancelled plan releases the next action',flush=True)
  # One global draft survives navigation/refresh and is not visible to another account.
- click(a,'今天');click(a,'记录家庭');expect(a.get_by_role('dialog',name='填写干预计划',exact=True)).to_be_visible();field(a,'准备怎么做').fill('测试：本机保留安排');click(a,'选择本次目标');click(a,'就地新建近期本领');field(a,'新目标名称').fill('测试快捷本领');click(a,'保存目标并选入本次');click(a,'完成目标选择');expect(a.get_by_role('combobox',name='目标角色：测试快捷本领',exact=True)).to_have_value('main');click(a,'关闭填写干预计划');click(a,'目标');expect(button(a,re.compile(r'^继续干预填写：'))).to_be_visible();a.reload();click(a,re.compile(r'^继续干预填写：'));expect(field(a,'准备怎么做')).to_have_value('测试：本机保留安排');click(a,'关闭填写干预计划')
+ click(a,'今天');click(a,'记录家庭');expect(a.get_by_role('dialog',name='填写干预计划',exact=True)).to_be_visible();field(a,'准备做什么').fill('测试：本机保留安排');click(a,'选择本次目标');click(a,'就地新建近期本领');field(a,'新目标名称').fill('测试快捷本领');click(a,'保存目标并选入本次');click(a,'完成目标选择');expect(a.get_by_role('combobox',name='目标角色：测试快捷本领',exact=True)).to_have_value('main');click(a,'关闭填写干预计划');click(a,'目标');expect(button(a,re.compile(r'^继续干预填写：'))).to_be_visible();a.reload();click(a,re.compile(r'^继续干预填写：'));expect(field(a,'准备做什么')).to_have_value('测试：本机保留安排');click(a,'关闭填写干预计划')
  for page in [a,b]:
   page.set_viewport_size({'width':320,'height':740});assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
  assert not errors,errors;print('PASS global draft recovery and 320px layout without browser errors',flush=True);browser.close()

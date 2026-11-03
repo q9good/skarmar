@@ -1,3 +1,6 @@
+import {UiButton} from './ui-components';
+import {UiTheme} from './ui-theme';
+import {neutral,palettes,type UiTone} from './ui-palette';
 import {dataKey} from './data-epoch';
 import {Disclosure} from './disclosure';
 import {SectionTabs,ContentGroup} from './section-tabs';
@@ -44,10 +47,7 @@ import { Pressable, Text, TextInput } from './readability';
 import { acceptSaved, decodeDrafts, emptySnapshot, examples, findSaved, goalStateName, levelNames, mergeSnapshot, mutationOf,
   nameOf, newGoal, newMethod, longDirectionsOf, type Catalog, type CatalogSnapshot, type Draft, type GoalInput, type MethodInput, type Mutation, type Revision, type Saved, type Snapshot, type Write } from './foundation';
 const messageOf = (e: unknown) => e instanceof Error ? e.message : '保存未完成，请保留填写后重试。';
-function Action({ title, press, disabled = false, secondary = false, quiet=false, label }: { title: string; press: () => void; disabled?: boolean; secondary?: boolean; quiet?:boolean;label?:string }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled }} disabled={disabled} onPress={press} style={[s.action, secondary && s.secondary,quiet&&{backgroundColor:'transparent',paddingHorizontal:0}, disabled && { opacity: 0.5 }]}>
-    <Text style={{ color: secondary||quiet ? '#34765B' : '#FFFFFF', fontSize: 17, textAlign: quiet?'left':'center' }}>{label??title}</Text></Pressable>;
-}
+function Action({title,press,disabled=false,secondary=false,quiet=false,label}:{title:string;press:()=>void;disabled?:boolean;secondary?:boolean;quiet?:boolean;label?:string}){return <UiButton title={title} label={label} press={press} disabled={disabled} variant={quiet?'link':secondary?'secondary':'primary'}/>;}
 function Field({ label, hint, value, change, placeholder, disabled, multiline = false }: { label: string; hint?: string; value: string; change: (v: string) => void; placeholder?: string; disabled?: boolean; multiline?: boolean }) {return <GuidedField label={label} value={value} change={change} question={hint} placeholder={placeholder} disabled={disabled} multiline={multiline}/>;}
 function Check({ label, checked, change, disabled }: { label: string; checked: boolean; change: () => void; disabled?: boolean }) {
   return <Pressable accessibilityRole="checkbox" aria-checked={checked} accessibilityState={{ checked, disabled }} accessibilityLabel={label} onPress={change} disabled={disabled} style={[s.secondary, { padding: 10, borderRadius: 8 }]}>
@@ -314,19 +314,21 @@ export function FoundationWorkspace() {
   const followupHub=(mode:'today'|'full'|'hidden')=><FollowupHub planActions={ids=>setRequestedPlanActions({ids,nonce:uuid()})} data={data} mode={mode} openLesson={id=>void refresh().then(()=>setRequestedLesson({id,nonce:uuid()})).catch(e=>setSyncError(messageOf(e)))} refresh={refresh} adjustMethod={(mid,kid,version)=>{const method=data.methods.find(m=>m.id===mid);if(!method)return;if(draftsRef.current[mid]){setEditor(mid);setError('先核对已有方法填写，再根据这条知识调整。');return;}begin({kind:'method',value:{...method.input,basis:[...(method.input.basis??[]).filter(b=>b.id!==kid),{id:kid,version}]}},{kind:'method',value:method});}} requested={requestedFollowup} onRequested={()=>setRequestedFollowup(null)}/>;
   const todayRecords=<TodayRecords data={data} moments={todayMoments} today={today} open={(kind,id)=>kind==='lesson'?setRequestedLesson({id,nonce:uuid(),view:'detail'}):setRequestedSession({id,nonce:uuid()})}/>;
   const sessionHub=(mode:'today'|'records'|'drafts')=><SessionHub data={data} mode={mode} afterPrimary={mode==='today'?todayRecords:undefined} refresh={refresh} accepted={session=>setData(current=>mergeSnapshot(current,{...emptySnapshot,sessions:[session]}))} acceptMethod={saved=>setData(current=>acceptSaved(current,saved))} openGoal={id=>void openDetail(id)} openAction={id=>setRequestedFollowup({kind:'action',id,nonce:uuid()})} requested={requestedSession} onRequested={()=>setRequestedSession(null)} requestedActions={requestedPlanActions} onRequestedActions={()=>setRequestedPlanActions(null)}/>;
-  return <LessonOutboxProvider data={data} cacheLoaded={snapshot=>setData(current=>mergeSnapshot(snapshot,current))} accepted={receipt=>setData(current=>'kind' in receipt?acceptSaved(current,receipt):mergeSnapshot(current,{...emptySnapshot,lessons:[receipt]}))}><View style={s.root}>
+  const activeTone:UiTone=tab==='goals'?'goal':tab==='methods'?'method':tab==='records'?(recordKind==='family'?'family':'classroom'):tab==='followups'?'tasks':'home';
+  const pagePalette=palettes[activeTone];
+  return <UiTheme tone={activeTone}><LessonOutboxProvider data={data} cacheLoaded={snapshot=>setData(current=>mergeSnapshot(snapshot,current))} accepted={receipt=>setData(current=>'kind' in receipt?acceptSaved(current,receipt):mergeSnapshot(current,{...emptySnapshot,lessons:[receipt]}))}><View style={[s.root,{backgroundColor:pagePalette.page}]}>
     <View style={s.header}><Text style={s.brand}>✦ skarmar</Text><Action title="我的账号" secondary press={() => setAccount(true)} /></View>
     <ScrollView ref={scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
       {account ? <><AccountPanel businessTools={false} prdExport back={() => setAccount(false)} onImported={refresh} logout={async () => { await persistence.current; await auth.logout(); }} /><HelpButton/>{auth.identity.user.role==='admin'&&<StarterSetupButton refresh={refresh}/>}<Action title="共享需要与帮助说明" secondary press={()=>setRequestedObservation({kind:'needs',id:'',nonce:uuid()})}/><Action title="维护课程和老师选项" secondary press={() => { setAccount(false); setTab('catalog'); }} /><Action title="维护领域选项" secondary press={() => { setAccount(false); setTab('catalog'); }} />{visibleDrafts.length>0&&<Disclosure title="本机未完成填写" summary={`${visibleDrafts.length}份`}>{draftEntries}</Disclosure>}</> : <>
-        <View style={s.header}><Text accessibilityRole="header" style={s.title}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程、老师和领域' }[tab]}</Text>{tab==='goals'&&<Action title="新建目标" press={()=>begin({kind:'goal',value:newGoal()})}/>} {tab==='methods'&&<Action title="新建方法" press={()=>begin({kind:'method',value:newMethod()})}/>} {tab==='today'&&<Text accessibilityLabel="家庭业务日期" style={s.hint}>{businessDateLabel(today)}</Text>}</View>
+        <View style={s.header}><Text accessibilityRole="header" style={[s.title,{color:pagePalette.ink}]}>{{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进', catalog: '课程、老师和领域' }[tab]}</Text>{tab==='goals'&&<Action title="新建目标" press={()=>begin({kind:'goal',value:newGoal()})}/>} {tab==='methods'&&<Action title="新建方法" press={()=>begin({kind:'method',value:newMethod()})}/>} {tab==='today'&&<Text accessibilityLabel="家庭业务日期" style={s.hint}>{businessDateLabel(today)}</Text>}</View>
         <LessonQueueStatus/>
         {syncError ? <View style={s.card}><Text accessibilityRole="alert">{syncError}</Text><Action title="重试同步" secondary press={() => {setProgressNonce(n=>n+1);void refresh().catch(e => setSyncError(messageOf(e)));}} /></View> : null}
         {notice ? <Text role="status">{notice}</Text> : null}
         {!ready ? <><ActivityIndicator accessibilityLabel="正在读取本机草稿" />{error&&<Text accessibilityRole="alert">{error}</Text>}</> : <>
           {draftEntries}
           {tab === 'today' || tab === 'records' ? <>
-            {tab === 'today' && <Pressable accessibilityRole="button" accessibilityLabel="查看长期关注" onPress={() => setShowDirections(true)} style={{padding:12,borderRadius:10,borderLeftWidth:4,borderColor:'#34765B',backgroundColor:'#E9F2E9',gap:8}}>
-              <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Text style={{flex:1,fontSize:16,fontWeight:'600'}}>长期关注</Text><Text style={{fontSize:14}}>{longDirections.length>3?`另有 ${longDirections.length-3} 项 ▾`:'▾'}</Text></View>
+            {tab === 'today' && <Pressable accessibilityRole="button" accessibilityLabel="查看长期关注" onPress={() => setShowDirections(true)} style={{padding:12,borderRadius:10,borderWidth:1,borderColor:palettes.goal.border,backgroundColor:'#FFFFFF',gap:8}}>
+              <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Text style={{flex:1,fontSize:18,fontWeight:'700',color:palettes.goal.ink}}>长期关注</Text><Text style={{fontSize:14}}>{longDirections.length>3?`另有 ${longDirections.length-3} 项 ›`:'查看 ›'}</Text></View>
               <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>{longDirections.slice(0,3).map(g=><Text key={g.id} numberOfLines={1} style={{fontSize:14,paddingVertical:5,paddingHorizontal:8,borderWidth:1,borderColor:'#B3C9BA',borderRadius:6,backgroundColor:'#FFFFFF',maxWidth:'100%'}}>{g.input.title}</Text>)}</View>{!longDirections.length&&<Text style={s.hint}>先写下想长期关注的方向</Text>}
             </Pressable>}
             {tab==='records'&&<SectionTabs label="记录类型" value={recordKind} change={setRecordKind} items={[{value:'lessons',title:'机构课程',tone:'classroom'},{value:'family',title:'家庭干预',tone:'family'}]}/>}
@@ -377,7 +379,7 @@ export function FoundationWorkspace() {
 
       {tab!=='today'&&tab!=='followups'&&followupHub('hidden')}
     </ScrollView>
-    {!account && <View style={s.navigation}>{(['today', 'goals', 'methods', 'records', 'followups'] as const).map(kind => <Action key={kind} title={{ today: '今天', goals: '目标', methods: '方法', records: '记录', followups: '跟进' }[kind]} secondary={tab !== kind} press={() => { setTab(kind); setShowHidden(false);setError('');setNotice(''); }} />)}</View>}
+    {!account && <View style={s.navigation}>{(['today', 'goals', 'methods', 'records', 'followups'] as const).map(kind => <Pressable key={kind} accessibilityRole="button" accessibilityLabel={{ today:'今天',goals:'目标',methods:'方法',records:'记录',followups:'跟进'}[kind]} accessibilityState={{selected:tab===kind}} aria-pressed={tab===kind} onPress={()=>{setTab(kind);setShowHidden(false);setError('');setNotice('');}} style={{flex:1,minWidth:0,paddingHorizontal:2,paddingVertical:10,borderRadius:9,borderBottomWidth:3,borderBottomColor:tab===kind?pagePalette.ink:'transparent',backgroundColor:tab===kind?pagePalette.soft:'transparent'}}><Text style={{textAlign:'center',fontSize:17,fontWeight:tab===kind?'700':'500',color:tab===kind?pagePalette.ink:neutral.muted}}>{{ today:'今天',goals:'目标',methods:'方法',records:'记录',followups:'跟进'}[kind]}</Text></Pressable>)}</View>}
     {showDirections && <DetailOverlay title="长期关注" close={()=>setShowDirections(false)}>
       <Text style={s.hint}>按家人设置的高、普通、低优先级排列；同级保留原顺序。修改会同步给家人。</Text>
       {longDirections.map(g=>{
@@ -393,7 +395,7 @@ export function FoundationWorkspace() {
       </View>;})}
       {!longDirections.length&&<Action title="新建长期方向" press={()=>{setShowDirections(false);setTab('goals');begin({kind:'goal',value:{...newGoal(),level:'long'}});}}/>}
     </DetailOverlay>}
-    {draft && <DetailOverlay title={draft.mutation.kind === 'goal' ? '填写目标' : draft.mutation.kind === 'method' ? '填写方法' : '维护选项'} close={closeEditor} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy ? '正在保存…' : draft.pending ? '重试同一次保存' : '保存'} disabled={busy || nameMissing || methodStepsMissing || (conflict && !draft.pending)} press={() => void submit()} /></>}>
+    {draft && <DetailOverlay tone={draft.mutation.kind==='goal'?'goal':draft.mutation.kind==='method'?'method':'classroom'} title={draft.mutation.kind === 'goal' ? '填写目标' : draft.mutation.kind === 'method' ? '填写方法' : '维护选项'} close={closeEditor} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy ? '正在保存…' : draft.pending ? '重试同一次保存' : '保存'} disabled={busy || nameMissing || methodStepsMissing || (conflict && !draft.pending)} press={() => void submit()} /></>}>
       {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/>
       {error ? <Text accessibilityRole="alert">{error}</Text> : null}
       {methodStepsMissing&&<Text accessibilityRole="alert">普通新建方法须填写具体做法。</Text>}
@@ -436,14 +438,14 @@ export function FoundationWorkspace() {
       </View>)}
       {historyMore&&<Action title='更早的修改记录' disabled={historyLoading} secondary press={()=>void loadObjectHistory(detail.value.id,historyPage+1)}/>}
     </DetailOverlay>}
-  </View></LessonOutboxProvider>;
+  </View></LessonOutboxProvider></UiTheme>;
 }
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F6F5EF' }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, gap: 12 },
-  brand: { fontSize: 22, fontWeight: '700' }, title: { fontSize: 24, fontWeight: '600' }, heading: { fontSize: 18, fontWeight: '600' },
+  brand: { fontSize: 22, fontWeight: '700' }, title: { fontSize: 26, fontWeight: '700' }, heading: { fontSize: 18, fontWeight: '600' },
   content: { padding: 16, gap: 14, width:'100%',maxWidth:1080,alignSelf:'center' }, card: { padding: 16, borderRadius: 12, backgroundColor: '#FFFFFF', gap: 10 },
   action: { padding: 12, backgroundColor: '#34765B', borderRadius: 10 }, secondary: { backgroundColor: '#E9F2E9' },
   label: { fontSize: 17, fontWeight: '500' }, hint: { color: '#53665A', fontSize: 14 },
   input: { padding: 12, borderWidth: 1, borderColor: '#A6B5A8', borderRadius: 10, backgroundColor: '#FFFFFF', textAlignVertical: 'top' },
-  navigation: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', padding: 10, gap: 8, backgroundColor: '#FFFFFF' },
+  navigation: { flexDirection: 'row', justifyContent: 'space-around', padding: 8, gap: 4, backgroundColor: '#FFFFFF',borderTopWidth:1,borderColor:'#D5DED9' },
 });

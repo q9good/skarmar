@@ -1,3 +1,4 @@
+import {UiButton} from './ui-components';
 import {SessionRenewalContext,sessionExpiresSoon} from './session-renewal';
 import {DetailOverlay} from './overlay';
 import { Pressable, Text, TextInput, ReadabilitySettings } from './readability';
@@ -16,12 +17,7 @@ const Context = createContext<Auth | null>(null);
 export function useAuth() { const value = useContext(Context); if (!value) throw new Error('尚未登录'); return value; }
 const messageOf = (error: unknown) => error instanceof Error ? error.message : '操作未完成，请重试';
 
-function Action({ title, onPress, disabled, secondary }: { title: string; onPress: () => void; disabled?: boolean; secondary?: boolean }) {
-  return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
-    style={[s.button, secondary && s.secondary, disabled && { opacity: 0.5 }]}>
-    <Text style={[s.buttonText, secondary && { color: '#34765B' }]}>{title}</Text>
-  </Pressable>;
-}
+function Action({title,onPress,disabled,secondary}:{title:string;onPress:()=>void;disabled?:boolean;secondary?:boolean}){return <UiButton title={title} variant={secondary?'secondary':'primary'} disabled={disabled} press={onPress}/>;}
 function Input({ label, value, change, secret, username, email, newPassword, disabled, submit }: {
   label: string; value: string; change: (text: string) => void; secret?: boolean; username?: boolean; email?: boolean;
   newPassword?: boolean; disabled?: boolean; submit?: () => void;

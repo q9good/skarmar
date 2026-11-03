@@ -218,6 +218,15 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
             .clone()
             .ok_or_else(|| ApiError::invalid("缺少干预内容"))?
     };
+    // A proposed activity is required for a new/edited plan, not a retrospective
+    // summary. Successful older operation receipts were already replayed above.
+    if !removing
+        && matches!(request.action, Action::SaveDraft)
+        && input.summary.is_none()
+        && input.plan.trim().is_empty()
+    {
+        return Err(ApiError::invalid("请填写准备做什么，再保存计划"));
+    }
     valid_date(&input.business_date)?;
     if !["夜间", "上午", "下午", "晚上"].contains(&input.time_slot.as_str()) {
         return Err(ApiError::invalid("请选择时段"));
