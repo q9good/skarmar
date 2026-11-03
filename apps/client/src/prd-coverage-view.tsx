@@ -1,3 +1,4 @@
+import {neutral,palettes,chartColors} from './ui-palette';
 import {UiButton} from './ui-components';
 import React,{useEffect,useState} from 'react';
 import {Disclosure} from './disclosure';
@@ -11,13 +12,13 @@ import type {Snapshot} from './foundation';
 import type {Coverage} from './prd-sessions';
 import {coverageItems,coverageColors,coverageLegend,type CoverageTopic,type CoverageItem} from './prd-coverage';
 
-const palette=['#245D48','#315B82','#744C64','#775521','#4A536D','#52622F','#665285','#795047'];
+const palette=chartColors;
 const Button=({title,press,disabled=false}:{title:string;press:()=>void;disabled?:boolean})=><UiButton title={title} disabled={disabled} press={press}/>;
 function Ring({items}:{items:CoverageItem[]}){
  const total=items.reduce((n,r)=>n+r.counts.selected,0),circumference=2*Math.PI*70;let offset=0;
  return <View style={{alignItems:'center',gap:8}}>
   <View accessible accessibilityRole="image" accessibilityLabel={`当前显示项覆盖环图，合计${total}次命中；每项数量列在下方，不表示能力百分比`}>
-   <Svg width={190} height={190} viewBox="0 0 190 190" aria-hidden><Circle cx={95} cy={95} r={70} stroke="#B5C1B4" strokeWidth={22} fill="none"/>{total>0&&items.map((r,i)=>{const length=r.counts.selected/total*circumference,start=offset;offset+=length;return r.counts.selected>0?<Circle key={r.id} cx={95} cy={95} r={70} stroke={palette[i%palette.length]} strokeWidth={22} strokeDasharray={`${length} ${circumference-length}`} strokeDashoffset={-start} rotation={-90} origin="95, 95" fill="none"/>:null;})}</Svg>
+   <Svg width={190} height={190} viewBox="0 0 190 190" aria-hidden><Circle cx={95} cy={95} r={70} stroke={neutral.border} strokeWidth={22} fill="none"/>{total>0&&items.map((r,i)=>{const length=r.counts.selected/total*circumference,start=offset;offset+=length;return r.counts.selected>0?<Circle key={r.id} cx={95} cy={95} r={70} stroke={palette[i%palette.length]} strokeWidth={22} strokeDasharray={`${length} ${circumference-length}`} strokeDashoffset={-start} rotation={-90} origin="95, 95" fill="none"/>:null;})}</Svg>
   </View>
   <Text>{total?`当前显示项共${total}次命中`:'本窗口当前显示项还没有记录；保留空环，不绘制假比例。'}</Text>
  </View>;
@@ -32,7 +33,7 @@ export function CoveragePanel({data,close,chooseGoal,selectedGoals=[],selectedFo
   <Select label="统计来源" value={source} options={[{value:'family',label:'家庭干预'},{value:'lesson',label:'机构课程'},{value:'combined',label:'合计（分列两种来源）'}]} onChange={v=>setSource(v as typeof source)}/>
   <Select label="统计窗口" value={String(days)} options={[7,30,90].map(n=>({value:String(n),label:`近${n}天`}))} onChange={v=>setDays(Number(v))}/>
   <Select label="近况统计内容" value={topic} onChange={v=>setTopic(v as CoverageTopic)} options={[{value:'goals',label:'目标覆盖'},{value:'methods',label:'实际方法'},{value:'tags',label:'实际活动标签（家庭）'}]}/>
-  {topic==='goals'&&<><Select label="近况目标层级" value={level} onChange={setLevel} options={[{value:'short',label:'近期本领'},{value:'medium',label:'中期目标'},{value:'long',label:'长期方向（明确关注）'}]}/><Pressable accessibilityRole="checkbox" accessibilityLabel="只看本窗口尚无记录的目标" accessibilityState={{checked:unrecorded}} aria-checked={unrecorded} onPress={()=>setUnrecorded(v=>!v)} style={{padding:12,backgroundColor:'#E9F2E9',borderRadius:10}}><Text>{unrecorded?'☑':'☐'} 只看本窗口尚无记录的目标</Text></Pressable></>}
+  {topic==='goals'&&<><Select label="近况目标层级" value={level} onChange={setLevel} options={[{value:'short',label:'近期本领'},{value:'medium',label:'中期目标'},{value:'long',label:'长期方向（明确关注）'}]}/><Pressable accessibilityRole="checkbox" accessibilityLabel="只看本窗口尚无记录的目标" accessibilityState={{checked:unrecorded}} aria-checked={unrecorded} onPress={()=>setUnrecorded(v=>!v)} style={{padding:12,backgroundColor:palettes.home.soft,borderRadius:10}}><Text>{unrecorded?'☑':'☐'} 只看本窗口尚无记录的目标</Text></Pressable></>}
   <Select label="近况展示方式" value={chart} onChange={setChart} options={[{value:'bar',label:'条形图'},{value:'ring',label:'环图'},{value:'table',label:'数量明细'}]}/>
   </Disclosure>
   <Text>次数表示记录覆盖，不代表能力进展；未记录不等于未安排。图表仅包含当前显示项，一条记录可以涉及多个目标、方法或标签，命中数之和可能大于记录场次。</Text>
@@ -43,11 +44,11 @@ export function CoveragePanel({data,close,chooseGoal,selectedGoals=[],selectedFo
    {topic==='goals'&&level!=='long'&&<Text>近{days}天固定色阶：{coverageLegend(days)}。数字与颜色一同显示；筛选不改变颜色含义。</Text>}
    {topic==='tags'&&source!=='family'&&<Text>活动标签只记录家庭实际活动，机构课程没有同口径标签；这里始终显示家庭分量。</Text>}
    {chart==='ring'&&<Ring items={rows}/>}
-   {rows.map((r,i)=>{const selected=level==='long'?selectedFocus.includes(r.id):selectedGoals.includes(r.id),dark=r.band===4,text=dark?'#FFFFFF':'#243D36';return <View key={r.id} style={{gap:8,padding:12,borderRadius:10,backgroundColor:topic==='goals'&&r.band!==undefined?coverageColors[r.band]:'#FFFFFF'}}>
+   {rows.map((r,i)=>{const selected=level==='long'?selectedFocus.includes(r.id):selectedGoals.includes(r.id),dark=r.band===4,text=dark?'#FFFFFF':neutral.ink;return <View key={r.id} style={{gap:8,padding:12,borderRadius:10,backgroundColor:topic==='goals'&&r.band!==undefined?coverageColors[r.band]:'#FFFFFF'}}>
     <Text style={{fontWeight:'600',color:text}}>{chart==='ring'?`${i+1}. `:''}{r.label} · {r.counts.selected} 次{topic==='tags'?'标签命中':'覆盖'}</Text>
     <Text style={{color:text}}>家庭{r.counts.family}／机构{r.counts.lesson}</Text>
     {chart==='ring'&&<View aria-hidden style={{height:5,width:44,backgroundColor:palette[i%palette.length]}}/>}
-    {chart==='bar'&&<View accessible accessibilityRole="image" accessibilityLabel={`${r.label}覆盖条，家庭${r.counts.family}次，机构${r.counts.lesson}次`} style={{height:20,flexDirection:'row',backgroundColor:'#F6F5EF',borderWidth:1,borderColor:'#53665A',borderRadius:4,overflow:'hidden'}}>{r.counts.family>0&&<View style={{width:`${(topic==='tags'||source!=='lesson'?r.counts.family:0)/max*100}%`,backgroundColor:'#245D48'}}/>}{r.counts.lesson>0&&<View style={{width:`${(source!=='family'?r.counts.lesson:0)/max*100}%`,backgroundColor:'#315B82'}}/>}</View>}
+    {chart==='bar'&&<View accessible accessibilityRole="image" accessibilityLabel={`${r.label}覆盖条，家庭${r.counts.family}次，机构${r.counts.lesson}次`} style={{height:20,flexDirection:'row',backgroundColor:neutral.canvas,borderWidth:1,borderColor:neutral.muted,borderRadius:4,overflow:'hidden'}}>{r.counts.family>0&&<View style={{width:`${(topic==='tags'||source!=='lesson'?r.counts.family:0)/max*100}%`,backgroundColor:palettes.family.ink}}/>}{r.counts.lesson>0&&<View style={{width:`${(source!=='family'?r.counts.lesson:0)/max*100}%`,backgroundColor:palettes.classroom.ink}}/>}</View>}
     <Text style={{color:text}}>{r.detail}</Text>
     {topic==='goals'&&chooseGoal&&<Button title={selected?`本次已选：${r.label}`:`${level==='long'?'加入本次长期关注':'加入本次目标'}：${r.label}`} disabled={selected} press={()=>chooseGoal(r.id,level==='long')}/>}
    </View>;})}

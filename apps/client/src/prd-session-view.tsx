@@ -1,3 +1,4 @@
+import {coverageScale} from './ui-palette';
 import {UiButton,UiCheck} from './ui-components';
 import {FamilyPlanEditor} from './family-plan-editor';
 import {dataKey} from './data-epoch';
@@ -34,7 +35,7 @@ import {newGoal,newMethod, type Snapshot,type Saved,type Write as ObjectWrite} f
 import {calendarCounts,monthWeeks,chooseMain,decodeSessionDrafts,emptySession,startSummary,signalNames,type Coverage,type Session,type SessionDraft,type SessionInput,type SessionWrite,type Summary,type MethodRef} from './prd-sessions';
 const queues=new Map<string,Promise<void>>();
 const errorText=(e:unknown)=>e instanceof Error?e.message:'未能完成，请保留填写后重试';
-const colors=['#FFFFFF','#E3EEDB','#BFD8B7','#8BB497','#34765B'];
+const colors=coverageScale;
 function Button({title,onPress,disabled=false,primary=false}:{title:string;onPress:()=>void;disabled?:boolean;primary?:boolean}){return <UiButton title={title} tone="family" variant={primary?'primary':'secondary'} disabled={disabled} press={onPress}/>;}
 function Check({title,checked,onPress,disabled=false}:{title:string;checked:boolean;onPress:()=>void;disabled?:boolean}){return <UiCheck title={title} tone="family" checked={checked} disabled={disabled} press={onPress}/>;}
 function Field({label,value,onChange,placeholder='',disabled=false}:{label:string;value:string;onChange:(v:string)=>void;placeholder?:string;disabled?:boolean}){return <GuidedField label={label} value={value} change={onChange} placeholder={placeholder} disabled={disabled}/>;}

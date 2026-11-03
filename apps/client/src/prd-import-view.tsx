@@ -1,3 +1,4 @@
+import {neutral,palettes} from './ui-palette';
 import React,{useState} from 'react';
 import {View,StyleSheet} from 'react-native';
 import {Text,TextInput,Pressable} from './readability';
@@ -57,4 +58,4 @@ export function PrdImportPanel({disabled,onBusyChange,onImported}:{disabled:bool
  {error&&<Text accessibilityRole="alert" style={s.error}>{error}</Text>}{notice&&<Text accessibilityRole="alert">{notice}</Text>}
  </View>
 }
-const s=StyleSheet.create({card:{gap:12,padding:18,borderWidth:1,borderColor:'#E0E6DD',borderRadius:18,backgroundColor:'white'},section:{gap:8,borderTopWidth:1,borderColor:'#E0E6DD',paddingTop:12},title:{fontSize:18,fontWeight:'600',color:'#243D36'},label:{fontSize:17},hint:{fontSize:14,color:'#53665A',lineHeight:22},input:{borderWidth:1,borderColor:'#E0E6DD',borderRadius:10,padding:12},button:{backgroundColor:'#E9F2E9',padding:13,borderRadius:12,minHeight:46,justifyContent:'center'},buttonText:{color:'#245B43',fontSize:17,fontWeight:'600'},error:{color:'#925231',backgroundColor:'#FBECE2',padding:12}});
+const s=StyleSheet.create({card:{gap:12,padding:18,borderWidth:1,borderColor:neutral.border,borderRadius:18,backgroundColor:'white'},section:{gap:8,borderTopWidth:1,borderColor:neutral.border,paddingTop:12},title:{fontSize:18,fontWeight:'600',color:neutral.ink},label:{fontSize:17},hint:{fontSize:14,color:neutral.muted,lineHeight:22},input:{borderWidth:1,borderColor:neutral.border,borderRadius:10,padding:12},button:{backgroundColor:palettes.home.soft,padding:13,borderRadius:12,minHeight:46,justifyContent:'center'},buttonText:{color:palettes.home.ink,fontSize:17,fontWeight:'600'},error:{color:neutral.danger,backgroundColor:neutral.dangerSoft,padding:12}});

@@ -1,3 +1,4 @@
+import {neutral,palettes} from './ui-palette';
 import {UiButton} from './ui-components';
 import {SessionRenewalContext,sessionExpiresSoon} from './session-renewal';
 import {DetailOverlay} from './overlay';
@@ -56,12 +57,12 @@ export function AuthBoundary({ children }: { children: React.ReactNode }) {
     // Keep the authenticated view if the server cannot confirm session revocation.
     await request('/auth/logout', 'POST'); advanceAuthSession(); setIdentity(null); setNotice('已退出登录。这个账号的本机草稿已保留。');
   };
-  if (checking) return <View style={s.loading}><ActivityIndicator color="#34765B" /><Text style={s.hint}>正在连接你的记录空间…</Text></View>;
+  if (checking) return <View style={s.loading}><ActivityIndicator color={palettes.home.ink} /><Text style={s.hint}>正在连接你的记录空间…</Text></View>;
   if (!identity) return <Login notice={notice} signedIn={value => { advanceAuthSession(); setNotice(''); acceptIdentity(value); }} />;
   const expiresSoon=sessionExpiresSoon(identity.session);
   return <Context.Provider value={{ identity, logout, renew:()=>setRenewing(true), passwordChanged: () => { advanceAuthSession(); setIdentity(null); setNotice('密码已更新，请重新登录。'); } }}>
     <SessionRenewalContext.Provider value={{expiresSoon,renew:()=>setRenewing(true)}}><View style={{flex:1,minHeight:0}}>
-    {expiresSoon&&<View style={{padding:12,gap:8,backgroundColor:'#FFF5DE'}}><Text>这台设备的登录即将到期，填写仍保留在本机。</Text><Action title="重新验证并继续填写" secondary onPress={()=>setRenewing(true)}/></View>}
+    {expiresSoon&&<View style={{padding:12,gap:8,backgroundColor:palettes.difficulty.soft}}><Text>这台设备的登录即将到期，填写仍保留在本机。</Text><Action title="重新验证并继续填写" secondary onPress={()=>setRenewing(true)}/></View>}
     <View style={{flex:1,minHeight:0}} key={`${identity.space}:${identity.user.id}`}>{children}</View>
     {renewing&&<RenewSession identity={identity} close={()=>setRenewing(false)} renewed={value=>{advanceAuthSession();acceptIdentity(value);setRenewing(false);}}/>}
     </View></SessionRenewalContext.Provider>
@@ -271,18 +272,18 @@ function Member({ user, current, busy, update }: { user: Account; current: boole
   </View>;
 }
 const s = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F6F5EF' }, loginContainer: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 22 },
-  loginCard: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 24, borderWidth: 1, borderColor: '#E0E6DD', padding: 26, gap: 14 },
-  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F6F5EF', gap: 16 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 }, star: { fontSize: 34, color: '#34765B' }, brandName: { color: '#243D36', fontSize: 28, fontWeight: '700' },
-  eyebrow: { color: '#53665A', fontSize: 13, marginBottom: 15 }, title: { color: '#243D36', fontSize: 25, fontWeight: '700', flexShrink: 1 },
-  body: { fontSize: 14, color: '#243D36', lineHeight: 23 }, hint: { color: '#53665A', fontSize: 12, lineHeight: 21 },
-  card: { padding: 18, borderRadius: 18, borderWidth: 1, borderColor: '#E0E6DD', backgroundColor: '#FFFFFF', gap: 12 }, cardTitle: { fontSize: 16, fontWeight: '600', color: '#243D36' },
-  pending: { borderTopWidth: 1, borderColor: '#E0E6DD', paddingTop: 12, gap: 9 },
-  field: { gap: 7 }, label: { fontSize: 17, color: '#243D36', fontWeight: '500' }, input: { minHeight: 48, borderWidth: 1, borderColor: '#E0E6DD', borderRadius: 10, padding: 12, color: '#243D36', backgroundColor: '#FCFCF9' },
+  page: { flex: 1, backgroundColor: neutral.canvas }, loginContainer: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 22 },
+  loginCard: { width: '100%', maxWidth: 430, backgroundColor: '#FFFFFF', borderRadius: 24, borderWidth: 1, borderColor: neutral.border, padding: 26, gap: 14 },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: neutral.canvas, gap: 16 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 }, star: { fontSize: 34, color: palettes.home.ink }, brandName: { color: neutral.ink, fontSize: 28, fontWeight: '700' },
+  eyebrow: { color: neutral.muted, fontSize: 13, marginBottom: 15 }, title: { color: neutral.ink, fontSize: 25, fontWeight: '700', flexShrink: 1 },
+  body: { fontSize: 14, color: neutral.ink, lineHeight: 23 }, hint: { color: neutral.muted, fontSize: 12, lineHeight: 21 },
+  card: { padding: 18, borderRadius: 18, borderWidth: 1, borderColor: neutral.border, backgroundColor: '#FFFFFF', gap: 12 }, cardTitle: { fontSize: 16, fontWeight: '600', color: neutral.ink },
+  pending: { borderTopWidth: 1, borderColor: neutral.border, paddingTop: 12, gap: 9 },
+  field: { gap: 7 }, label: { fontSize: 17, color: neutral.ink, fontWeight: '500' }, input: { minHeight: 48, borderWidth: 1, borderColor: neutral.border, borderRadius: 10, padding: 12, color: neutral.ink, backgroundColor: neutral.surface },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
-  button: { backgroundColor: '#34765B', borderRadius: 12, padding: 13, minHeight: 46, alignItems: 'center', justifyContent: 'center' }, secondary: { backgroundColor: '#E9F2E9' }, buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  link: { color: '#34765B', fontSize: 12, paddingVertical: 5, alignSelf: 'flex-end' },
-  error: { backgroundColor: '#FBECE2', padding: 12, borderRadius: 10, color: '#925231', fontSize: 13, lineHeight: 21 },
-  notice: { backgroundColor: '#E9F2E9', padding: 12, borderRadius: 10, color: '#34765B', fontSize: 13, lineHeight: 21 }, footer: { color: '#53665A', fontSize: 11, textAlign: 'center', marginTop: 12 },
+  button: { backgroundColor: palettes.home.ink, borderRadius: 12, padding: 13, minHeight: 46, alignItems: 'center', justifyContent: 'center' }, secondary: { backgroundColor: palettes.home.soft }, buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
+  link: { color: palettes.home.ink, fontSize: 12, paddingVertical: 5, alignSelf: 'flex-end' },
+  error: { backgroundColor: neutral.dangerSoft, padding: 12, borderRadius: 10, color: neutral.danger, fontSize: 13, lineHeight: 21 },
+  notice: { backgroundColor: palettes.home.soft, padding: 12, borderRadius: 10, color: palettes.home.ink, fontSize: 13, lineHeight: 21 }, footer: { color: neutral.muted, fontSize: 11, textAlign: 'center', marginTop: 12 },
 });

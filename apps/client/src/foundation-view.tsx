@@ -1,6 +1,6 @@
 import {UiButton} from './ui-components';
 import {UiTheme} from './ui-theme';
-import {neutral,palettes,type UiTone} from './ui-palette';
+import {neutral,palettes,coverageScale,type UiTone} from './ui-palette';
 import {dataKey} from './data-epoch';
 import {Disclosure} from './disclosure';
 import {SectionTabs,ContentGroup} from './section-tabs';
@@ -65,7 +65,7 @@ function DomainChoice({value,change,data,accepted,disabled}:{value:CatalogSnapsh
     <Text style={s.label}>领域／可选</Text>
     <Text style={s.hint}>{copy.question}</Text>
     <Action title={`领域／可选：${selected}`} secondary disabled={disabled} press={()=>{setSearch('');setError('');setPanel(true);}}/>
-    <Pressable accessibilityRole="button" accessibilityLabel={`${help?'收起':'查看'}填写说明：领域／可选`} onPress={()=>setHelp(value=>!value)} style={{paddingVertical:10,minHeight:44}}><Text style={{fontSize:14,color:'#34765B'}}>{help?'收起说明':'看看填写说明（可选）'}</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${help?'收起':'查看'}填写说明：领域／可选`} onPress={()=>setHelp(value=>!value)} style={{paddingVertical:10,minHeight:44}}><Text style={{fontSize:14,color:palettes.home.ink}}>{help?'收起说明':'看看填写说明（可选）'}</Text></Pressable>
     {help&&<Text selectable style={s.hint}>填写说明 · {copy.help}；一个目标只保留一个领域。</Text>}
     {panel&&<DetailOverlay title="选择领域" close={()=>{if(!saving)setPanel(false);}}>
       <Field label="搜索领域" value={search} change={setSearch} disabled={saving} multiline={false}/>
@@ -329,7 +329,7 @@ export function FoundationWorkspace() {
           {tab === 'today' || tab === 'records' ? <>
             {tab === 'today' && <Pressable accessibilityRole="button" accessibilityLabel="查看长期关注" onPress={() => setShowDirections(true)} style={{padding:12,borderRadius:10,borderWidth:1,borderColor:palettes.goal.border,backgroundColor:'#FFFFFF',gap:8}}>
               <View style={{flexDirection:'row',alignItems:'center',gap:8}}><Text style={{flex:1,fontSize:18,fontWeight:'700',color:palettes.goal.ink}}>长期关注</Text><Text style={{fontSize:14}}>{longDirections.length>3?`另有 ${longDirections.length-3} 项 ›`:'查看 ›'}</Text></View>
-              <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>{longDirections.slice(0,3).map(g=><Text key={g.id} numberOfLines={1} style={{fontSize:14,paddingVertical:5,paddingHorizontal:8,borderWidth:1,borderColor:'#B3C9BA',borderRadius:6,backgroundColor:'#FFFFFF',maxWidth:'100%'}}>{g.input.title}</Text>)}</View>{!longDirections.length&&<Text style={s.hint}>先写下想长期关注的方向</Text>}
+              <View style={{flexDirection:'row',flexWrap:'wrap',gap:6}}>{longDirections.slice(0,3).map(g=><Text key={g.id} numberOfLines={1} style={{fontSize:14,paddingVertical:5,paddingHorizontal:8,borderWidth:1,borderColor:neutral.border,borderRadius:6,backgroundColor:'#FFFFFF',maxWidth:'100%'}}>{g.input.title}</Text>)}</View>{!longDirections.length&&<Text style={s.hint}>先写下想长期关注的方向</Text>}
             </Pressable>}
             {tab==='records'&&<SectionTabs label="记录类型" value={recordKind} change={setRecordKind} items={[{value:'lessons',title:'机构课程',tone:'classroom'},{value:'family',title:'家庭干预',tone:'family'}]}/>}
             {tab==='records'&&recordKind==='family'?sessionHub('records'):<LessonHub openKnowledge={id=>setRequestedFollowup({kind:'knowledge',id,nonce:uuid()})} inboxManaged requested={requestedLesson} onRequested={()=>setRequestedLesson(null)} openAction={id=>setRequestedFollowup({kind:'action',id,nonce:uuid()})} interventionEntry={tab==='today'?<>{sessionHub('today')}{followupHub('today')}</>:undefined} data={data} actorId={auth.identity.user.id} actorName={auth.identity.user.display_name} admin={auth.identity.user.role === 'admin'} mode={tab === 'today' ? 'today' : 'records'} refresh={refresh}
@@ -342,11 +342,11 @@ export function FoundationWorkspace() {
             <Check label="显示已收起目标" checked={showHidden} change={() => setShowHidden(!showHidden)} /></View></View></Disclosure>
             {!goals.length && <Text>写下想帮助孩子学会的本领，或者希望长期支持的方向。</Text>}
             {goals.map(g => <View key={g.id} style={s.card} testID={`prd-goal-${g.id}`}>
-              <View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看目标：${g.input.title}`} onPress={()=>void openDetail(g.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{g.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑目标：${g.input.title}`} label="编辑" quiet press={()=>begin({kind:'goal',value:g.input},{kind:'goal',value:g})}/></View>{goalView==='coverage'&&g.input.level!=='long'&&goalReport&&(()=>{const row=goalReport.goals.find(r=>r.id===g.id);return row?<View style={{padding:10,borderRadius:8,backgroundColor:['#F3F6EF','#E4EEDC','#CADDB9','#94B681','#4E7656'][row.band]}}><Text style={{color:row.band===4?'#FFFFFF':'#243D36'}}>近{goalDays}天 {row.counts.selected}次覆盖 · 家庭{row.counts.family}／机构{row.counts.lesson}</Text></View>:null;})()}<Text>{levelNames[g.input.level]} · {goalStateName(g.input)}{g.input.archived ? ' · 已收起' : ''}</Text>
+              <View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看目标：${g.input.title}`} onPress={()=>void openDetail(g.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{g.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑目标：${g.input.title}`} label="编辑" quiet press={()=>begin({kind:'goal',value:g.input},{kind:'goal',value:g})}/></View>{goalView==='coverage'&&g.input.level!=='long'&&goalReport&&(()=>{const row=goalReport.goals.find(r=>r.id===g.id);return row?<View style={{padding:10,borderRadius:8,backgroundColor:coverageScale[row.band]}}><Text style={{color:row.band===4?'#FFFFFF':neutral.ink}}>近{goalDays}天 {row.counts.selected}次覆盖 · 家庭{row.counts.family}／机构{row.counts.lesson}</Text></View>:null;})()}<Text>{levelNames[g.input.level]} · {goalStateName(g.input)}{g.input.archived ? ' · 已收起' : ''}</Text>
               {g.input.meaning&&<Text numberOfLines={2}>{g.input.meaning}</Text>}
               {(g.input.domain||g.input.due)&&<Text>领域：{g.input.domain?.name||'未选择'} · 目标日期：{g.input.due||'未设置'}</Text>}
               {g.input.support&&<Text>预期帮助条件：{g.input.support}</Text>}
-              {goalView==='progress'&&(()=>{const p=progress?.goals.find(row=>row.id===g.id);return <View style={{gap:7,padding:10,backgroundColor:'#F3F6EF'}}>{p?<><Text>{p.measurement_count}条实际测量 · {p.segment_count}组指标与条件；截至{progress?.as_of}</Text>{measurementSeries(p.latest,localDate()).map(series=><Text key={series.key}>{series.name} · 指标第{series.metricVersion}版／目标第{series.goalVersion}版 · {series.sourceName} · {series.methodBasis} · {series.support||'帮助条件未记录'}：{series.points.at(-1)!.date}，{series.points.at(-1)!.label}{p.latest.find(r=>r.id===series.points.at(-1)!.id)?.source_deleted?'（来源已撤销或删除，保留当时测量）':''}</Text>)}{p.segment_count>3&&<Text>这里只列最近3组；其他组请打开完整趋势。</Text>}</>:<Text>{progressError?'实际测量暂未读到，请刷新重试。':!progress?'正在读取实际测量…':'待观察：尚无实际测量，不用训练次数代替进步。'}</Text>}<Action title={`查看测量趋势：${g.input.title}`} secondary press={()=>setRequestedObservation({kind:'goal',id:g.id,nonce:uuid()})}/></View>;})()}
+              {goalView==='progress'&&(()=>{const p=progress?.goals.find(row=>row.id===g.id);return <View style={{gap:7,padding:10,backgroundColor:palettes.goal.soft}}>{p?<><Text>{p.measurement_count}条实际测量 · {p.segment_count}组指标与条件；截至{progress?.as_of}</Text>{measurementSeries(p.latest,localDate()).map(series=><Text key={series.key}>{series.name} · 指标第{series.metricVersion}版／目标第{series.goalVersion}版 · {series.sourceName} · {series.methodBasis} · {series.support||'帮助条件未记录'}：{series.points.at(-1)!.date}，{series.points.at(-1)!.label}{p.latest.find(r=>r.id===series.points.at(-1)!.id)?.source_deleted?'（来源已撤销或删除，保留当时测量）':''}</Text>)}{p.segment_count>3&&<Text>这里只列最近3组；其他组请打开完整趋势。</Text>}</>:<Text>{progressError?'实际测量暂未读到，请刷新重试。':!progress?'正在读取实际测量…':'待观察：尚无实际测量，不用训练次数代替进步。'}</Text>}<Action title={`查看测量趋势：${g.input.title}`} secondary press={()=>setRequestedObservation({kind:'goal',id:g.id,nonce:uuid()})}/></View>;})()}
 
               <Text style={s.hint}>方法 {data.methods.filter(m=>m.input.goal_ids.includes(g.id)).length} · 经验 {relatedKnowledge(g.id).filter(k=>k.input.kind==='experience').length} · 困难 {relatedKnowledge(g.id).filter(k=>k.input.kind==='difficulty').length}</Text>
             </View>)}
@@ -359,7 +359,7 @@ export function FoundationWorkspace() {
             </Disclosure>
             {rankingBusy&&<Text>正在读取方法…</Text>}
             {!rankingBusy&&methods.map(m => <View key={m.id} style={s.card} testID={`prd-method-${m.id}`}><View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看方法：${m.input.title}`} onPress={()=>void openDetail(m.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{m.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑方法：${m.input.title}`} label="编辑" quiet press={()=>begin({kind:'method',value:m.input},{kind:'method',value:m})}/></View>
-              <Text>{methodOrder.find(r=>r.id===m.id)?.reason??'新加入的方法，稍后可按近况重排'}</Text><View style={{gap:4,padding:10,backgroundColor:'#E8EFF5',borderRadius:8}}><Text style={{fontWeight:'600'}}>用于这些目标</Text>{m.input.goal_ids.map(id=><Action key={id} title={`查看方法关联目标：${data.goals.find(g=>g.id===id)?.input.title??'待核对目标'}`} label={data.goals.find(g=>g.id===id)?.input.title??'待核对目标'} quiet press={()=>void openDetail(id)}/>)}</View>
+              <Text>{methodOrder.find(r=>r.id===m.id)?.reason??'新加入的方法，稍后可按近况重排'}</Text><View style={{gap:4,padding:10,backgroundColor:palettes.classroom.soft,borderRadius:8}}><Text style={{fontWeight:'600'}}>用于这些目标</Text>{m.input.goal_ids.map(id=><Action key={id} title={`查看方法关联目标：${data.goals.find(g=>g.id===id)?.input.title??'待核对目标'}`} label={data.goals.find(g=>g.id===id)?.input.title??'待核对目标'} quiet press={()=>void openDetail(id)}/>)}</View>
               <Text>{methodSteps(m.input) || '快捷创建，具体做法待补充'}</Text>
               <Text style={s.hint}>经验 {relatedKnowledge(undefined,m.id).filter(k=>k.input.kind==='experience').length} · 困难 {relatedKnowledge(undefined,m.id).filter(k=>k.input.kind==='difficulty').length}</Text>
 </View>)}
@@ -441,11 +441,11 @@ export function FoundationWorkspace() {
   </View></LessonOutboxProvider></UiTheme>;
 }
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F6F5EF' }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, gap: 12 },
+  root: { flex: 1, backgroundColor: neutral.canvas }, header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, gap: 12 },
   brand: { fontSize: 22, fontWeight: '700' }, title: { fontSize: 26, fontWeight: '700' }, heading: { fontSize: 18, fontWeight: '600' },
   content: { padding: 16, gap: 14, width:'100%',maxWidth:1080,alignSelf:'center' }, card: { padding: 16, borderRadius: 12, backgroundColor: '#FFFFFF', gap: 10 },
-  action: { padding: 12, backgroundColor: '#34765B', borderRadius: 10 }, secondary: { backgroundColor: '#E9F2E9' },
-  label: { fontSize: 17, fontWeight: '500' }, hint: { color: '#53665A', fontSize: 14 },
-  input: { padding: 12, borderWidth: 1, borderColor: '#A6B5A8', borderRadius: 10, backgroundColor: '#FFFFFF', textAlignVertical: 'top' },
-  navigation: { flexDirection: 'row', justifyContent: 'space-around', padding: 8, gap: 4, backgroundColor: '#FFFFFF',borderTopWidth:1,borderColor:'#D5DED9' },
+  action: { padding: 12, backgroundColor: palettes.home.ink, borderRadius: 10 }, secondary: { backgroundColor: palettes.home.soft },
+  label: { fontSize: 17, fontWeight: '500' }, hint: { color: neutral.muted, fontSize: 14 },
+  input: { padding: 12, borderWidth: 1, borderColor: neutral.border, borderRadius: 10, backgroundColor: '#FFFFFF', textAlignVertical: 'top' },
+  navigation: { flexDirection: 'row', justifyContent: 'space-around', padding: 8, gap: 4, backgroundColor: '#FFFFFF',borderTopWidth:1,borderColor:neutral.border },
 });

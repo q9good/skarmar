@@ -1,3 +1,4 @@
+import {neutral,palettes} from './ui-palette';
 import React,{useRef,useState} from 'react';
 import {View} from 'react-native';
 import {Text,Pressable} from './readability';
@@ -22,7 +23,7 @@ export function useStableOptions(data:Snapshot,key:string|null,selected:string[]
  return {options:value,changed,refresh,adopt,revision};
 }
 export function OptionsUpdate({changed,refresh}:{changed:boolean;refresh:()=>void}){
- return changed?<View style={{padding:10,gap:6,backgroundColor:'#F0F3ED',borderRadius:8}}><Text>候选项有更新，当前填写和列表位置仍保留。核对后再刷新选项。</Text><Pressable accessibilityRole="button" onPress={refresh} style={{padding:10,backgroundColor:'#E0EBDC',borderRadius:8}}><Text>核对并刷新候选项</Text></Pressable></View>:null;
+ return changed?<View style={{padding:10,gap:6,backgroundColor:neutral.canvas,borderRadius:8}}><Text>候选项有更新，当前填写和列表位置仍保留。核对后再刷新选项。</Text><Pressable accessibilityRole="button" onPress={refresh} style={{padding:10,backgroundColor:palettes.home.action,borderRadius:8}}><Text>核对并刷新候选项</Text></Pressable></View>:null;
 }
 
 export function useStableValue<T>(value:T,key:string|null){

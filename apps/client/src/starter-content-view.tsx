@@ -1,3 +1,4 @@
+import {palettes,neutral} from './ui-palette';
 import React,{useState} from 'react';
 import {View} from 'react-native';
 import {Text,Pressable} from './readability';
@@ -7,7 +8,7 @@ import {request} from './api';
 import {starterGoals,starterMethods,starterCatalog,defaultStarterKeys} from './starter-content';
 
 function Button({title,press,disabled=false}:{title:string;press:()=>void;disabled?:boolean}) {
-  return <Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={press} style={{padding:12,minHeight:44,borderRadius:10,backgroundColor:'#E9F2E9',opacity:disabled?.5:1}}><Text style={{color:'#34765B',fontSize:17}}>{title}</Text></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={press} style={{padding:12,minHeight:44,borderRadius:10,backgroundColor:palettes.home.soft,opacity:disabled?.5:1}}><Text style={{color:palettes.home.ink,fontSize:17}}>{title}</Text></Pressable>;
 }
 export function ReferencePicker({kind,disabled,fork,choose}:{kind:'goal'|'method';disabled:boolean;fork:boolean;choose:(key:string)=>void}) {
   const [open,setOpen]=useState(false),[selected,setSelected]=useState('');
@@ -35,7 +36,7 @@ const labels:Record<string,string>={goal:'目标',method:'方法',course:'课程
 export function StarterSetupButton({refresh}:{refresh:()=>Promise<void>}) {
   const [open,setOpen]=useState(false),[keys,setKeys]=useState<string[]>([...defaultStarterKeys]),[plan,setPlan]=useState<Plan|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[receipt,setReceipt]=useState<Receipt|null>(null),[notice,setNotice]=useState('');
   const toggle=(key:string)=>{setKeys(old=>old.includes(key)?old.filter(k=>k!==key):[...old,key]);setPlan(null);setReceipt(null);setNotice('');};
-  const check=(key:string,label:string)=><Pressable key={key} accessibilityRole="checkbox" accessibilityLabel={label} aria-checked={keys.includes(key)} accessibilityState={{checked:keys.includes(key),disabled:busy}} disabled={busy} onPress={()=>toggle(key)} style={{padding:12,minHeight:44,backgroundColor:'#E9F2E9',borderRadius:8}}><Text>{keys.includes(key)?'☑':'☐'} {label}</Text></Pressable>;
+  const check=(key:string,label:string)=><Pressable key={key} accessibilityRole="checkbox" accessibilityLabel={label} aria-checked={keys.includes(key)} accessibilityState={{checked:keys.includes(key),disabled:busy}} disabled={busy} onPress={()=>toggle(key)} style={{padding:12,minHeight:44,backgroundColor:palettes.home.soft,borderRadius:8}}><Text>{keys.includes(key)?'☑':'☐'} {label}</Text></Pressable>;
   const act=async(action:()=>Promise<void>)=>{if(busy)return;setBusy(true);setError('');setNotice('');try{await action();}catch(e){setError(e instanceof Error?e.message:'操作未完成，请保留预览后重试');}finally{setBusy(false);}};
   const preview=()=>void act(async()=>{setReceipt(null);const p=await request<Plan>('/data-transfer','POST',{kind:'starter_preview',value:{keys}});setPlan(p);});
   const rowInput=(r:Row):PreviewInput=>'value' in r.mapped.value?r.mapped.value.value.input:r.mapped.value;
@@ -55,7 +56,7 @@ export function StarterSetupButton({refresh}:{refresh:()=>Promise<void>}) {
       {error&&<Text accessibilityRole="alert">{error}</Text>}
       {plan&&<View style={{gap:12}}><Text accessibilityRole="header">初始内容写入预览</Text>
         <Text>新增 {plan.rows.filter(r=>r.starter_status==='new').length}，使用已有 {plan.rows.filter(r=>r.starter_status==='reuse').length}，此前已处理 {plan.rows.filter(r=>r.skipped).length}。同名项目只使用现有内容及关联，不改名、不恢复停用项；多条同名无法明确时会阻止预览。</Text>
-        {plan.rows.map(r=>{const input=rowInput(r);return <View key={r.key} style={{gap:5,padding:12,borderWidth:1,borderColor:'#CAD8CF',borderRadius:8}}>
+        {plan.rows.map(r=>{const input=rowInput(r);return <View key={r.key} style={{gap:5,padding:12,borderWidth:1,borderColor:neutral.border,borderRadius:8}}>
           <Text>{labels[r.kind]}：{input?.title??input?.name} · {({new:'新增',reuse:'使用已有，保留现有内容',already_added:'已处理，跳过',removed:'已删除，保持删除'})[r.starter_status]}</Text>
           {input?.active===false&&<Text>此选项已停用，本次保持停用。</Text>}
           {input.state&&<Text>状态：{({active:r.kind==='goal'?'关注中':'使用中',maintaining:'维持',paused:'暂停',retired:'停用',not_started:'未开始',achieved:'已达成'} as Record<string,string>)[input.state]??input.state}{input.archived?' · 已收起':''}</Text>}

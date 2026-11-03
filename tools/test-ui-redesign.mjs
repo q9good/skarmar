@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {palettes,neutral} from '../apps/client/src/ui-palette.ts';
+import {palettes,neutral,coverageScale} from '../apps/client/src/ui-palette.ts';
 import {planRelatedKnowledge} from '../apps/client/src/plan-related-knowledge.ts';
 import {emptySnapshot,newGoal} from '../apps/client/src/foundation.ts';
 
@@ -9,7 +9,7 @@ const contrast=(a,b)=>(Math.max(luminance(a),luminance(b))+.05)/(Math.min(lumina
 test('all functional themes have readable solid actions and readable secondary labels',()=>{
  for(const [name,c] of Object.entries(palettes)){
   assert(contrast(c.ink,'#FFFFFF')>=4.5,name+' primary');assert(contrast(c.hover,'#FFFFFF')>=4.5,name+' pressed');
-  assert(contrast(c.ink,c.soft)>=4.5,name+' soft surface');
+  assert(contrast(c.ink,c.soft)>=4.5,name+' soft surface');assert(contrast(c.ink,c.page)>=4.5,name+' page');assert(contrast(c.ink,c.action)>=4.5,name+' selected control');
  }
  assert(contrast(neutral.muted,neutral.surface)>=4.5);
  assert.notEqual(palettes.family.ink,palettes.classroom.ink);assert.notEqual(palettes.goal.ink,palettes.method.ink);
@@ -35,4 +35,10 @@ test('explicit long focus is allowed, malformed parent cycles terminate and dupl
  const k=kb('one','experience',['long']);
  const data={...emptySnapshot,goals:[goal('long','child'),goal('child','long')],knowledge:[k,k]};
  const rows=planRelatedKnowledge(data,{targets:[],methods:[],focus_goal_ids:['long']});assert.equal(rows.length,1);
+});
+
+test('coverage colours progress from light to dark with readable count labels',()=>{
+ for(let i=1;i<coverageScale.length;i++)assert(luminance(coverageScale[i])<luminance(coverageScale[i-1]));
+ for(const c of coverageScale.slice(0,-1))assert(contrast(neutral.ink,c)>=4.5);
+ assert(contrast('#FFFFFF',coverageScale.at(-1))>=4.5);
 });

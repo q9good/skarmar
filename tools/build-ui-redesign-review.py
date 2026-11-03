@@ -2,10 +2,12 @@
 import base64
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / 'docs/artifacts/validation/ui-redesign-2026-11-03'
+NORD = '--nord' in sys.argv
+OUT = ROOT / ('docs/artifacts/validation/ui-nord-2026-11-03' if NORD else 'docs/artifacts/validation/ui-redesign-2026-11-03')
 SCREENS = [
     ('01-today', '今天：两个同级主入口', '课堂蓝、家庭陶土棕，尺寸和字重相同；长期关注用完整边框区分。'),
     ('02-plan-first', '计划第一步：准备做什么', '唯一新增的必填项在最上面。空白不能保存；日期时段保留默认，可按需修改。'),
@@ -29,10 +31,13 @@ def build():
     for key, title, caption in SCREENS:
         raw = (OUT / (key + '.png')).read_bytes()
         assert key + '.png' in checks['screenshots']
+        if NORD:
+            title=title.replace('松绿','鼠尾草绿').replace('靛蓝','灰紫').replace('赭金','柔金黄')
+            caption=caption.replace('课堂蓝、家庭陶土棕','课堂灰蓝、家庭青绿').replace('绿色主题','鼠尾草绿主题')
         screens.append(dict(id=key, title=title, caption=caption,
             sha256=hashlib.sha256(raw).hexdigest(), image='data:image/png;base64,'+base64.b64encode(raw).decode()))
     digest = hashlib.sha256(json.dumps([(s['id'],s['sha256']) for s in screens]).encode()).hexdigest()
-    payload = json.dumps(dict(reviewId='skarmar-ui-2026-11-03', revision=digest, screens=screens),ensure_ascii=False).replace('<','\\u003c')
+    payload = json.dumps(dict(reviewId='skarmar-nord-2026-11-03' if NORD else 'skarmar-ui-2026-11-03', revision=digest, screens=screens),ensure_ascii=False).replace('<','\\u003c')
     html = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'"><title>skarmar · UI评审 · 2026-11-03</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#F4F5F2;color:#23332F;font:16px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}header{padding:20px 24px;border-bottom:1px solid #D5DED9;background:white;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:22px}.brand img{width:28px;height:28px}h1{font-size:24px;margin:0 0 8px}p{margin:8px 0}button,textarea{font:inherit}button{min-height:44px;cursor:pointer;padding:10px 14px;border:1px solid #BDD0C3;border-radius:10px;background:white;color:#25624F}button:hover{background:#EAF2ED}button:focus-visible,textarea:focus{outline:3px solid #8B4B32;outline-offset:2px}.primary{background:#25624F;color:white}.primary:hover{background:#215442}button:disabled{opacity:.5;cursor:default}main{max-width:1280px;margin:auto;padding:24px;display:grid;grid-template-columns:250px minmax(0,1fr);gap:28px}nav{display:flex;flex-direction:column;gap:6px}nav button{text-align:left;min-width:0}nav button[aria-current=true]{background:#25624F;color:white}.content{min-width:0}.preview{display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-top:24px}.shot{width:min(100%,390px);height:auto;border:1px solid #D5DED9;border-radius:16px;box-shadow:0 10px 30px #23332F12}.notes{flex:1;min-width:min(280px,100%);background:white;border:1px solid #D5DED9;border-radius:16px;padding:20px}textarea{width:100%;min-height:200px;resize:vertical;border:1px solid #BDD0C3;border-radius:10px;padding:12px;background:#FCFDFB;color:#23332F}label{display:block;font-weight:600;margin-bottom:10px}.muted{color:#566460;font-size:14px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.tag{display:inline-block;background:#EAF2ED;color:#25624F;border-radius:6px;padding:4px 8px;font-size:14px}.status{min-height:24px;color:#566460;font-size:14px}.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.tools label{font-size:14px;font-weight:400;margin:0}.wide .shot{width:min(100%,520px)}@media(max-width:700px){main{padding:16px;display:block}nav{flex-direction:row;overflow-x:auto;margin-bottom:20px;padding-bottom:8px}nav button{flex-shrink:0}header{padding:16px}.preview{gap:16px}.shot{margin:auto}.notes{width:100%}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}</style>
 <header><div class="brand"><img alt="" src="__LOGO__">skarmar <span class="tag">UI评审 · 未部署</span></div><div class="tools"><label><input id="zoom" type="checkbox"> 放大截图</label><button class="primary" id="export">导出审核意见</button></div></header>
@@ -48,6 +53,11 @@ $('prev').onclick=()=>show(index-1);$('next').onclick=()=>show(index+1);$('zoom'
 $('export').onclick=()=>{const result={schema:'skarmar.review.v1',reviewId:data.reviewId,revision:data.revision,syntheticScreenshots:true,notes:data.screens.filter(s=>typeof notes[s.id]==='string'&&notes[s.id].trim()).map(s=>({screenId:s.id,title:s.title,screenshotSha256:s.sha256,note:notes[s.id]}))};const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(result,null,2)+'\\n'],{type:'application/json'}));a.href=url;a.download='skarmar-review-notes-2026-11-03.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$('saved').textContent='已导出，请把JSON文件发回会话。';};
 show(0);
 </script></html>'''
+    if NORD:
+        for old,new in {'#F4F5F2':'#F6F7FA','#23332F':'#2E3440','#D5DED9':'#D8DEE9','#BDD0C3':'#C5D3C8','#25624F':'#516A3C','#EAF2ED':'#F0F5ED','#215442':'#475D38','#8B4B32':'#406A69','#566460':'#4C566A'}.items():
+            html=html.replace(old,new)
+        html=html.replace('UI评审 · 未部署','Nord配色评审 · 未部署').replace('skarmar-review-notes-2026-11-03.json','skarmar-review-notes-2026-11-03-nord.json')
+        html=html.replace('截图仅含本机合成数据。', '采用Nord衍生浅色方案：青绿、灰蓝、鼠尾草绿、柔金黄与灰紫。截图仅含本机合成数据。')
     logo='data:image/svg+xml;base64,'+base64.b64encode((ROOT/'apps/client/public/icon.svg').read_bytes()).decode()
     (OUT/'review.html').write_text(html.replace('__DATA__',payload).replace('__LOGO__',logo))
     print(f'Built offline review: {len(screens)} synthetic screens, revision {digest}')

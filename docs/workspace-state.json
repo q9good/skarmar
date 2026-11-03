@@ -458,6 +458,13 @@
       "status": "done",
       "evidence": "docs/ui-redesign-2026-11-03.md",
       "verification": "已按Garden web-design-engineer实现功能固定主题、主实色/次描边/文字轻操作、焦点/按压/禁用及小视口弹层。家庭计划准备做什么前置且前后端非空校验，目标/方法选择后按明确关联与上级方向去重展示经验困难；保留笔记、角色交换、历史、旧成功回执、直接总结及formal-20261101所有草稿键。PRD0.11更新R01/R02/字段及AC-R02-01，59条编号和统计金标准保留。169Rust、63+4客户端、类型/Web构建、原生/Wasm Clippy、完整双运行环境和重启无SKIP、29组Web分组回归及最终样式重点复验通过；13张已审合成截图和可批注HTML，HTML同字节localhost检查通过（托管浏览器禁file）。本机实现，未部署、未读写生产、未变schema/凭据。T12及Opus/读屏/真机待办、implementationCommit不变。"
+    },
+    {
+      "id": "T66",
+      "title": "核实经典配色并统一为Nord衍生浅色体系",
+      "status": "done",
+      "evidence": "docs/ui-palette-research-2026-11-03.md",
+      "verification": "实际读取Nord、Solarized和Catppuccin官方页面及Nord原始色值，均HTTP200，依据与取舍已落文档。采用Nord衍生浅色：家庭青绿/课堂灰蓝/目标经验鼠尾草绿/困难柔金黄/方法灰紫；统一中性灰白、深色主按钮、浅底和边框，并收拢当前PRD各控件、提示、统计及热力图的旧硬编码。仅呈现调整，T65计划顺序/关联/草稿/权限/统计阈值/schema/正式代际不变。类型/Web构建、63+5客户端、12组Web及最终环图色补验通过；主色白字约6:1，各主题受检文字最小4.65:1，覆盖五档亮度及可读性通过。新13图和独立Nord批注HTML通过同字节localhost检查，含reviewId和下载名；旧图/HTML/批注保留。仅本机，未推送/部署/访问生产。Rust/双运行环境为T65历史，不记作本轮重跑；T12/Opus/真机/读屏及implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1287,6 +1294,96 @@
       "title": "13图离线UI评审页，可逐图批注并导出JSON",
       "synthetic": true,
       "sha256": "b07cbea97fd8843cf850fe4c6d52fe82c512d1df56cacba442b072f02bf3a91e"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/01-today.png",
+      "title": "Nord衍生配色合成截图：01-today.png",
+      "synthetic": true,
+      "sha256": "4a83a52042173090d71151143b7d37beddaefb790dbef325d30ef77fb51ad4dd"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/02-plan-first.png",
+      "title": "Nord衍生配色合成截图：02-plan-first.png",
+      "synthetic": true,
+      "sha256": "701ab02ce8dfe7253c85642a2ee85917678406d47b4668d298051e95d53f6104"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/10-method-picker.png",
+      "title": "Nord衍生配色合成截图：10-method-picker.png",
+      "synthetic": true,
+      "sha256": "811452f533c5aa999d033045cfba37a1300d2a237eaeafac0b82eec6d9e05208"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/11-plan-methods.png",
+      "title": "Nord衍生配色合成截图：11-plan-methods.png",
+      "synthetic": true,
+      "sha256": "a8b880f63dfb43b768e3053d0d371dc44f1678ff3d753f4f57c4cba08f78aff9"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/03-plan-selection.png",
+      "title": "Nord衍生配色合成截图：03-plan-selection.png",
+      "synthetic": true,
+      "sha256": "fe5967f14a357b546a9e4a8e0b24cf9f7c9bbf454aed90180e8735fe2c52e204"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/04-plan-knowledge.png",
+      "title": "Nord衍生配色合成截图：04-plan-knowledge.png",
+      "synthetic": true,
+      "sha256": "dde4f8ed84bdb117f22e084d703fdb9c126220e9114c94a89310f9ba82e7de3a"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/13-plan-difficulty.png",
+      "title": "Nord衍生配色合成截图：13-plan-difficulty.png",
+      "synthetic": true,
+      "sha256": "49244c0678e579e4b53bf90f9831b935e932bba80b4fe4723736402f9b50c54a"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/05-goals.png",
+      "title": "Nord衍生配色合成截图：05-goals.png",
+      "synthetic": true,
+      "sha256": "f02caa006b399e1ad6df45e9e7413e1b74a704689f193fcaecf3b50878d79e08"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/06-methods.png",
+      "title": "Nord衍生配色合成截图：06-methods.png",
+      "synthetic": true,
+      "sha256": "1f6fb372a010ba518830a65887c1fc117d1217261935850fa15bd2db4545bb98"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/07-classroom.png",
+      "title": "Nord衍生配色合成截图：07-classroom.png",
+      "synthetic": true,
+      "sha256": "d9f86497b43f4ac63bf5f1522640ea96f38e10a20f4962beb23c490f17413931"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/12-lesson-editor.png",
+      "title": "Nord衍生配色合成截图：12-lesson-editor.png",
+      "synthetic": true,
+      "sha256": "1f83a8a5ac06c025424e5682be4079b24cbecfc69e377b49bb74b4c0e74537c0"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/08-experiences.png",
+      "title": "Nord衍生配色合成截图：08-experiences.png",
+      "synthetic": true,
+      "sha256": "216ba2fd2d65156a118ca9501798ed90e4773bc35836ba5aeb4f1f97224f0348"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/09-difficulties.png",
+      "title": "Nord衍生配色合成截图：09-difficulties.png",
+      "synthetic": true,
+      "sha256": "8e3bee9af62d955ca466af5cea2087553584f522ca959e9f851ca92b2e2b91da"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/checks.json",
+      "title": "Nord配色来源/对比度/构建与检查结果",
+      "synthetic": true,
+      "sha256": "5d7546253fd74ea7d1e23bce6128549508c5a8699579a4dc35a33d6add779cb8"
+    },
+    {
+      "path": "docs/artifacts/validation/ui-nord-2026-11-03/review.html",
+      "title": "Nord配色13图离线评审页",
+      "synthetic": true,
+      "sha256": "1f1e5177e7d008ff68ea1b92fd198e303f6a4fc8b14c92d3f23df3981888ad90"
     }
   ]
 }

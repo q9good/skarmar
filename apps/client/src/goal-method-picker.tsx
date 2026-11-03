@@ -1,3 +1,5 @@
+import {useUiPalette} from './ui-theme';
+import {neutral} from './ui-palette';
 import React,{useState} from 'react';
 import {View} from 'react-native';
 import {Pressable,Text} from './readability';
@@ -6,6 +8,7 @@ import {goalMethodHierarchy,type GoalBranch} from './goal-method-hierarchy';
 import {levelNames,type Goal,type Method} from './foundation';
 
 export function GoalMethodPicker({goals,methods,goalIds,methodIds,toggleGoal,toggleMethod,disabled=false}:{goals:Goal[];methods:Method[];goalIds:string[];methodIds:string[];toggleGoal:(id:string)=>void;toggleMethod:(id:string)=>void;disabled?:boolean}){
+ const theme=useUiPalette();
   const {roots,unlinked}=goalMethodHierarchy(goals,methods);
   const containsSelected=(row:GoalBranch):boolean=>goalIds.includes(row.goal.id)||row.methods.some(m=>methodIds.includes(m.id))||row.children.some(containsSelected);
   const [expanded,setExpanded]=useState<Set<string>>(()=>{
@@ -13,14 +16,14 @@ export function GoalMethodPicker({goals,methods,goalIds,methodIds,toggleGoal,tog
   });
   const [search,setSearch]=useState('');const term=search.trim();
   const matches=(row:GoalBranch):boolean=>row.goal.input.title.includes(term)||row.methods.some(m=>m.input.title.includes(term))||row.children.some(matches);
-  const check=(kind:'目标'|'方法',id:string,title:string,selected:boolean,press:()=>void)=><Pressable accessibilityRole="checkbox" accessibilityLabel={`关联${kind}：${title}`} accessibilityState={{checked:selected,disabled}} aria-checked={selected} disabled={disabled} onPress={press} style={{padding:10,minHeight:44,borderRadius:8,backgroundColor:selected?'#D9EBDD':'#FFFFFF',gap:4}}><Text>{selected?'☑':'☐'} {kind}：{title}</Text></Pressable>;
-  const methodRow=(method:Method)=><View key={method.id} style={{gap:4}}>{check('方法',method.id,method.input.title,methodIds.includes(method.id),()=>toggleMethod(method.id))}{method.input.goal_ids.filter(id=>goals.some(g=>g.id===id)).length>1&&<Text style={{fontSize:13,color:'#53665A'}}>同时关联多个目标，各处勾选保持一致</Text>}</View>;
+  const check=(kind:'目标'|'方法',id:string,title:string,selected:boolean,press:()=>void)=><Pressable accessibilityRole="checkbox" accessibilityLabel={`关联${kind}：${title}`} accessibilityState={{checked:selected,disabled}} aria-checked={selected} disabled={disabled} onPress={press} style={{padding:10,minHeight:44,borderRadius:8,backgroundColor:selected?theme.soft:'#FFFFFF',gap:4}}><Text>{selected?'☑':'☐'} {kind}：{title}</Text></Pressable>;
+  const methodRow=(method:Method)=><View key={method.id} style={{gap:4}}>{check('方法',method.id,method.input.title,methodIds.includes(method.id),()=>toggleMethod(method.id))}{method.input.goal_ids.filter(id=>goals.some(g=>g.id===id)).length>1&&<Text style={{fontSize:13,color:neutral.muted}}>同时关联多个目标，各处勾选保持一致</Text>}</View>;
   const branch=(row:GoalBranch):React.ReactNode=>{
     if(term&&!matches(row))return null;
     const {goal,children,methods:linked}=row,open=Boolean(term)||expanded.has(goal.id),hasChildren=children.length+linked.length>0;
-    return <View key={goal.id} style={{gap:8,borderLeftWidth:2,borderColor:'#B3C9BA',paddingLeft:10}}>
+    return <View key={goal.id} style={{gap:8,borderLeftWidth:2,borderColor:neutral.border,paddingLeft:10}}>
       {check('目标',goal.id,goal.input.title,goalIds.includes(goal.id),()=>toggleGoal(goal.id))}
-      {hasChildren&&<Pressable accessibilityRole="button" accessibilityLabel={`${open?'收起':'展开'}关联层级：${goal.input.title}`} accessibilityState={{expanded:open,disabled}} disabled={disabled} onPress={()=>setExpanded(old=>{const next=new Set(old);next.has(goal.id)?next.delete(goal.id):next.add(goal.id);return next;})} style={{paddingVertical:8,minHeight:44}}><Text style={{color:'#34765B'}}>{open?'▾':'▸'} 下级目标 {children.length} · 方法 {linked.length}{!open&&containsSelected(row)?' · 包含已选项':''}</Text></Pressable>}
+      {hasChildren&&<Pressable accessibilityRole="button" accessibilityLabel={`${open?'收起':'展开'}关联层级：${goal.input.title}`} accessibilityState={{expanded:open,disabled}} disabled={disabled} onPress={()=>setExpanded(old=>{const next=new Set(old);next.has(goal.id)?next.delete(goal.id):next.add(goal.id);return next;})} style={{paddingVertical:8,minHeight:44}}><Text style={{color:theme.ink}}>{open?'▾':'▸'} 下级目标 {children.length} · 方法 {linked.length}{!open&&containsSelected(row)?' · 包含已选项':''}</Text></Pressable>}
       {open&&<View style={{gap:10,paddingLeft:8}}>{children.map(branch)}{linked.filter(m=>!term||goal.input.title.includes(term)||m.input.title.includes(term)).map(methodRow)}</View>}
     </View>;
   };

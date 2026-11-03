@@ -2,7 +2,7 @@ import React, { createContext, forwardRef, useContext, useEffect, useState } fro
 import { Pressable as NativePressable, StyleSheet, Text as NativeText, TextInput as NativeTextInput, View,
   type PressableProps, type TextProps, type TextInputProps, type TextStyle } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {neutral} from './ui-palette';
+import {neutral,palettes} from './ui-palette';
 import {useUiPalette} from './ui-theme';
 
 const Context = createContext({ large: false, ready: false, error: '', change: (_large: boolean) => {} });
@@ -38,7 +38,7 @@ export const Text = forwardRef<NativeText, TextProps>(function Text(props, ref) 
 export const TextInput = forwardRef<NativeTextInput, TextInputProps>(function TextInput(props, ref) {
   const { large } = useReadability();
   const c=useUiPalette(),[focused,setFocused]=useState(false);
-  return <NativeTextInput placeholderTextColor="#58695E" {...props} ref={ref}
+  return <NativeTextInput placeholderTextColor={neutral.muted} {...props} ref={ref}
     onFocus={e=>{setFocused(true);props.onFocus?.(e);}} onBlur={e=>{setFocused(false);props.onBlur?.(e);}}
     style={[{ color: neutral.ink, minHeight: large ? 56 : 44 }, props.style, typography(props.style, large, true),focused&&{borderColor:c.ink,borderWidth:2}]} />;
 });
@@ -52,10 +52,10 @@ export function ReadabilitySettings() {
   return <View style={{ gap: 10, padding: 16, backgroundColor: '#FFFFFF', borderRadius: 14 }}>
     <Text accessibilityRole="header" style={{ fontSize: 18, fontWeight: '600' }}>本机显示</Text>
     <Pressable accessibilityRole="switch" accessibilityLabel="大字模式" aria-checked={large} accessibilityState={{ checked: large, disabled: !ready }}
-      disabled={!ready} onPress={() => change(!large)} style={{ padding: 12, backgroundColor: '#E9F2E9', borderRadius: 10 }}>
+      disabled={!ready} onPress={() => change(!large)} style={{ padding: 12, backgroundColor: palettes.home.soft, borderRadius: 10 }}>
       <Text style={{ fontSize: 17 }}>大字模式：{large ? '已开启' : '未开启'}</Text>
     </Pressable>
-    <Text style={{ fontSize: 14, color: '#53665A' }}>只保存在这台设备。也可以使用浏览器的缩放功能。</Text>
+    <Text style={{ fontSize: 14, color: neutral.muted }}>只保存在这台设备。也可以使用浏览器的缩放功能。</Text>
     {error ? <Text accessibilityRole="alert">{error}</Text> : null}
   </View>;
 }

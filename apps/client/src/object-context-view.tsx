@@ -1,3 +1,4 @@
+import {palettes} from './ui-palette';
 import React,{useState} from 'react';
 import {ContentGroup} from './section-tabs';
 import {View} from 'react-native';
@@ -6,7 +7,7 @@ import {localDate} from './draft';
 import type {Snapshot} from './foundation';
 import {objectActions,objectEvidence,type ObjectKey} from './object-context';
 const stateNames:Record<string,string>={pending:'待做',in_plan:'已纳入计划',completed:'已完成',cancelled:'已取消'};
-function Button({label,press}:{label:string;press:()=>void}){return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={press} style={{padding:12,minHeight:46,backgroundColor:'#E9F2E9',borderRadius:8}}><Text>{label}</Text></Pressable>;}
+function Button({label,press}:{label:string;press:()=>void}){return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={press} style={{padding:12,minHeight:46,backgroundColor:palettes.home.soft,borderRadius:8}}><Text>{label}</Text></Pressable>;}
 export function ObjectContext({data,object,openAction,openSession,openLesson}:{data:Snapshot;object:ObjectKey;openAction:(id:string)=>void;openSession:(id:string)=>void;openLesson:(id:string)=>void}){
  const [closed,setClosed]=useState(false),[limit,setLimit]=useState(3),actions=objectActions(data,object),visible=actions.filter(a=>closed||['pending','in_plan'].includes(a.status)),rows=objectEvidence(data,object,localDate());
  return <View style={{gap:14}}><ContentGroup title="关联的下一步" tone="tasks">

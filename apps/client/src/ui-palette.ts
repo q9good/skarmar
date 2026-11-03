@@ -1,14 +1,26 @@
-export const neutral={ink:'#23332F',muted:'#566460',border:'#D5DED9',surface:'#FFFFFF',canvas:'#F4F5F2',disabled:'#E4E8E5',disabledInk:'#69756E',danger:'#9A3F37'};
-export const palettes={
- home:{ink:'#25624F',soft:'#EAF2ED',page:'#F3F6F2',border:'#BDD0C3',hover:'#215442'},
- goal:{ink:'#25624F',soft:'#EAF2ED',page:'#F3F6F2',border:'#BDD0C3',hover:'#215442'},
- method:{ink:'#4C528A',soft:'#EDEFF8',page:'#F5F5FA',border:'#CCD0E4',hover:'#3D4374'},
- classroom:{ink:'#225E82',soft:'#E5F0F6',page:'#F2F7FA',border:'#BDD2E1',hover:'#1B4E6E'},
- family:{ink:'#8B4B32',soft:'#F5E9DE',page:'#FCF7F2',border:'#DEC3B1',hover:'#733C28'},
- experience:{ink:'#2C684B',soft:'#E7F1E9',page:'#F3F8F3',border:'#B9D0BF',hover:'#22543B'},
- difficulty:{ink:'#7E591B',soft:'#F6EDD5',page:'#FCF8ED',border:'#DCCAA0',hover:'#694916'},
- tasks:{ink:'#5B527E',soft:'#EEEDF5',page:'#F7F6FA',border:'#CFCBDD',hover:'#494265'},
+// Nord's published base swatches: https://www.nordtheme.com/docs/colors-and-palettes
+// Our light UI uses derived shades; the original pastel accents are not used as
+// white-text button fills. See docs/ui-palette-research-2026-11-03.md.
+export const nord={
+ night:'#2E3440',muted:'#4C566A',border:'#D8DEE9',surface:'#E5E9F0',snow:'#ECEFF4',
+ teal:'#8FBCBB',ice:'#88C0D0',slate:'#81A1C1',blue:'#5E81AC',
+ red:'#BF616A',orange:'#D08770',yellow:'#EBCB8B',green:'#A3BE8C',mauve:'#B48EAD',
 } as const;
+const mix=(from:string,to:string,amount:number)=>'#'+[1,3,5].map(i=>Math.round(parseInt(from.slice(i,i+2),16)*(1-amount)+parseInt(to.slice(i,i+2),16)*amount).toString(16).padStart(2,'0')).join('').toUpperCase();
+export const neutral={ink:nord.night,muted:nord.muted,border:nord.border,surface:'#FFFFFF',canvas:mix(nord.snow,'#FFFFFF',.5),disabled:nord.surface,disabledInk:nord.muted,danger:'#98434D',dangerSoft:mix(nord.red,'#FFFFFF',.87)};
+const theme=(accent:string,ink:string)=>({accent,ink,soft:mix(accent,neutral.surface,.84),page:mix(accent,neutral.canvas,.94),border:mix(accent,neutral.border,.65),hover:mix(ink,nord.night,.18),action:mix(accent,neutral.surface,.78)});
+export const palettes={
+ home:theme(nord.green,'#516A3C'),
+ goal:theme(nord.green,'#516A3C'),
+ method:theme(nord.mauve,'#805578'),
+ classroom:theme(nord.blue,'#47658A'),
+ family:theme(nord.teal,'#406A69'),
+ experience:theme(nord.green,'#516A3C'),
+ difficulty:theme(nord.yellow,'#805D16'),
+ tasks:theme(nord.slate,'#436689'),
+} as const;
+export const coverageScale=[neutral.canvas,palettes.experience.soft,palettes.experience.action,nord.green,palettes.experience.ink];
+export const chartColors=[palettes.family.ink,palettes.classroom.ink,palettes.method.ink,palettes.difficulty.ink,palettes.goal.ink,palettes.tasks.ink,'#936047','#376D7C'];
 export type UiTone=keyof typeof palettes;
 export type UiPalette=typeof palettes[UiTone];
 export const overlayColors=(tone:UiTone)=>({background:palettes[tone].page,control:neutral.surface,ink:palettes[tone].ink});

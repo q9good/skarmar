@@ -2,7 +2,7 @@ import {SessionRenewalContext} from './session-renewal';
 import React, { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, View } from 'react-native';
 import { Pressable, Text } from './readability';
-import {neutral,overlayColors,type UiTone} from './ui-palette';
+import {neutral,overlayColors,type UiTone,palettes} from './ui-palette';
 import {UiTheme,useUiTone} from './ui-theme';
 
 // Nested pickers and replacement details share one browser-history sentinel stack.
@@ -87,9 +87,9 @@ export function DetailOverlay({ title, close, children, footer, colors, tone }: 
             <Text style={{ fontSize: 17,color:theme.ink,fontWeight:'600' }}>关闭</Text>
           </Pressable>
         </View>
-        {renewal?.expiresSoon&&title!=='续期登录'&&<Pressable accessibilityRole="button" onPress={renewal.renew} style={{padding:10,backgroundColor:'#FFF5DE',borderRadius:8,flexShrink:0}}><Text>登录即将到期，先验证登录再继续填写</Text></Pressable>}
+        {renewal?.expiresSoon&&title!=='续期登录'&&<Pressable accessibilityRole="button" onPress={renewal.renew} style={{padding:10,backgroundColor:palettes.difficulty.soft,borderRadius:8,flexShrink:0}}><Text>登录即将到期，先验证登录再继续填写</Text></Pressable>}
         <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets style={{flex:footer?1:undefined,flexShrink:1,minHeight:0}} contentContainerStyle={{ gap: 12, paddingBottom: 16 }}>{children}</ScrollView>
-        {footer&&<View style={{flexShrink:0,gap:8,paddingTop:8,borderTopWidth:1,borderColor:'#CED8CE',...(Platform.OS==='web'?{paddingBottom:'max(4px, env(safe-area-inset-bottom))' as unknown as number}:{paddingBottom:8})}}>{footer}</View>}
+        {footer&&<View style={{flexShrink:0,gap:8,paddingTop:8,borderTopWidth:1,borderColor:neutral.border,...(Platform.OS==='web'?{paddingBottom:'max(4px, env(safe-area-inset-bottom))' as unknown as number}:{paddingBottom:8})}}>{footer}</View>}
       </View>
     </View></KeyboardAvoidingView>
   </Modal></UiTheme>;

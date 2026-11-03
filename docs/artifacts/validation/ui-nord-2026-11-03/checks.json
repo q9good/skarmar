@@ -1,0 +1,316 @@
+{
+  "synthetic": true,
+  "screenshots": [
+    "01-today.png",
+    "02-plan-first.png",
+    "10-method-picker.png",
+    "11-plan-methods.png",
+    "03-plan-selection.png",
+    "04-plan-knowledge.png",
+    "13-plan-difficulty.png",
+    "05-goals.png",
+    "06-methods.png",
+    "07-classroom.png",
+    "12-lesson-editor.png",
+    "08-experiences.png",
+    "09-difficulties.png"
+  ],
+  "checks": [
+    "solid_peer_actions",
+    "required_first_activity",
+    "goals_then_methods",
+    "conditional_deduplicated_knowledge",
+    "ancestor_principles",
+    "unselected_method_excluded",
+    "main_role_swap_preserves_notes",
+    "nested_back",
+    "draft_refresh_and_real_save",
+    "plan_not_actual_count",
+    "functional_page_themes"
+  ],
+  "errors": [],
+  "date": "2026-11-03",
+  "sourceBaseCommit": "f1dc03b85bc854f322c3a7e7a2c8410eb903c9eb",
+  "deployed": false,
+  "productionAccess": false,
+  "schemaChanged": false,
+  "dataEpoch": "formal-20261101",
+  "researchSources": [
+    {
+      "name": "nord",
+      "url": "https://www.nordtheme.com/docs/colors-and-palettes",
+      "status": 200,
+      "bytes": 88206,
+      "sha256": "f6bd067f402982d71d7c9c2bc06bb0f0ce7a3e4a1d9778d38623914c7706187b"
+    },
+    {
+      "name": "solarized",
+      "url": "https://ethanschoonover.com/solarized/",
+      "status": 200,
+      "bytes": 37238,
+      "sha256": "ede8afed656ffccb58497e8dbfdc23998ea22dba502c0dcad9452552ae34b6a0"
+    },
+    {
+      "name": "catppuccin",
+      "url": "https://catppuccin.com/palette/",
+      "status": 200,
+      "bytes": 487179,
+      "sha256": "2b846654722e248e2043b1c47b8b466e853ffedeb9a0a5bdbe829e68839345c3"
+    },
+    {
+      "name": "nord-css",
+      "url": "https://raw.githubusercontent.com/nordtheme/nord/develop/src/nord.css",
+      "status": 200,
+      "bytes": 5380,
+      "sha256": "b931ac3732582b2066b2d6cadec02d9820ba7081e6e3e404c31cb62d9315a962"
+    }
+  ],
+  "colourScheme": "Nord-derived light UI; not unchanged upstream editor colours",
+  "colourAudit": {
+    "nord": {
+      "night": "#2E3440",
+      "muted": "#4C566A",
+      "border": "#D8DEE9",
+      "surface": "#E5E9F0",
+      "snow": "#ECEFF4",
+      "teal": "#8FBCBB",
+      "ice": "#88C0D0",
+      "slate": "#81A1C1",
+      "blue": "#5E81AC",
+      "red": "#BF616A",
+      "orange": "#D08770",
+      "yellow": "#EBCB8B",
+      "green": "#A3BE8C",
+      "mauve": "#B48EAD"
+    },
+    "neutral": {
+      "ink": "#2E3440",
+      "muted": "#4C566A",
+      "border": "#D8DEE9",
+      "surface": "#FFFFFF",
+      "canvas": "#F6F7FA",
+      "disabled": "#E5E9F0",
+      "disabledInk": "#4C566A",
+      "danger": "#98434D",
+      "dangerSoft": "#F7EAEC"
+    },
+    "palettes": {
+      "home": {
+        "accent": "#A3BE8C",
+        "ink": "#516A3C",
+        "soft": "#F0F5ED",
+        "page": "#F1F4F3",
+        "border": "#C5D3C8",
+        "hover": "#4B603D",
+        "action": "#EBF1E6"
+      },
+      "goal": {
+        "accent": "#A3BE8C",
+        "ink": "#516A3C",
+        "soft": "#F0F5ED",
+        "page": "#F1F4F3",
+        "border": "#C5D3C8",
+        "hover": "#4B603D",
+        "action": "#EBF1E6"
+      },
+      "method": {
+        "accent": "#B48EAD",
+        "ink": "#805578",
+        "soft": "#F3EDF2",
+        "page": "#F2F1F5",
+        "border": "#CBC2D4",
+        "hover": "#714F6E",
+        "action": "#EFE6ED"
+      },
+      "classroom": {
+        "accent": "#5E81AC",
+        "ink": "#47658A",
+        "soft": "#E5EBF2",
+        "page": "#EDF0F5",
+        "border": "#ADBDD4",
+        "hover": "#435C7D",
+        "action": "#DCE3ED"
+      },
+      "family": {
+        "accent": "#8FBCBB",
+        "ink": "#406A69",
+        "soft": "#EDF4F4",
+        "page": "#F0F3F6",
+        "border": "#BED2D9",
+        "hover": "#3D6062",
+        "action": "#E6F0F0"
+      },
+      "experience": {
+        "accent": "#A3BE8C",
+        "ink": "#516A3C",
+        "soft": "#F0F5ED",
+        "page": "#F1F4F3",
+        "border": "#C5D3C8",
+        "hover": "#4B603D",
+        "action": "#EBF1E6"
+      },
+      "difficulty": {
+        "accent": "#EBCB8B",
+        "ink": "#805D16",
+        "soft": "#FCF7EC",
+        "page": "#F5F4F3",
+        "border": "#DFD7C8",
+        "hover": "#71561E",
+        "action": "#FBF4E5"
+      },
+      "tasks": {
+        "accent": "#81A1C1",
+        "ink": "#436689",
+        "soft": "#EBF0F5",
+        "page": "#EFF2F7",
+        "border": "#BAC9DB",
+        "hover": "#3F5D7C",
+        "action": "#E3EAF1"
+      }
+    },
+    "coverageScale": [
+      "#F6F7FA",
+      "#F0F5ED",
+      "#EBF1E6",
+      "#A3BE8C",
+      "#516A3C"
+    ],
+    "chartColors": [
+      "#406A69",
+      "#47658A",
+      "#805578",
+      "#805D16",
+      "#516A3C",
+      "#436689",
+      "#936047",
+      "#376D7C"
+    ],
+    "textContrast": {
+      "home": {
+        "whitePrimary": 6.040160862169427,
+        "whitePressed": 6.908567542259015,
+        "soft": 5.461715092963491,
+        "page": 5.457613468215337,
+        "selected": 5.251254447272671
+      },
+      "goal": {
+        "whitePrimary": 6.040160862169427,
+        "whitePressed": 6.908567542259015,
+        "soft": 5.461715092963491,
+        "page": 5.457613468215337,
+        "selected": 5.251254447272671
+      },
+      "method": {
+        "whitePrimary": 6.019862314771863,
+        "whitePressed": 6.894983005418655,
+        "soft": 5.21915554826431,
+        "page": 5.35368781517619,
+        "selected": 4.9339236303449185
+      },
+      "classroom": {
+        "whitePrimary": 6.006201176445718,
+        "whitePressed": 6.8500959257189775,
+        "soft": 5.004337072122386,
+        "page": 5.257844156469175,
+        "selected": 4.6486989553093
+      },
+      "family": {
+        "whitePrimary": 6.028254296010203,
+        "whitePressed": 6.889906718369394,
+        "soft": 5.4103608586124805,
+        "page": 5.4128137458904835,
+        "selected": 5.192017224129976
+      },
+      "experience": {
+        "whitePrimary": 6.040160862169427,
+        "whitePressed": 6.908567542259015,
+        "soft": 5.461715092963491,
+        "page": 5.457613468215337,
+        "selected": 5.251254447272671
+      },
+      "difficulty": {
+        "whitePrimary": 6.008300642216557,
+        "whitePressed": 6.880722685363411,
+        "soft": 5.623374817680409,
+        "page": 5.469551159035705,
+        "selected": 5.485735255926055
+      },
+      "tasks": {
+        "whitePrimary": 5.999253736806647,
+        "whitePressed": 6.84453804524011,
+        "soft": 5.232201507411912,
+        "page": 5.3462140642367775,
+        "selected": 4.9438081265295
+      }
+    }
+  },
+  "paletteSourceSha256": "802d932a3257e9e24ba8fd02915eabc2aa2565f7efe349c0a7962d13643f55ce",
+  "bundle": {
+    "path": "apps/client/dist/_expo/static/js/web/index-675ae777da73cd2bedfe2ae7ad84b091.js",
+    "sha256": "8bd20062ac839213c46b1f5333ac778de343563670adcd58fe99cfe6d1e54248"
+  },
+  "verification": {
+    "typecheck": "passed",
+    "webBuild": "passed",
+    "clientTests": {
+      "existing": 63,
+      "redesignAndColour": 5,
+      "failed": 0
+    },
+    "browser": {
+      "groups": 12,
+      "status": "passed",
+      "scripts": [
+        "smoke_prd_r15_web.py",
+        "smoke_prd_model_web.py",
+        "smoke_prd_lessons_web.py",
+        "smoke_prd_review_feedback_web.py",
+        "smoke_prd_ui_redesign_web.py",
+        "smoke_prd_balance_web.py",
+        "smoke_prd_simplified_web.py",
+        "smoke_prd_account_web.py",
+        "smoke_prd_offline_web.py",
+        "smoke_prd_import_web.py",
+        "smoke_prd_history_web.py",
+        "smoke_prd_followups_web.py"
+      ],
+      "finalCategoricalColourRerun": [
+        "smoke_prd_ui_redesign_web.py",
+        "smoke_prd_balance_web.py"
+      ]
+    },
+    "reviewHtml": {
+      "synthetic": true,
+      "execution": "same HTML bytes served by localhost; managed Chromium blocks file navigation",
+      "checks": [
+        "13_embedded_images",
+        "navigation",
+        "local_note_refresh",
+        "exported_json_identity_and_note",
+        "360px_reflow",
+        "no_external_requests"
+      ],
+      "errors": []
+    }
+  },
+  "screenshotSha256": {
+    "01-today.png": "4a83a52042173090d71151143b7d37beddaefb790dbef325d30ef77fb51ad4dd",
+    "02-plan-first.png": "701ab02ce8dfe7253c85642a2ee85917678406d47b4668d298051e95d53f6104",
+    "10-method-picker.png": "811452f533c5aa999d033045cfba37a1300d2a237eaeafac0b82eec6d9e05208",
+    "11-plan-methods.png": "a8b880f63dfb43b768e3053d0d371dc44f1678ff3d753f4f57c4cba08f78aff9",
+    "03-plan-selection.png": "fe5967f14a357b546a9e4a8e0b24cf9f7c9bbf454aed90180e8735fe2c52e204",
+    "04-plan-knowledge.png": "dde4f8ed84bdb117f22e084d703fdb9c126220e9114c94a89310f9ba82e7de3a",
+    "13-plan-difficulty.png": "49244c0678e579e4b53bf90f9831b935e932bba80b4fe4723736402f9b50c54a",
+    "05-goals.png": "f02caa006b399e1ad6df45e9e7413e1b74a704689f193fcaecf3b50878d79e08",
+    "06-methods.png": "1f6fb372a010ba518830a65887c1fc117d1217261935850fa15bd2db4545bb98",
+    "07-classroom.png": "d9f86497b43f4ac63bf5f1522640ea96f38e10a20f4962beb23c490f17413931",
+    "12-lesson-editor.png": "1f83a8a5ac06c025424e5682be4079b24cbecfc69e377b49bb74b4c0e74537c0",
+    "08-experiences.png": "216ba2fd2d65156a118ca9501798ed90e4773bc35836ba5aeb4f1f97224f0348",
+    "09-difficulties.png": "8e3bee9af62d955ca466af5cea2087553584f522ca959e9f851ca92b2e2b91da"
+  },
+  "limits": [
+    "Local synthetic tests; no production deployment or business data access",
+    "No backend or database changes; Rust and dual-runtime suites not rerun for this colour-only task",
+    "Physical device, full screenreader and Opus acceptance remain pending"
+  ]
+}

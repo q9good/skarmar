@@ -1,3 +1,4 @@
+import {palettes} from './ui-palette';
 import React,{useEffect,useState} from 'react';
 import {Linking,Platform,View} from 'react-native';
 import {DetailOverlay} from './overlay';
@@ -14,12 +15,12 @@ const sources=[['NCAEP 2020报告','https://ncaep.fpg.unc.edu/research-resources
 export function HelpButton({title='使用说明与手机桌面入口'}:{title?:string}){
  const [open,setOpen]=useState(false),[needs,setNeeds]=useState<EvidenceRecord|null>(null),[error,setError]=useState('');
  useEffect(()=>{if(!open)return;let live=true;setError('');void request<{items:EvidenceRecord[]}>('/prd/process?view=observations&object_kind=needs').then(v=>{if(live)setNeeds(v.items.find(r=>!r.deleted)??null);}).catch(()=>{if(live)setError('共享需要说明暂未读到，可以稍后在我的账号中查看。');});return()=>{live=false;};},[open]);
- return <><Pressable accessibilityRole="button" accessibilityLabel={title} onPress={()=>setOpen(true)} style={{padding:12,minHeight:48,width:48,alignItems:'center',borderRadius:24,backgroundColor:'#E9F2E9'}}><Text style={{fontSize:20,fontWeight:'600'}}>?</Text></Pressable>{open&&<DetailOverlay title="使用与方法说明" close={()=>setOpen(false)}>
+ return <><Pressable accessibilityRole="button" accessibilityLabel={title} onPress={()=>setOpen(true)} style={{padding:12,minHeight:48,width:48,alignItems:'center',borderRadius:24,backgroundColor:palettes.home.soft}}><Text style={{fontSize:20,fontWeight:'600'}}>?</Text></Pressable>{open&&<DetailOverlay title="使用与方法说明" close={()=>setOpen(false)}>
   <Text style={{fontSize:20,fontWeight:'600'}}>看见进展，帮助调整</Text><Text>这份记录帮助家人围绕沟通、生活参与、自主与舒适度观察变化。记录次数表示覆盖，不等于能力进步；没有记录也不等于没有陪伴。软件不作诊断或治疗承诺。</Text>
   <Text style={{fontSize:18,fontWeight:'600'}}>怎样理解方法的证据</Text><Text>以下是PRD已核对资料的分类摘要，注明原始年份，不声称是持续自动更新的临床指南。循证实践仍需结合孩子、家庭目标、专业指导及实际反应来选择。</Text>{sections.map(([heading,body])=><View key={heading} style={{gap:5}}><Text style={{fontWeight:'600'}}>{heading}</Text><Text>{body}</Text></View>)}
   <Text>涉及药物、饮食限制、补充剂、仪器或排毒类做法，先与合适的专业人员讨论。治疗共存的身体问题与改善ASD核心特征是不同的目的；这里不会根据方法名称阻止保存。</Text>
   <Text>经验阶段、三次可比观察提示、色阶和复盘日程属于家庭及产品的安排，不是经过验证的临床评分或统一训练剂量。</Text>
-  {sources.map(([label,url])=><Pressable accessibilityRole="link" accessibilityLabel={label} key={url} onPress={()=>void Linking.openURL(url)} style={{paddingVertical:12}}><Text style={{color:'#245D48',textDecorationLine:'underline'}}>{label} ↗</Text></Pressable>)}
+  {sources.map(([label,url])=><Pressable accessibilityRole="link" accessibilityLabel={label} key={url} onPress={()=>void Linking.openURL(url)} style={{paddingVertical:12}}><Text style={{color:palettes.family.ink,textDecorationLine:'underline'}}>{label} ↗</Text></Pressable>)}
   <Text style={{fontSize:18,fontWeight:'600'}}>家人共同记住的需要与帮助</Text>{error&&<Text>{error}</Text>}{needs?needsFields.filter(([k])=>needs.input[k]).map(([k,label])=><Text selectable key={k}>{label}：{String(needs.input[k])}</Text>):!error&&<Text>暂未填写。可在“我的账号 → 共享需要与帮助说明”维护；这些内容都可留空。</Text>}
   <Text style={{fontSize:18,fontWeight:'600'}}>添加到手机桌面</Text><Text>{Platform.OS==='web'?'iPhone：用Safari打开本站，点分享按钮，选择“添加到主屏幕”。安卓：用Chrome打开本站，在菜单中选择“添加到主屏幕”或“安装应用”；名称因浏览器版本而异。':'正式原生应用仍在后续批次，当前以手机网页为主。'}</Text><Text>图标名称为skarmar。桌面图标只是更方便打开本站，不保证离线启动或网页关闭后继续上传。离线课记须以待上传状态和服务器回执区分。</Text>
  </DetailOverlay>}</>;

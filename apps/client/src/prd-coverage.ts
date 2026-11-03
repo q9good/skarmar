@@ -1,9 +1,10 @@
+import {coverageScale} from './ui-palette.ts';
 import type {Snapshot} from './foundation';
 import type {Coverage,Counts} from './prd-sessions';
 
 export type CoverageTopic='goals'|'methods'|'tags';
 export type CoverageItem={id:string;label:string;counts:Counts;band?:number;last?:string|null;detail:string};
-export const coverageColors=['#F3F6EF','#E4EEDC','#CADDB9','#94B681','#4E7656'];
+export const coverageColors=coverageScale;
 export function coverageLegend(days:number){return days===7?'0／1／2／3–4／5+':days===30?'0／1／2–3／4–7／8+':'0／1–3／4–8／9–20／21+';}
 
 /** Each row is one object, not one session. A multi-target session may hit

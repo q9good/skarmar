@@ -15,8 +15,8 @@ export const sectionTones = {
 };
 export type SectionTone = keyof typeof sectionTones;
 export const knowledgeTones = {
-  experience: {...sectionTones.experience,page:palettes.experience.page,card:palettes.experience.soft,action:'#CEE1D3',border:palettes.experience.border},
-  difficulty: {...sectionTones.difficulty,page:palettes.difficulty.page,card:palettes.difficulty.soft,action:'#E9DDB8',border:palettes.difficulty.border},
+  experience: {...sectionTones.experience,page:palettes.experience.page,card:palettes.experience.soft,action:palettes.experience.action,border:palettes.experience.border},
+  difficulty: {...sectionTones.difficulty,page:palettes.difficulty.page,card:palettes.difficulty.soft,action:palettes.difficulty.action,border:palettes.difficulty.border},
 };
 export function SectionButton({title,tone,primary=false,disabled=false,press}:{title:string;tone:SectionTone;primary?:boolean;disabled?:boolean;press:()=>void}) {
   return <UiButton title={title} tone={tone} variant={primary?'primary':'secondary'} chevron={primary} disabled={disabled} press={press} style={primary?{minHeight:60,paddingVertical:17}:undefined}/>;
@@ -29,7 +29,7 @@ export function SectionTabs<T extends string>({label,items,value,change,category
     {items.map(item=>{const selected=item.value===value;return <Pressable key={item.value} accessibilityRole="button" accessibilityLabel={item.title} accessibilityState={{selected}} aria-pressed={selected} onPress={()=>change(item.value)}
       style={{flex:1,minWidth:0,minHeight:48,paddingVertical:10,paddingHorizontal:8,borderRadius:8,borderBottomWidth:3,borderBottomColor:selected?sectionTones[item.tone].ink:'transparent',backgroundColor:categoryColors?sectionTones[item.tone].pale:'#FFFFFF',flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7}}>
       <View aria-hidden style={{width:6,height:6,borderRadius:3,backgroundColor:sectionTones[item.tone].ink}}/>
-      <Text style={{fontSize:17,fontWeight:'600',color:categoryColors?sectionTones[item.tone].ink:'#243D36',flexShrink:1,textAlign:'center'}}>{item.title}</Text>
+      <Text style={{fontSize:17,fontWeight:'600',color:categoryColors?sectionTones[item.tone].ink:neutral.ink,flexShrink:1,textAlign:'center'}}>{item.title}</Text>
     </Pressable>;})}
   </View>;
 }
