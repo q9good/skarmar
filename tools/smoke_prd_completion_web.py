@@ -42,7 +42,7 @@ with sync_playwright() as p:
  sid=str(uuid4());call('PUT','/prd/sessions/'+sid,{'id':sid,'operation_id':str(uuid4()),'expected_version':None,'action':'complete','input':{'business_date':today,'time_slot':'晚上','targets':[{'goal_id':g['id'],'role':'main'}],'summary':{'targets':[{'goal_id':g['id'],'performed':True,'observation':'合成家庭实际表现'}],'confirmation':'used','methods':[{'id':m['id'],'version':1}],'first_try_ids':[m['id']],'context':'合成家人原文：当天换了材料'}}})
  page.reload();expect(btn('记录课堂')).to_be_enabled();click('目标')
  reveal_control(page,'combobox','目标期限筛选').select_option('long');expect(btn('查看目标：长期共同注意')).to_be_visible();expect(btn('查看目标：轮流游戏')).to_have_count(0)
- reveal_control(page,'combobox','目标期限筛选').select_option('short');reveal_control(page,'combobox','目标展示').select_option('progress')
+ reveal_control(page,'combobox','目标期限筛选').select_option('short');click('推进状态')
  expect(btn('查看测量趋势：轮流游戏')).to_be_visible();expect(page.get_by_text('实际进展来自各指标测量',exact=False)).to_be_visible();click('查看测量趋势：轮流游戏')
  expect(page.get_by_role('dialog',name='目标观察与测量',exact=True)).to_be_visible();expect(page.get_by_role('img',name=re.compile('轮替机会测量图'))).to_have_count(2)
  expect(page.get_by_text('轮替机会 · 指标第1版 · 目标第1版',exact=True)).to_be_visible();expect(page.get_by_text('轮替机会 · 指标第2版 · 目标第1版',exact=True)).to_be_visible()

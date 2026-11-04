@@ -24,5 +24,17 @@ export async function sessionContract(label,send,admin){
  const future=randomUUID();await call('PUT','/prd/sessions/'+future,cmd(future,null,'complete',{...next,business_date:'2099-01-01',action_ids:[],summary:{...summary,new_knowledge:[],action_outcomes:[]}}),422);
  await call('PUT','/prd/sessions/'+id,cmd(id,3,'delete'));state=await call('GET','/prd/state');assert.equal(state.sessions.find(s=>s.id===id).status,'deleted');assert.equal(state.knowledge.find(k=>k.input.id===kid).source_session_id,id);
  const resumed=randomUUID();await call('PUT','/prd/sessions/'+resumed,cmd(resumed,null,'save_draft',{...input,lesson_sources:[]}));await call('PUT','/prd/sessions/'+resumed,cmd(resumed,1,'cancel'));assert.equal((await call('GET','/prd/state')).actions.find(a=>a.input.id===action.input.id).status,'pending');
+ // Activity-only plans acquire actual targets later; those must not become planned snapshots.
+ const activityId=randomUUID(),activity={...input,targets:[],methods:[],action_ids:[],lesson_sources:[]};
+ const activityPlan=await call('PUT','/prd/sessions/'+activityId,cmd(activityId,null,'save_draft',activity));
+ assert.deepEqual(activityPlan.planned_targets,[]);assert.deepEqual(activityPlan.planned_methods,[]);
+ const actual={...activity,targets:input.targets,summary:{...summary,confirmation:'used',methods:input.methods,new_knowledge:[],action_outcomes:[]}};
+ const activityComplete=cmd(activityId,1,'complete',actual),actualSaved=await call('PUT','/prd/sessions/'+activityId,activityComplete);
+ assert.equal(actualSaved.actual_targets.length,1);assert.equal(actualSaved.actual_methods.length,1);
+ assert.deepEqual(actualSaved.planned_targets,[]);assert.deepEqual(actualSaved.planned_methods,[]);
+ assert.deepEqual(await call('PUT','/prd/sessions/'+activityId,activityComplete),actualSaved);
+ // Delete only the synthetic addition, keeping the following coverage contracts' original scope.
+ await call('PUT','/prd/sessions/'+activityId,cmd(activityId,2,'delete'));
+ console.log(`PASS ${label}: activity-only plan and explicit actual targets/methods never backfill planned snapshots; exact receipt retained`);
  console.log(`PASS ${label}: required plan and atomic rejection, shared plan/summary/completion, explicit actual methods, atomic revised outputs, exclusive actions, future guard, history and source-preserving deletion`);
 }

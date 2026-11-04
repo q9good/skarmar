@@ -254,12 +254,26 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
         lesson_sources: vec![],
         action_snapshots: vec![],
     };
-    session.planned_targets = targets(
+    // Summary selections describe what actually happened. Validate role/reference
+    // inputs, but keep the last saved plan snapshot instead of inventing a plan
+    // retrospectively (a direct summary has no planned targets or methods).
+    let candidate_targets = targets(
         db,
         &input.targets,
         old.as_ref().map_or(&[], |s| s.planned_targets.as_slice()),
     )?;
-    session.planned_methods = methods(db, &input.methods)?;
+    let candidate_methods = methods(db, &input.methods)?;
+    if input.summary.is_some() {
+        session.planned_targets = old
+            .as_ref()
+            .map_or_else(Vec::new, |s| s.planned_targets.clone());
+        session.planned_methods = old
+            .as_ref()
+            .map_or_else(Vec::new, |s| s.planned_methods.clone());
+    } else {
+        session.planned_targets = candidate_targets;
+        session.planned_methods = candidate_methods;
+    }
     for id in &input.focus_goal_ids {
         let g = goal(db, id)?;
         if g.input.level != crate::model::Level::Long {

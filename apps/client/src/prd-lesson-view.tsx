@@ -241,13 +241,13 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   const observe=draft?.request.action.kind==='observation'?draft.request.action.value:undefined;
   return <>
     <View style={{gap:14}}>
-      {mode!=='drafts'&&<SectionButton title="记录课堂" tone="classroom" primary disabled={!ready||!outbox.ready||busy} press={()=>open()}/> }
+      {mode==='today'&&<SectionButton title="记录课堂" tone="classroom" primary disabled={!ready||!outbox.ready||busy} press={()=>open()}/> }
       {error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}{notice&&(!confirmed||notice!=='已记下，家人刷新即可看到。')&&<Text role="status">{notice}</Text>}
-      {confirmed&&<View style={{gap:10,padding:16,backgroundColor:'#FFFFFF',borderRadius:12}}><Text style={{fontSize:18,fontWeight:'600'}}>已记下：{confirmed.observation.business_date} · {confirmed.course.name} · {confirmed.teacher.name}</Text>
+      {confirmed&&mode!=='records'&&<View style={{gap:10,padding:16,backgroundColor:'#FFFFFF',borderRadius:12}}><Text style={{fontSize:18,fontWeight:'600'}}>已记下：{confirmed.observation.business_date} · {confirmed.course.name} · {confirmed.teacher.name}</Text>
         <Action title="补充课堂观察" press={()=>open(confirmed,'observation')} /><Action title="完成" press={()=>{setReceipt(null);setNotice('');}} />
       </View>}
       {interventionEntry}
-      {draftRecovery()}{Object.entries(drafts).filter(([,d])=>!outbox.value.entries[d.request.id]).map(([key,d])=><Action key={key} title={`继续课记：${draftName(d)}`} press={()=>{setEditor(key);setDiscard(false);setError('');}} />)}
+      {mode!=='records'&&draftRecovery()}{Object.entries(drafts).filter(([,d])=>mode!=='records'&&!outbox.value.entries[d.request.id]).map(([key,d])=><Action key={key} title={`继续课记：${draftName(d)}`} press={()=>{setEditor(key);setDiscard(false);setError('');}} />)}
       {mode==='today'?<>
         {!inboxManaged&&<>
         {data.lessons.filter(needsReview).length>0&&<><Text style={{fontSize:18,fontWeight:'600'}}>请家人查看</Text>{data.lessons.filter(needsReview).map(l=><View key={l.id} style={{padding:12,backgroundColor:'#FFFFFF',gap:8,borderRadius:10}}><Text>{l.request_name}请查看：{l.course.name} · {l.observation.business_date}</Text><Text>{l.request_message||'无留言，也可以直接看看观察。'}</Text><Action title={`整理：${l.course.name}`} press={()=>open(l,'organization')} /></View>)}</>}

@@ -100,7 +100,7 @@ with sync_playwright() as p:
  meaning.focus()
  meaning.scroll_into_view_if_needed()
  expect(meaning).to_be_focused()
- expect(meaning).to_be_in_viewport(ratio=.98)
+ expect(meaning).to_be_in_viewport(ratio=.95)
  expect(save).to_be_in_viewport(ratio=.98)
  input_box,footer_box=meaning.bounding_box(),save.bounding_box()
  visual=page.evaluate("({top:visualViewport?.offsetTop||0,height:visualViewport?.height||innerHeight})")

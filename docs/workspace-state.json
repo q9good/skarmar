@@ -472,6 +472,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-11-04.md",
       "verification": "用户2026-11-04明确要求部署当前Nord配色和家庭计划调整版。应用54edea7702d1d32875f06d388e99d645ba4513bc（含f1dc03b），触发源码f841d4ce6719d02d2d829dc31d35e514f4805bba，run41749746282 validate/release均success；原96b1cb22-c034-43a6-9f7e-b8c819703af6，上传并实际激活63af67ad-78c2-4803-89cf-525c35bcb736，回执deployed_and_verified/model=prd_v1。发布前本轮32/9项保护与155项SHA通过，runner重新执行类型/Web、Rust测试及Wasm Clippy，原目标/候选绑定变量运行设置和路由保持检查通过后100%激活。清理/模型初始化/演示恢复/补关联步骤全部skipped，私密临时配置清理成功。runner及云端独立首页/JS字节、health、匿名权限、精确Origin、数据库启动通过；正式代际完成标记前后均保持。保留原Worker/DO/default/skarma.vip/账号与全部正式业务、schema v7和草稿键，没有登录真实账号、读取业务内容或写入验收样本/清库/补种。发布期间分支不前进，run结束后才提交收尾证据，两份脱敏结果登记后157项SHA。截图/HTML保持生成时的deployed:false，不改写历史证据；T12、Opus/真机/读屏及implementationCommit不变。"
+    },
+    {
+      "id": "T68",
+      "title": "活动式家庭计划、课记结果页与全目标总览",
+      "status": "done",
+      "evidence": "docs/activity-plan-and-goal-overview-2026-11-04.md",
+      "verification": "PRD0.13：计划仅活动，最多2长期+3中短期只读参考；重点困难/家庭节奏排序，有限直接/方法/上级路径去重，闭合知识过滤，不自动选入或计数；实际目标/方法在总结明确确认，取消再选保留观察，旧计划不默认已做，原计划快照不由总结倒填。课记结果页移除新增/续填，保留详情纠错与整理。全目标覆盖/状态环图及图例/下钻/未知与失败重试/来源切换/多人同步刷新。无schema/正式代际/草稿键/权限更改。当前75客户端、171Rust、类型/Web、原生/Wasm Clippy、Worker构建、完整双运行环境/重启无SKIP及30组分组Web通过；两合成账号验证保存/草稿/实际关联/断网重试/并发与320-1440px。8图已人工检查仅合成数据，独立HTML的图片/导航/批注恢复/JSON身份/360px/无外连检查通过。新增10项后167项产物SHA通过。本机提交，未推送/部署/访问生产；线上仍T67 63af67ad，T12/Opus/真机/读屏及implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1401,6 +1408,56 @@
       "path": "docs/artifacts/deployment/cloudflare-release-20261104-independent-checks.json",
       "title": "2026-11-04云端独立公开检查及正式代际保持",
       "sha256": "9b68cd8ce2984316318b59eae0f346b4841e791e47454e2293b3fa693f152a70"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/01-activity-only-plan.png",
+      "title": "T68活动计划与目标总览 · 01-activity-only-plan",
+      "sha256": "388784e0f3a3faf4f32b3b1548623689d52cc1d5fc2ef71c60fc45e3362685ea"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/02-reference-knowledge.png",
+      "title": "T68活动计划与目标总览 · 02-reference-knowledge",
+      "sha256": "19e6cf4410e8507ef70f030cfa6865b39040a232ba741ba030e07e731b8b0d46"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/03-read-only-reference.png",
+      "title": "T68活动计划与目标总览 · 03-read-only-reference",
+      "sha256": "3cbf92525e5b00d5ed100aa78e6f2aee859f505a744ebfb6fb2c20ce92e1d45c"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/04-summary-before-selection.png",
+      "title": "T68活动计划与目标总览 · 04-summary-before-selection",
+      "sha256": "b8473b849380424a09ea37e38c96137532260ab9a018d6d6b7ebdf5eb50c0f51"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/05-actual-goals-and-methods.png",
+      "title": "T68活动计划与目标总览 · 05-actual-goals-and-methods",
+      "sha256": "04e6ae949bb0579d3b3750551a55d6f88f6877587b577d48f0653c9e3a3ad0d8"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/06-classroom-results.png",
+      "title": "T68活动计划与目标总览 · 06-classroom-results",
+      "sha256": "523e239bb02b118807c163434e9f8eb4109e4df410881faaeb6c8306ece529f6"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/07-all-goal-coverage.png",
+      "title": "T68活动计划与目标总览 · 07-all-goal-coverage",
+      "sha256": "054e5268e35397fcb7ab7fd7c3e6dda4350755de765bae367afce307e39cba9a"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/08-goal-states.png",
+      "title": "T68活动计划与目标总览 · 08-goal-states",
+      "sha256": "a44f1d881dc72a8a0ba21d7ec6c68833336149dc15e7e7bc4a7ee8332fd14e98"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/checks.json",
+      "title": "T68活动计划与目标总览 · checks",
+      "sha256": "0689da4e9263a5657b429a66ba5460e8eb55d3483f6fb0d692c7b4346a0763b8"
+    },
+    {
+      "path": "docs/artifacts/validation/activity-plan-2026-11-04/review.html",
+      "title": "T68活动计划与目标总览 · review",
+      "sha256": "264438cfdb9929f3e0e2e3816964ba71466dfc79fe41249738f49b3cf6516f64"
     }
   ]
 }

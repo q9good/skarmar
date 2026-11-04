@@ -23,7 +23,7 @@
     "test:demo-restore": "node tools/check-relations.mjs --restore-demo",
     "test:lesson-links": "node tools/check-relations.mjs --lessons",
     "test:mutations": "node tools/check-relations.mjs --mutations",
-    "test:prd-client": "node --experimental-strip-types --test tools/test-prd-client.mjs",
+    "test:prd-client": "node --experimental-strip-types tools/test-prd-clients.mjs",
     "test:prd-web": "node tools/check-prd-web.mjs",
     "test:prd-runtimes": "node tools/check-prd-runtimes.mjs"
   },

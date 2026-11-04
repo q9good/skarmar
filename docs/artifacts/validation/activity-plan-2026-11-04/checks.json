@@ -1,0 +1,93 @@
+{
+  "synthetic": true,
+  "screenshots": [
+    "01-activity-only-plan.png",
+    "02-reference-knowledge.png",
+    "03-read-only-reference.png",
+    "04-summary-before-selection.png",
+    "05-actual-goals-and-methods.png",
+    "06-classroom-results.png",
+    "07-all-goal-coverage.png",
+    "08-goal-states.png"
+  ],
+  "checks": [
+    "activity_only_plan",
+    "read_only_bounded_reference_paths",
+    "deduplication",
+    "exact_receipt_retry",
+    "two_member_actual_confirmation",
+    "preserved_unchecked_observation",
+    "summary_draft_and_actual_snapshots",
+    "records_results_only_entry",
+    "all_goal_coverage_and_state_rings",
+    "unknown_is_not_zero",
+    "drilldown_back",
+    "other_member_refresh",
+    "separate_sources",
+    "legacy_plan_not_auto_performed",
+    "320_430_1440_layout"
+  ],
+  "errors": [],
+  "date": "2026-11-04",
+  "task": "T68",
+  "deployed": false,
+  "productionAccess": false,
+  "sourceBaseCommit": "b750d61a164b916409f1d86ba62ea57c5c9085d6",
+  "sourceFilesSha256": {
+    "apps/client/src/activity-plan-references.ts": "02c0b6afa099bbe6002690835b6c8799e5319fd30203fb8c1744d50da127e024",
+    "apps/client/src/actual-goal-picker.tsx": "808c246fc1eed9e2a687c3bf5ccc1ebbac89d1f6cbefc8159709425bbf3cab66",
+    "apps/client/src/family-plan-editor.tsx": "86797ea3ccdc20092f12d15c2253da9769b2db71af688f1e8bf308eab4b7ad07",
+    "apps/client/src/goal-overview.ts": "79e43a4a879e8340cb7b25ad053281da2c45620802e52059567083d44049e003",
+    "apps/client/src/goal-overview-view.tsx": "0bc0585fee85f6dbc6dc89fbec56b1e2f7a9dc9b470840932ad0228ff9407dda",
+    "apps/client/src/foundation-view.tsx": "0f9c09b337fd641f0590529e3d1692f8ce4697e77b536e45181323e4e1f0b1f9",
+    "apps/client/src/plan-related-knowledge.ts": "1739ce0340598355c59eb8b7aa091cfe50cedd7f9f566758220085982cf6022d",
+    "apps/client/src/prd-session-view.tsx": "5950d2f9f0a87a3bfa576bf400cdf25248b7d94b5bea8113457887f79d1b333f",
+    "apps/client/src/prd-sessions.ts": "de3b0b2f30d3aecbaa5b70a555d38bb1de873cac5120312627cf3e14261c3e0c",
+    "apps/client/src/prd-lesson-view.tsx": "d99c1960963d49cdeaf7761ec6f1e651d5fdcf097bf894bdc9594fc0cf96cf0b",
+    "crates/core/src/foundation/sessions.rs": "5b861c56801139ad6d5a8eb42cb08d40b7f71877de2bc5af685df682e62378a4"
+  },
+  "webBundleSha256": {
+    "index-62e79a1c8bd56571bdc6408de7356f8d.js": "83c53c4a7f77c03474169dad04c668c7410bc74950c049003dd038fc3d536621"
+  },
+  "screenshotSha256": {
+    "01-activity-only-plan.png": "388784e0f3a3faf4f32b3b1548623689d52cc1d5fc2ef71c60fc45e3362685ea",
+    "02-reference-knowledge.png": "19e6cf4410e8507ef70f030cfa6865b39040a232ba741ba030e07e731b8b0d46",
+    "03-read-only-reference.png": "3cbf92525e5b00d5ed100aa78e6f2aee859f505a744ebfb6fb2c20ce92e1d45c",
+    "04-summary-before-selection.png": "b8473b849380424a09ea37e38c96137532260ab9a018d6d6b7ebdf5eb50c0f51",
+    "05-actual-goals-and-methods.png": "04e6ae949bb0579d3b3750551a55d6f88f6877587b577d48f0653c9e3a3ad0d8",
+    "06-classroom-results.png": "523e239bb02b118807c163434e9f8eb4109e4df410881faaeb6c8306ece529f6",
+    "07-all-goal-coverage.png": "054e5268e35397fcb7ab7fd7c3e6dda4350755de765bae367afce307e39cba9a",
+    "08-goal-states.png": "a44f1d881dc72a8a0ba21d7ec6c68833336149dc15e7e7bc4a7ee8332fd14e98"
+  },
+  "verification": {
+    "typecheck": "passed",
+    "webBuild": "passed",
+    "clientSemanticCases": 75,
+    "rustTestsPassed": 171,
+    "nativeClippy": "passed -D warnings",
+    "wasmClippy": "passed -D warnings",
+    "wasmWorkerBuild": "passed",
+    "nativeAndWasmContracts": "passed including activity-only snapshots and restart, no SKIP",
+    "webGroups": 30,
+    "webExecution": "grouped local synthetic SQLite browser regressions including the new activity-plan suite",
+    "reviewHtml": {
+      "synthetic": true,
+      "execution": "same HTML bytes served by localhost; managed Chromium blocks file navigation",
+      "checks": [
+        "8_embedded_images",
+        "navigation",
+        "local_note_refresh",
+        "exported_json_identity_and_note",
+        "360px_reflow",
+        "no_external_requests"
+      ],
+      "errors": []
+    }
+  },
+  "limitations": [
+    "No production deployment or account/business data access",
+    "Opus independent review remains pending",
+    "Real iOS/Android and complete screenreader acceptance remain pending",
+    "Local automated checks do not establish clinical outcomes"
+  ]
+}

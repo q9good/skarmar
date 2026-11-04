@@ -1027,3 +1027,113 @@ fn adding_an_edited_action_requires_its_current_version_and_keeps_reservation_at
         2
     );
 }
+
+#[test]
+fn activity_only_plan_summary_and_direct_record_do_not_invent_planned_targets() {
+    let (mut db, u, mut input, g, m) = fixture();
+    input.targets.clear();
+    input.methods.clear();
+    let identifier = id();
+    let planned = store::write_foundation_session(
+        &mut db,
+        &u,
+        cmd(&identifier, None, Action::SaveDraft, Some(input.clone())),
+    )
+    .unwrap();
+    assert!(planned.planned_targets.is_empty() && planned.planned_methods.is_empty());
+    input.targets =
+        serde_json::from_value(json!([{"goal_id":g,"role":"main","note":"实际涉及"}])).unwrap();
+    input.methods = serde_json::from_value(json!([{"id":m,"version":1}])).unwrap();
+    let mut actual = summarized(input, &g, Confirmation::Used);
+    actual.summary.as_mut().unwrap().methods =
+        serde_json::from_value(json!([{"id":m,"version":1}])).unwrap();
+    let summary_draft = store::write_foundation_session(
+        &mut db,
+        &u,
+        cmd(
+            &identifier,
+            Some(1),
+            Action::SaveDraft,
+            Some(actual.clone()),
+        ),
+    )
+    .unwrap();
+    assert_eq!(summary_draft.status, "summary_draft");
+    assert!(summary_draft.planned_targets.is_empty() && summary_draft.planned_methods.is_empty());
+    assert!(summary_draft.actual_targets.is_empty());
+    let operation = cmd(&identifier, Some(2), Action::Complete, Some(actual.clone()));
+    let saved = store::write_foundation_session(&mut db, &u, operation.clone()).unwrap();
+    assert!(saved.planned_targets.is_empty() && saved.planned_methods.is_empty());
+    assert_eq!(saved.actual_targets[0].goal.id, g);
+    assert!(matches!(saved.actual_targets[0].input.role, Role::Main));
+    assert_eq!(saved.actual_methods[0].id, m);
+    assert_eq!(
+        store::write_foundation_session(&mut db, &u, operation)
+            .unwrap()
+            .version,
+        saved.version
+    );
+    assert_eq!(
+        db.query_row(
+            "SELECT COUNT(*) FROM prd_session_revisions WHERE session_id=?1",
+            [&identifier],
+            |r| r.get::<_, i64>(0)
+        )
+        .unwrap(),
+        3
+    );
+    let direct = id();
+    actual.plan.clear();
+    let saved = store::write_foundation_session(
+        &mut db,
+        &u,
+        cmd(&direct, None, Action::Complete, Some(actual)),
+    )
+    .unwrap();
+    assert!(saved.planned_targets.is_empty() && saved.planned_methods.is_empty());
+    assert_eq!(saved.actual_targets.len(), 1);
+}
+
+#[test]
+fn confirming_different_actual_goals_preserves_the_legacy_plan_snapshot_and_receipt() {
+    let (mut db, u, input, planned_goal, planned_method) = fixture();
+    let identifier = id();
+    let original = cmd(&identifier, None, Action::SaveDraft, Some(input.clone()));
+    let plan = store::write_foundation_session(&mut db, &u, original.clone()).unwrap();
+    let actual_goal = put(
+        &mut db,
+        &u,
+        Mutation::Goal(
+            serde_json::from_value(json!({"title":"实际临时发生的本领","level":"short"})).unwrap(),
+        ),
+    );
+    let mut actual = summarized(input, actual_goal.id(), Confirmation::None);
+    actual.targets =
+        serde_json::from_value(json!([{"goal_id":actual_goal.id(),"role":"main"}])).unwrap();
+    actual.methods.clear();
+    let saved = store::write_foundation_session(
+        &mut db,
+        &u,
+        cmd(&identifier, Some(1), Action::Complete, Some(actual)),
+    )
+    .unwrap();
+    assert_eq!(saved.planned_targets.len(), 1);
+    assert_eq!(saved.planned_targets[0].goal.id, planned_goal);
+    assert_eq!(saved.planned_methods[0].id, planned_method);
+    assert_eq!(saved.actual_targets[0].goal.id, actual_goal.id());
+    assert!(saved.actual_methods.is_empty());
+    assert_eq!(
+        serde_json::to_value(store::write_foundation_session(&mut db, &u, original).unwrap())
+            .unwrap(),
+        serde_json::to_value(plan).unwrap()
+    );
+    assert_eq!(
+        db.query_row(
+            "SELECT COUNT(*) FROM prd_session_revisions WHERE session_id=?1",
+            [&identifier],
+            |r| r.get::<_, i64>(0)
+        )
+        .unwrap(),
+        2
+    );
+}
