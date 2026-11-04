@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-03",
+  "updatedAt": "2026-11-04",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -465,6 +465,13 @@
       "status": "done",
       "evidence": "docs/ui-palette-research-2026-11-03.md",
       "verification": "实际读取Nord、Solarized和Catppuccin官方页面及Nord原始色值，均HTTP200，依据与取舍已落文档。采用Nord衍生浅色：家庭青绿/课堂灰蓝/目标经验鼠尾草绿/困难柔金黄/方法灰紫；统一中性灰白、深色主按钮、浅底和边框，并收拢当前PRD各控件、提示、统计及热力图的旧硬编码。仅呈现调整，T65计划顺序/关联/草稿/权限/统计阈值/schema/正式代际不变。类型/Web构建、63+5客户端、12组Web及最终环图色补验通过；主色白字约6:1，各主题受检文字最小4.65:1，覆盖五档亮度及可读性通过。新13图和独立Nord批注HTML通过同字节localhost检查，含reviewId和下载名；旧图/HTML/批注保留。仅本机，未推送/部署/访问生产。Rust/双运行环境为T65历史，不记作本轮重跑；T12/Opus/真机/读屏及implementationCommit不变。"
+    },
+    {
+      "id": "T67",
+      "title": "普通发布Nord配色与家庭计划调整并保留正式数据",
+      "status": "in_progress",
+      "evidence": "docs/cloudflare-release-2026-11-04.md",
+      "verification": "用户2026-11-04明确要求部署。已核对干净分支54edea7，fetch远端仅本机领先3项，无远端新提交。T65/T66实现及155项产物SHA通过，配色源摘要与评审一致，32项发布保护和9项演示工具保护当前通过。使用原Actions两项Secrets和普通发布标记；保留skarma-web/SkarmaSpace/SKARMA_DB/default/skarma.vip/账号/全部正式业务及formal-20261101，禁止清理/初始化/补种。Cloud原生环境仍spec4无凭据，沿用已验证Actions路径；待真实发布与独立公共检查。"
     }
   ],
   "artifacts": [
