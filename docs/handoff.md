@@ -48,6 +48,18 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-11-04：Nord配色与家庭计划调整已发布（T67）
+
+按用户明确部署要求，应用54edea7（含f1dc03b），触发f841d4c，
+[run41749746282](https://github.com/q9good/skarmar/actions/runs/41749746282) validate／release均success。
+见[发布记录](cloudflare-release-2026-11-04.md)。原96b1cb22，实际激活`63af67ad-78c2-4803-89cf-525c35bcb736`，
+回执deployed_and_verified，runner与云端独立公开检查通过，正式完成标记保持。
+本轮发布前32／9项保护及155项SHA通过，runner重跑类型／Web、Rust测试和Wasm Clippy；
+核对原存储、变量、运行配置与路由后普通发布，保留原Worker／DO／default／域名／账号和全部正式业务。
+清理／初始化／演示恢复／补关联均skipped，无真实账号登录、业务内容读取或生产样本写入。
+分支在run结束前未前进，之后才收尾；新增两份脱敏结果后157项SHA通过。
+原截图／HTML保留测试时快照，T12、Opus／读屏／真机及implementationCommit不变。
+
 ### 2026-11-03：依据网上经典色板统一配色（T66，本机完成，未部署）
 
 用户认为T65红蓝与绿黄不协调，要求先调研再实施。实际读取Nord、Solarized、Catppuccin官方资料，

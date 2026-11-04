@@ -469,9 +469,9 @@
     {
       "id": "T67",
       "title": "普通发布Nord配色与家庭计划调整并保留正式数据",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/cloudflare-release-2026-11-04.md",
-      "verification": "用户2026-11-04明确要求部署。已核对干净分支54edea7，fetch远端仅本机领先3项，无远端新提交。T65/T66实现及155项产物SHA通过，配色源摘要与评审一致，32项发布保护和9项演示工具保护当前通过。使用原Actions两项Secrets和普通发布标记；保留skarma-web/SkarmaSpace/SKARMA_DB/default/skarma.vip/账号/全部正式业务及formal-20261101，禁止清理/初始化/补种。Cloud原生环境仍spec4无凭据，沿用已验证Actions路径；待真实发布与独立公共检查。"
+      "verification": "用户2026-11-04明确要求部署当前Nord配色和家庭计划调整版。应用54edea7702d1d32875f06d388e99d645ba4513bc（含f1dc03b），触发源码f841d4ce6719d02d2d829dc31d35e514f4805bba，run41749746282 validate/release均success；原96b1cb22-c034-43a6-9f7e-b8c819703af6，上传并实际激活63af67ad-78c2-4803-89cf-525c35bcb736，回执deployed_and_verified/model=prd_v1。发布前本轮32/9项保护与155项SHA通过，runner重新执行类型/Web、Rust测试及Wasm Clippy，原目标/候选绑定变量运行设置和路由保持检查通过后100%激活。清理/模型初始化/演示恢复/补关联步骤全部skipped，私密临时配置清理成功。runner及云端独立首页/JS字节、health、匿名权限、精确Origin、数据库启动通过；正式代际完成标记前后均保持。保留原Worker/DO/default/skarma.vip/账号与全部正式业务、schema v7和草稿键，没有登录真实账号、读取业务内容或写入验收样本/清库/补种。发布期间分支不前进，run结束后才提交收尾证据，两份脱敏结果登记后157项SHA。截图/HTML保持生成时的deployed:false，不改写历史证据；T12、Opus/真机/读屏及implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1391,6 +1391,16 @@
       "title": "Nord配色13图离线评审页",
       "synthetic": true,
       "sha256": "1f1e5177e7d008ff68ea1b92fd198e303f6a4fc8b14c92d3f23df3981888ad90"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261104-receipt.json",
+      "title": "2026-11-04 Nord UI与家庭计划调整普通发布脱敏回执",
+      "sha256": "49e8f53c57c3a7ec21f2f073f987d8148dad4fb5ad09820485e37b6bb52433ed"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261104-independent-checks.json",
+      "title": "2026-11-04云端独立公开检查及正式代际保持",
+      "sha256": "9b68cd8ce2984316318b59eae0f346b4841e791e47454e2293b3fa693f152a70"
     }
   ]
 }

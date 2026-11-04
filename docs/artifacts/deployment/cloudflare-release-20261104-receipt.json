@@ -1,0 +1,20 @@
+{
+  "worker": "skarma-web",
+  "origin": "https://skarma.vip",
+  "source_sha": "f841d4ce6719d02d2d829dc31d35e514f4805bba",
+  "state": "deployed_and_verified",
+  "operation": "deploy",
+  "model": "prd_v1",
+  "previous_version": "96b1cb22-c034-43a6-9f7e-b8c819703af6",
+  "uploaded_version": "63af67ad-78c2-4803-89cf-525c35bcb736",
+  "deployed_version": "63af67ad-78c2-4803-89cf-525c35bcb736",
+  "checks": {
+    "homepage": "matched_except_known_cf_analytics",
+    "javascript": "matched",
+    "cf_analytics_tags": 1,
+    "health": 200,
+    "anonymous": "passed",
+    "origins": "passed",
+    "prd_database": "startup_completed"
+  }
+}
