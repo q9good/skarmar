@@ -48,6 +48,19 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-11-04：活动式计划与全目标总览已发布（T69）
+
+用户明确要求直接部署T68。应用895a665，触发25ca4d9，
+[run41766466317](https://github.com/q9good/skarmar/actions/runs/41766466317) validate／release均success。
+见[本次发布记录](cloudflare-release-activity-2026-11-04.md)，原63af67ad，上传并实际激活
+`10ff3a07-ee68-4305-bc41-bb58a27f0812`，回执deployed_and_verified，runner与独立公开检查通过。
+32／9项保护与167项SHA通过；runner重跑类型／Web、Rust工作区测试和Wasm Clippy，
+比较原绑定／变量／runtime／路由后普通发布。清理／初始化／演示恢复／补关联及演练均skipped。
+保留原Worker／DO／default／域名／精确来源／账号／全部正式业务、v7与草稿键；正式标记前后保持。
+无真实登录、业务内容读取／样本写入或清库／补种。分支在run结束前保持触发SHA；
+两份脱敏结果登记后169项SHA。8图与HTML保持历史deployed:false，不改写生成时证据。
+T12、Opus／真机／读屏及implementationCommit不变。
+
 ### 2026-11-04：活动式计划、课记结果与全目标环图（T68，本机完成）
 
 见[本轮设计与验证](activity-plan-and-goal-overview-2026-11-04.md)及PRD0.13。计划只写活动，

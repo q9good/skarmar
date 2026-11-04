@@ -478,7 +478,14 @@
       "title": "活动式家庭计划、课记结果页与全目标总览",
       "status": "done",
       "evidence": "docs/activity-plan-and-goal-overview-2026-11-04.md",
-      "verification": "PRD0.13：计划仅活动，最多2长期+3中短期只读参考；重点困难/家庭节奏排序，有限直接/方法/上级路径去重，闭合知识过滤，不自动选入或计数；实际目标/方法在总结明确确认，取消再选保留观察，旧计划不默认已做，原计划快照不由总结倒填。课记结果页移除新增/续填，保留详情纠错与整理。全目标覆盖/状态环图及图例/下钻/未知与失败重试/来源切换/多人同步刷新。无schema/正式代际/草稿键/权限更改。当前75客户端、171Rust、类型/Web、原生/Wasm Clippy、Worker构建、完整双运行环境/重启无SKIP及30组分组Web通过；两合成账号验证保存/草稿/实际关联/断网重试/并发与320-1440px。8图已人工检查仅合成数据，独立HTML的图片/导航/批注恢复/JSON身份/360px/无外连检查通过。新增10项后167项产物SHA通过。本机提交，未推送/部署/访问生产；线上仍T67 63af67ad，T12/Opus/真机/读屏及implementationCommit不变。"
+      "verification": "PRD0.13：计划仅活动，最多2长期+3中短期只读参考；重点困难/家庭节奏排序，有限直接/方法/上级路径去重，闭合知识过滤，不自动选入或计数；实际目标/方法在总结明确确认，取消再选保留观察，旧计划不默认已做，原计划快照不由总结倒填。课记结果页移除新增/续填，保留详情纠错与整理。全目标覆盖/状态环图及图例/下钻/未知与失败重试/来源切换/多人同步刷新。无schema/正式代际/草稿键/权限更改。当前75客户端、171Rust、类型/Web、原生/Wasm Clippy、Worker构建、完整双运行环境/重启无SKIP及30组分组Web通过；两合成账号验证保存/草稿/实际关联/断网重试/并发与320-1440px。8图已人工检查仅合成数据，独立HTML的图片/导航/批注恢复/JSON身份/360px/无外连检查通过。新增10项后167项产物SHA通过。本机提交，未推送/部署/访问生产；线上仍T67 63af67ad，T12/Opus/真机/读屏及implementationCommit不变。 随后用户明确要求部署，实际结果见T69。"
+    },
+    {
+      "id": "T69",
+      "title": "普通发布活动式计划、课记结果页与全目标总览并保留正式数据",
+      "status": "done",
+      "evidence": "docs/cloudflare-release-activity-2026-11-04.md",
+      "verification": "用户明确要求直接部署T68。应用895a665898e1a518bbabb851f3689233950a270b，触发/部署源码25ca4d9359ad3438ae7d421d36f64cc9ab4afcad，run41766466317 validate/release均success，原63af67ad，上传并实际激活10ff3a07-ee68-4305-bc41-bb58a27f0812，回执deployed_and_verified/model=prd_v1。发布前32/9项保护、167项SHA和受审源摘要通过；runner重跑类型/Web、Rust工作区测试及Wasm Clippy，比较原存储/变量/runtime/路由后100%激活。全部清理/初始化/演示恢复/补关联及相关演练skipped，私密临时配置清理成功。runner及独立首页/JS字节/health/匿名权限/精确Origin/PRD启动通过，正式标记前后均formal-20261101/completed:true。保留原Worker/DO/default/域名/账号和全部正式业务、v7与草稿键，无真实登录/业务数据读取或样本写入/清库/新建资源/重设账号；分支在run结束后才收尾。两份脱敏结果登记后169项SHA通过。8图/HTML保持生成时deployed:false；T12/Opus/真机/读屏及implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1458,6 +1465,16 @@
       "path": "docs/artifacts/validation/activity-plan-2026-11-04/review.html",
       "title": "T68活动计划与目标总览 · review",
       "sha256": "264438cfdb9929f3e0e2e3816964ba71466dfc79fe41249738f49b3cf6516f64"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-activity-20261104-receipt.json",
+      "title": "2026-11-04活动式计划与目标总览普通发布脱敏回执",
+      "sha256": "257018629181f2fa9880c6497b53cf885acdb6066f73aaa68b759362313f2c23"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-activity-20261104-independent-checks.json",
+      "title": "2026-11-04活动式计划版独立公开检查及正式代际保持",
+      "sha256": "c8cb28dbb572a421671ba2f47107669808a37a44536f14809ec8b6daf842047a"
     }
   ]
 }

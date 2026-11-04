@@ -1,0 +1,20 @@
+{
+  "origin": "https://skarma.vip",
+  "source_sha": "25ca4d9359ad3438ae7d421d36f64cc9ab4afcad",
+  "application_commit": "895a665898e1a518bbabb851f3689233950a270b",
+  "checked_at": "2026-11-04T03:29:31.187907+00:00",
+  "checks": {
+    "homepage": "matched_except_known_cf_analytics",
+    "javascript": "matched",
+    "cf_analytics_tags": 1,
+    "health": 200,
+    "anonymous": "passed",
+    "origins": "passed",
+    "prd_database": "startup_completed",
+    "formal_baseline": "unchanged_completed"
+  },
+  "business_data_read": false,
+  "real_account_login": false,
+  "data_cleanup_performed": false,
+  "javascript_sha256": "83c53c4a7f77c03474169dad04c668c7410bc74950c049003dd038fc3d536621"
+}
