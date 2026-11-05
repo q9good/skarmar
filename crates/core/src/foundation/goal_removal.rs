@@ -81,11 +81,16 @@ pub fn status(db: &dyn Sql) -> Result<Value> {
     let m = marker(db)?;
     if m.is_some() {
         removed_ids(db)?;
+        return Ok(
+            value!({"batch":m.as_ref().and_then(|m|m["batch"].as_str()).unwrap_or(BATCH),"completed":true}),
+        );
     }
-    // No target names, IDs, versions, reference counts or business content are public.
-    Ok(
-        value!({"batch":m.as_ref().and_then(|m|m["batch"].as_str()).unwrap_or(BATCH),"completed":m.is_some()}),
-    )
+    let blocker = match inspect(db, SELECTORS)? {
+        Ok(_) => "ready",
+        Err(reason) => reason,
+    };
+    // Bounded classification only: no target names, IDs, counts or row content.
+    Ok(value!({"batch":BATCH,"completed":false,"blocker":blocker}))
 }
 fn mentions(v: &Value, ids: &[String]) -> bool {
     match v {
@@ -118,6 +123,37 @@ pub fn apply_once(db: &dyn Sql, ack: &str) -> Result<Value> {
             "只能维护原新模型和既有管理员，禁止初始化或重设账号",
         ));
     }
+    let ids = match inspect(db, selectors)? {
+        Ok(ids) => ids,
+        Err(reason) => return Ok(value!({"batch":batch,"completed":false,"blocker":reason})),
+    };
+    let schedules = ids
+        .iter()
+        .map(|id| {
+            db.query(
+                "SELECT data FROM prd_schedules WHERE object_kind='goal' AND object_id=?1",
+                params![id.as_str()],
+            )
+        })
+        .collect::<Result<Vec<_>>>()?;
+    for id in &ids {
+        db.execute(
+            "DELETE FROM prd_schedules WHERE object_kind='goal' AND object_id=?1",
+            params![id.as_str()],
+        )?;
+    }
+    db.execute("INSERT INTO prd_upgrade(id,data) VALUES(?1,?2)",params![MARKER,json(&value!({"schema":"skarmar.goal-removal.v1","batch":batch,"ids":ids,"prior_schedules":schedules,"completed_at":chrono::Utc::now().to_rfc3339()}))?])?;
+    if !db.query("PRAGMA foreign_key_check", &[])?.is_empty() {
+        return Err(ApiError::conflict("目标删除引用校验失败，必须整次回滚"));
+    }
+    status(db)
+}
+
+// Inspect only; both status and the maintenance transaction use the same guard.
+fn inspect(
+    db: &dyn Sql,
+    selectors: [&str; 2],
+) -> Result<std::result::Result<Vec<String>, &'static str>> {
     let rows = db.query(
         "SELECT id,data FROM prd_entities WHERE kind='goal' ORDER BY id",
         &[],
@@ -139,8 +175,11 @@ pub fn apply_once(db: &dyn Sql, ack: &str) -> Result<Value> {
     }
     // Missing, renamed or ambiguous candidates are never guessed. A blocked batch
     // leaves the application usable and reports completed:false, with zero changes.
-    if groups.iter().any(|g| g.len() != 1) {
-        return status(db);
+    if groups.iter().any(|g| g.len() > 1) {
+        return Ok(Err("candidate_ambiguous"));
+    }
+    if groups.iter().any(|g| g.is_empty()) {
+        return Ok(Err("candidate_missing"));
     }
     let ids = groups.into_iter().map(|g| g[0].clone()).collect::<Vec<_>>();
     for table in [
@@ -158,7 +197,12 @@ pub fn apply_once(db: &dyn Sql, ack: &str) -> Result<Value> {
             let v: Value = serde_json::from_str(&row[0])?;
             let own = table == "prd_entities" && ids.iter().any(|id| v["value"]["id"] == *id);
             if !own && mentions(&v, &ids) {
-                return status(db);
+                return Ok(Err(match table {
+                    "prd_entities" => "linked_entities",
+                    "prd_sessions" => "linked_sessions",
+                    "prd_lessons" => "linked_lessons",
+                    _ => "linked_followups",
+                }));
             }
         }
     }
@@ -167,26 +211,7 @@ pub fn apply_once(db: &dyn Sql, ack: &str) -> Result<Value> {
         .iter()
         .all(|r| !ids.contains(&r[0]))
     {
-        return status(db);
+        return Ok(Err("linked_methods"));
     }
-    let schedules = ids
-        .iter()
-        .map(|id| {
-            db.query(
-                "SELECT data FROM prd_schedules WHERE object_kind='goal' AND object_id=?1",
-                params![id.as_str()],
-            )
-        })
-        .collect::<Result<Vec<_>>>()?;
-    for id in &ids {
-        db.execute(
-            "DELETE FROM prd_schedules WHERE object_kind='goal' AND object_id=?1",
-            params![id.as_str()],
-        )?;
-    }
-    db.execute("INSERT INTO prd_upgrade(id,data) VALUES(?1,?2)",params![MARKER,json(&value!({"schema":"skarmar.goal-removal.v1","batch":batch,"ids":ids,"prior_schedules":schedules,"completed_at":chrono::Utc::now().to_rfc3339()}))?])?;
-    if !db.query("PRAGMA foreign_key_check", &[])?.is_empty() {
-        return Err(ApiError::conflict("目标删除引用校验失败，必须整次回滚"));
-    }
-    status(db)
+    Ok(Ok(ids))
 }

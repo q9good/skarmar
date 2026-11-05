@@ -149,6 +149,16 @@ fn missing_ambiguous_referenced_or_wrong_level_candidates_make_no_changes() {
             "{case}"
         );
         assert_eq!(state(&mut db), before, "{case}");
+        let result = store::remove_selected_goals(&mut db, removal::TEST_ACK).unwrap();
+        let reason = match case {
+            "missing" | "long" => "candidate_missing",
+            "duplicate" => "candidate_ambiguous",
+            _ => "linked_entities",
+        };
+        assert_eq!(
+            result,
+            json!({"batch":"synthetic-goals-20261105","completed":false,"blocker":reason})
+        );
     }
 }
 
