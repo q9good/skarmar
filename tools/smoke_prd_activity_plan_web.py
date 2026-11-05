@@ -63,10 +63,10 @@ with sync_playwright() as p:
  print('PASS one activity field, read-only direct/method/ancestor references, excluded unrelated/solved knowledge and exact plan retry without selected goals',flush=True)
  ctx2=browser.new_context(viewport={'width':390,'height':844});pg=ctx2.new_page();pg.on('pageerror',lambda e:errors.append(str(e)));login(pg,'family');click('记录家庭：填写今天的总结',pg)
  expect(pg.get_by_role('textbox',name=re.compile('^实际表现：'))).to_have_count(0);expect(pg.get_by_role('combobox',name='实际方法确认',exact=True)).to_have_value('unconfirmed');shot('04-summary-before-selection',pg)
- click('选择本次目标',pg);expect(pg.get_by_role('dialog').get_by_text(long['input']['title']+' · 长期方向',exact=True)).to_be_visible();pg.get_by_role('checkbox',name='选择目标：'+actual['input']['title'],exact=True).click();click('完成目标选择',pg)
+ click('选择本次目标',pg);expect(pg.get_by_role('checkbox',name='选择目标：'+long['input']['title'],exact=True)).to_be_visible();reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('完成目标选择',pg)
  field('实际表现：'+actual['input']['title'],pg).fill('合成实际：没有玩球，换活动时主动用手势求助')
- click('选择本次目标',pg);pg.get_by_role('checkbox',name='选择目标：'+actual['input']['title'],exact=True).click();click('完成目标选择',pg);expect(pg.get_by_role('textbox',name='实际表现：'+actual['input']['title'],exact=True)).to_have_count(0)
- click('选择本次目标',pg);pg.get_by_role('checkbox',name='选择目标：'+actual['input']['title'],exact=True).click();click('完成目标选择',pg);expect(field('实际表现：'+actual['input']['title'],pg)).to_have_value('合成实际：没有玩球，换活动时主动用手势求助')
+ click('选择本次目标',pg);reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('完成目标选择',pg);expect(pg.get_by_role('textbox',name='实际表现：'+actual['input']['title'],exact=True)).to_have_count(0)
+ click('选择本次目标',pg);reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('完成目标选择',pg);expect(field('实际表现：'+actual['input']['title'],pg)).to_have_value('合成实际：没有玩球，换活动时主动用手势求助')
  pg.get_by_role('combobox',name='实际方法确认',exact=True).select_option('used');reveal_control(pg,'checkbox','实际方法：'+used['input']['title']).click();shot('05-actual-goals-and-methods',pg)
  click('暂存总结并退出',pg);expect(pg.get_by_role('dialog')).to_have_count(0);state=call('GET','/prd/state');pending=next(s for s in state['sessions'] if s['id']==sid);assert pending['status']=='summary_draft' and pending['planned_targets']==[] and pending['actual_targets']==[]
  click('记录家庭：填写今天的总结',pg);expect(field('实际表现：'+actual['input']['title'],pg)).to_have_value('合成实际：没有玩球，换活动时主动用手势求助');click('正式提交干预总结',pg);expect(pg.get_by_role('dialog')).to_have_count(0)
@@ -80,14 +80,14 @@ with sync_playwright() as p:
  # Deliberate report failure must remain unknown; retry resolves without inventing zeros.
  page.route('**/api/prd/coverage?days=30&source=family',lambda route:route.fulfill(status=503,content_type='application/json',body='{"error":"合成读取失败"}'),times=1)
  click('目标');expect(btn('重新读取目标总览')).to_be_visible();expect(page.get_by_test_id('goal-overview').get_by_role('img')).to_have_attribute('aria-label',re.compile('数据尚未读到'));click('重新读取目标总览')
- expect(page.get_by_test_id('goal-overview').get_by_role('img')).to_have_attribute('aria-label',re.compile('共1次目标命中'));shot('07-all-goal-coverage')
+ expect(page.get_by_test_id('goal-overview').get_by_role('img')).to_have_attribute('aria-label',re.compile('共2次目标命中'));shot('07-all-goal-coverage')
  click('查看总览目标：'+actual['input']['title']);expect(page.get_by_role('dialog',name='查看详情与修改记录',exact=True)).to_be_visible();page.go_back();expect(page.get_by_test_id('goal-overview')).to_be_visible()
  click('推进状态');expect(page.get_by_test_id('goal-overview').get_by_role('img')).to_have_attribute('aria-label',re.compile('已达成1项'));shot('08-goal-states')
  click('查看状态目标：已达成');expect(btn('查看状态目标详情：'+done['input']['title'])).to_be_visible();click('查看状态目标详情：'+done['input']['title']);page.go_back();expect(page.get_by_role('dialog',name='这一状态的目标',exact=True)).to_be_visible();page.go_back();click('覆盖分布')
  # A second browser's actual record refreshes the chart on focus without a reload.
  xid=str(uuid4());call('PUT','/prd/sessions/'+xid,{'id':xid,'operation_id':str(uuid4()),'expected_version':None,'action':'complete','input':{'business_date':today,'time_slot':'下午','summary':{'targets':[{'goal_id':g['id'],'performed':True,'observation':'合成另一位家人的实际记录'}],'confirmation':'unknown','methods':[]}}})
- page.evaluate("window.dispatchEvent(new Event('focus'))");expect(page.get_by_test_id('goal-overview').get_by_role('img')).to_have_attribute('aria-label',re.compile('共2次目标命中'))
- click('筛选目标');reveal_control(page,'combobox','目标覆盖来源').select_option('combined');click('筛选目标');expect(page.get_by_test_id('goal-overview').get_by_role('img')).to_have_attribute('aria-label',re.compile('共3次目标命中'))
+ page.evaluate("window.dispatchEvent(new Event('focus'))");expect(page.get_by_test_id('goal-overview').get_by_role('img')).to_have_attribute('aria-label',re.compile('共4次目标命中'))
+ click('筛选目标');reveal_control(page,'combobox','目标覆盖来源').select_option('combined');click('筛选目标');expect(page.get_by_test_id('goal-overview').get_by_role('img')).to_have_attribute('aria-label',re.compile('共6次目标命中'))
  # Old plans remain readable and no longer pre-confirm their intended goal.
  legacy=str(uuid4());call('PUT','/prd/sessions/'+legacy,{'id':legacy,'operation_id':str(uuid4()),'expected_version':None,'action':'save_draft','input':{'business_date':today,'time_slot':'晚上','plan':'合成旧计划：保留原目标及笔记','targets':[{'goal_id':g['id'],'role':'main','note':'合成原笔记'}],'methods':[{'id':m['id'],'version':1}]}})
  page.reload();expect(btn('记录家庭：填写今天的总结')).to_be_visible();click('记录家庭：填写今天的总结');expect(reveal_control(page,'checkbox','这次做了：'+g['input']['title'])).not_to_be_checked();expect(page.get_by_role('textbox',name='实际表现：'+g['input']['title'],exact=True)).to_have_count(0);click('关闭填写干预总结')

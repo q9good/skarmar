@@ -89,7 +89,12 @@ fn methods(db: &dyn Sql, refs: &[MethodRef]) -> Result<Vec<Method>> {
         })
         .collect()
 }
-fn targets(db: &dyn Sql, input: &[Target], old: &[TargetSnapshot]) -> Result<Vec<TargetSnapshot>> {
+fn targets(
+    db: &dyn Sql,
+    input: &[Target],
+    old: &[TargetSnapshot],
+    allow_long: bool,
+) -> Result<Vec<TargetSnapshot>> {
     unique(&input.iter().map(|t| t.goal_id.clone()).collect::<Vec<_>>())?;
     if input.iter().filter(|t| t.role == Role::Main).count() > 1 {
         return Err(ApiError::invalid("主要目标只能选一个"));
@@ -98,7 +103,7 @@ fn targets(db: &dyn Sql, input: &[Target], old: &[TargetSnapshot]) -> Result<Vec
         .iter()
         .map(|t| {
             let g = goal(db, &t.goal_id)?;
-            if g.input.level == crate::model::Level::Long {
+            if !allow_long && g.input.level == crate::model::Level::Long {
                 return Err(ApiError::invalid("长期方向请放在长期关注点"));
             }
             let (g, parents) = if let Some(before) = old.iter().find(|b| b.goal.id == t.goal_id) {
@@ -261,6 +266,7 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
         db,
         &input.targets,
         old.as_ref().map_or(&[], |s| s.planned_targets.as_slice()),
+        input.summary.is_some(),
     )?;
     let candidate_methods = methods(db, &input.methods)?;
     if input.summary.is_some() {
@@ -354,6 +360,7 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
             db,
             &actual,
             old.as_ref().map_or(&[], |s| s.actual_targets.as_slice()),
+            true,
         )?;
         match summary.confirmation {
             Confirmation::Unconfirmed => {

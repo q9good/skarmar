@@ -28,6 +28,8 @@ pub struct GoalCoverage {
     pub direct: Counts,
     pub descendants: Counts,
     pub focus: Counts,
+    /// Union of direct targets, historical ancestors and explicit legacy focus.
+    pub linked: Counts,
     pub last_date: Option<String>,
     pub attention_anchor: String,
     pub ratio: Option<f64>,
@@ -119,7 +121,17 @@ pub fn report_at(db: &dyn Sql, request: Request, today: &str) -> Result<Report> 
                 .iter()
                 .flat_map(|t| t.ancestors.iter().map(|g| g.id.clone()))
                 .collect(),
-            focus: s.focus_goals.iter().map(|g| g.id.clone()).collect(),
+            focus: s
+                .focus_goals
+                .iter()
+                .map(|g| g.id.clone())
+                .chain(
+                    s.actual_targets
+                        .iter()
+                        .filter(|t| t.goal.input.level == crate::model::Level::Long)
+                        .map(|t| t.goal.id.clone()),
+                )
+                .collect(),
             methods: if summary.confirmation == Confirmation::Unknown {
                 None
             } else {
@@ -253,6 +265,7 @@ pub fn report_at(db: &dyn Sql, request: Request, today: &str) -> Result<Report> 
             direct: count(&|r| r.direct.contains(&g.id)),
             descendants: count(&|r| r.below.contains(&g.id)),
             focus: count(&|r| r.focus.contains(&g.id)),
+            linked: count(&|r| hit(r) || r.focus.contains(&g.id)),
             last_date: last,
             attention_anchor: anchor,
             ratio,

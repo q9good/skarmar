@@ -36,5 +36,18 @@ export async function sessionContract(label,send,admin){
  // Delete only the synthetic addition, keeping the following coverage contracts' original scope.
  await call('PUT','/prd/sessions/'+activityId,cmd(activityId,2,'delete'));
  console.log(`PASS ${label}: activity-only plan and explicit actual targets/methods never backfill planned snapshots; exact receipt retained`);
+ // The actual picker supports long goals directly, including a long-only summary.
+ const createGoal=async(title,level,parent_id=null)=>{const id=randomUUID();return (await call('PUT','/prd/records/'+id,{id,operation_id:randomUUID(),expected_version:null,change_note:'',mutation:{kind:'goal',value:{title,level,parent_id,frequency:'none'}}})).value;};
+ const root=await createGoal('合成长目标可选','long'),middle=await createGoal('合成中目标可选','medium',root.id),leaf=await createGoal('合成短目标可选','short',middle.id);
+ const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const actualInput=ids=>({business_date:day,time_slot:'晚上',summary:{targets:ids.map(goal_id=>({goal_id,performed:true,observation:'合成实际表现'})),confirmation:'none'}});
+ const onlyId=randomUUID(),onlyRequest=cmd(onlyId,null,'complete',actualInput([root.id])),only=await call('PUT','/prd/sessions/'+onlyId,onlyRequest);
+ assert.equal(only.actual_targets[0].goal.id,root.id);assert.deepEqual(only.planned_targets,[]);assert.deepEqual(await call('PUT','/prd/sessions/'+onlyId,onlyRequest),only);
+ const childId=randomUUID(),child=await call('PUT','/prd/sessions/'+childId,cmd(childId,null,'complete',actualInput([root.id,leaf.id])));
+ assert.deepEqual(new Set(child.actual_targets.find(t=>t.goal.id===leaf.id).ancestors.map(g=>g.id)),new Set([middle.id,root.id]));
+ const coverage=await call('GET','/prd/coverage?days=30&source=family'),rootRow=coverage.goals.find(g=>g.id===root.id);
+ assert.equal(rootRow.linked.family,2);assert.equal(rootRow.direct.family,2);assert.equal(rootRow.descendants.family,1);assert.equal(coverage.goals.find(g=>g.id===middle.id).linked.family,1);
+ await call('PUT','/prd/sessions/'+onlyId,cmd(onlyId,1,'delete'));await call('PUT','/prd/sessions/'+childId,cmd(childId,1,'delete'));
+ console.log(`PASS ${label}: long-only actual summary, all goal horizons, immutable ancestor association and deduplicated direct/descendant/focus coverage`);
  console.log(`PASS ${label}: required plan and atomic rejection, shared plan/summary/completion, explicit actual methods, atomic revised outputs, exclusive actions, future guard, history and source-preserving deletion`);
 }

@@ -8,5 +8,5 @@ export function goalStatusGroups(goals:Goal[]){
 export type GoalOverviewRow={goal:Goal;counts:Counts|null};
 /** Unknown report rows stay unknown; no plan/draft counts are inferred locally. */
 export function goalOverviewRows(goals:Goal[],report:Coverage|null):GoalOverviewRow[]{
- return goals.map(goal=>{const row=report?.goals.find(r=>r.id===goal.id);return {goal,counts:row?(goal.input.level==='long'?row.focus:row.counts):null};});
+ return goals.map(goal=>{const row=report?.goals.find(r=>r.id===goal.id);return {goal,counts:row?(row.linked??(goal.input.level==='long'?row.focus:row.counts)):null};});
 }

@@ -1,0 +1,80 @@
+{
+  "synthetic": true,
+  "screenshots": [
+    "01-all-long-goals-selectable.png",
+    "02-long-goal-only-summary.png",
+    "03-tree-and-automatic-parents.png",
+    "04-direct-and-inherited-observations.png",
+    "05-catalogue-failure-retains-selection.png",
+    "06-goal-overview-deduplicated.png"
+  ],
+  "checks": [
+    "all_saved_horizons_selectable",
+    "long_only_completion",
+    "no_invented_goal",
+    "shared_current_catalogue",
+    "archived_matches_goals",
+    "collapsible_searchable_tree",
+    "automatic_parent_mixed_state",
+    "explicit_parent_independent",
+    "sibling_parent_retention",
+    "no_duplicate_parent_note",
+    "directory_failure_preserves_form",
+    "exact_retry_and_immutable_snapshots",
+    "deduplicated_ancestor_coverage",
+    "320_430_1440_layout"
+  ],
+  "errors": [],
+  "date": "2026-11-05",
+  "task": "T70",
+  "deployed": false,
+  "productionAccess": false,
+  "sourceBaseCommit": "de712f9f3989d36d31096ce04582436b6a3462f8",
+  "sourceFilesSha256": {
+    "apps/client/src/actual-goal-picker.tsx": "5f86a337d604aef67468733e5021ff16e4fecbaefe473f5dd52ad665f02dd51f",
+    "apps/client/src/actual-goal-relations.ts": "b3efeceaf981b0a726378603430037f93c6994c0cb7258e2fd7a625beb5c2a71",
+    "apps/client/src/foundation-view.tsx": "61a98f8fa35431fa743caada34382187606d3c2adf998a37f0f5d3ddcce1039d",
+    "apps/client/src/goal-overview-view.tsx": "115e0285830e8210919aff6c66f287112f367cb10c554b9cc82d8001c0d317dc",
+    "apps/client/src/goal-overview.ts": "31597b982879e3525f8279a079c1c2e6b5efc89f4203e0d115b1cbd1cf07e69d",
+    "apps/client/src/prd-session-view.tsx": "cefe3f3cd35f94e1e14fc27b1bb627995b6179960db3dde8f918fcd535dcf8b2",
+    "apps/client/src/prd-sessions.ts": "c9a7c579e270d2716d74473070e664a132e35e5c648df8e9a26128ff16d30fe7",
+    "apps/client/src/stable-options.tsx": "cb44b48fc364432af4097ce2f8b66ab9a1310202e035d1f4b53616e00ce8955a",
+    "crates/core/src/foundation/sessions.rs": "0debf47c366069bd4d30dce043be9bab52115e0f0bac90014a0de7737b1c3b10",
+    "crates/core/src/foundation/coverage.rs": "fb95053c75c2ffb3a240bbeef2cb67d9f28e1f4ee1e0f8c91131d28c62aa4fc0"
+  },
+  "screenshotSha256": {
+    "01-all-long-goals-selectable.png": "ba01fa14aeba7556177e8e1d142c90af6925770f34a900ccce3640d40f88512e",
+    "02-long-goal-only-summary.png": "6c1e712e9c9a359fceaf426c7e50d07da92d42ded35dcf145a33309161f11d57",
+    "03-tree-and-automatic-parents.png": "267a9deacc1b172466ea188990347fb0f528729f12054d1c1427caa9043b93ea",
+    "04-direct-and-inherited-observations.png": "e8c6b818e75497e8c1207d552b67e44fc3d2fa63a1a3a3d47fbd4b1381a51b29",
+    "05-catalogue-failure-retains-selection.png": "0d292480f001d8e5291b378e4350cf0b57bab51be877dde231a3b32487c3b91a",
+    "06-goal-overview-deduplicated.png": "81f2fd4b0adc557f27bd94326c992f9bb270f0d805552599d86736c87be5d5f4"
+  },
+  "webBundleSha256": {
+    "index-53f27c30f22476a90a27e236a9a909c1.js": "c4a79f4fc87c14444c8c0dab849559d1c855817bf3b9635cfba2e2d588e8e916"
+  },
+  "additionalVerifiedChecks": [
+    "nested_original_goal_detail_and_back",
+    "direct_long_method_and_knowledge_relation",
+    "no_false_update_from_catalogue_order",
+    "actual_tree_at_320_430_1440_with_visible_done_button",
+    "search_path_automatically_expanded_without_inactive_collapse_controls"
+  ],
+  "verification": {
+    "clientSemanticCasesPassed": 81,
+    "rustTestsPassed": 172,
+    "typecheck": "passed",
+    "webBuild": "passed",
+    "nativeClippy": "passed -D warnings",
+    "wasmClippy": "passed -D warnings",
+    "workerBuild": "passed",
+    "dualRuntime": "native SQLite and actual local Wasm DO contracts/restart passed, no SKIP; includes all-level actuals and linked union",
+    "browserGroupsPassed": 18,
+    "finalBrowserRechecks": "actual tree, real catalogue refresh, method/knowledge bindings, failed read, exact retry, scoped original detail Back, deep mobile tree and no false updates"
+  },
+  "limitations": [
+    "Production business records were not read; origin/author of the two names in the user screenshot was not verified",
+    "No production deployment or login",
+    "Opus, real device and complete screenreader acceptance remain pending"
+  ]
+}

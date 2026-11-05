@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-04",
+  "updatedAt": "2026-11-05",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -486,6 +486,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-activity-2026-11-04.md",
       "verification": "用户明确要求直接部署T68。应用895a665898e1a518bbabb851f3689233950a270b，触发/部署源码25ca4d9359ad3438ae7d421d36f64cc9ab4afcad，run41766466317 validate/release均success，原63af67ad，上传并实际激活10ff3a07-ee68-4305-bc41-bb58a27f0812，回执deployed_and_verified/model=prd_v1。发布前32/9项保护、167项SHA和受审源摘要通过；runner重跑类型/Web、Rust工作区测试及Wasm Clippy，比较原存储/变量/runtime/路由后100%激活。全部清理/初始化/演示恢复/补关联及相关演练skipped，私密临时配置清理成功。runner及独立首页/JS字节/health/匿名权限/精确Origin/PRD启动通过，正式标记前后均formal-20261101/completed:true。保留原Worker/DO/default/域名/账号和全部正式业务、v7与草稿键，无真实登录/业务数据读取或样本写入/清库/新建资源/重设账号；分支在run结束后才收尾。两份脱敏结果登记后169项SHA通过。8图/HTML保持生成时deployed:false；T12/Opus/真机/读屏及implementationCommit不变。"
+    },
+    {
+      "id": "T70",
+      "title": "修复实际目标选择目录、全层级树及上级自动关联",
+      "status": "done",
+      "evidence": "docs/actual-goal-tree-2026-11-05.md",
+      "verification": "PRD0.14纠正长期仅分组/不可作实际目标的限制：长中短各级可直接选，树可展开/收起/搜索，完成按钮固定，节点可查看原目标详情并返回；下级自动关联完整上级链，半选并区分直接选择，兄弟去重，不虚构额外观察。只选长期可关联实际方法/经验并完成，原计划快照、来源和历史保留。统一已保存目录/收起规则，打开时读取当前共享目录，失败保留输入可重试，过滤范围可清除；迟到及跨账号读取丢弃，ID/版本集合比较修复仅排序变化的假更新。后端保留原分列并增加linked集合并集供总览使用，直接/下级/旧关注重叠不重复计数；目标换上级不重写旧实际快照。81客户端、172Rust、类型/Web、原生/Wasm Clippy、Worker构建、完整双运行环境/重启无SKIP及18组分组Web通过；最终树/目录/真实提交/失败恢复/源码重点再验通过，展开树320/430/1440及固定完成按钮验证。6张图已审仅合成数据，新增7项后176项SHA通过。没有读取用户生产记录，截图两项名称的创建来源尚未核实；代码无其预设生成，未删除。保留schema/正式代际/账号/全部正式业务/草稿和未确认请求，本机提交，未推送或部署；线上仍T69 10ff3a07，Opus/真机/读屏及implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1475,6 +1482,41 @@
       "path": "docs/artifacts/deployment/cloudflare-release-activity-20261104-independent-checks.json",
       "title": "2026-11-04活动式计划版独立公开检查及正式代际保持",
       "sha256": "c8cb28dbb572a421671ba2f47107669808a37a44536f14809ec8b6daf842047a"
+    },
+    {
+      "path": "docs/artifacts/validation/goal-tree-2026-11-05/01-all-long-goals-selectable.png",
+      "title": "T70实际目标树与上级关联 · 01-all-long-goals-selectable",
+      "sha256": "ba01fa14aeba7556177e8e1d142c90af6925770f34a900ccce3640d40f88512e"
+    },
+    {
+      "path": "docs/artifacts/validation/goal-tree-2026-11-05/02-long-goal-only-summary.png",
+      "title": "T70实际目标树与上级关联 · 02-long-goal-only-summary",
+      "sha256": "6c1e712e9c9a359fceaf426c7e50d07da92d42ded35dcf145a33309161f11d57"
+    },
+    {
+      "path": "docs/artifacts/validation/goal-tree-2026-11-05/03-tree-and-automatic-parents.png",
+      "title": "T70实际目标树与上级关联 · 03-tree-and-automatic-parents",
+      "sha256": "267a9deacc1b172466ea188990347fb0f528729f12054d1c1427caa9043b93ea"
+    },
+    {
+      "path": "docs/artifacts/validation/goal-tree-2026-11-05/04-direct-and-inherited-observations.png",
+      "title": "T70实际目标树与上级关联 · 04-direct-and-inherited-observations",
+      "sha256": "e8c6b818e75497e8c1207d552b67e44fc3d2fa63a1a3a3d47fbd4b1381a51b29"
+    },
+    {
+      "path": "docs/artifacts/validation/goal-tree-2026-11-05/05-catalogue-failure-retains-selection.png",
+      "title": "T70实际目标树与上级关联 · 05-catalogue-failure-retains-selection",
+      "sha256": "0d292480f001d8e5291b378e4350cf0b57bab51be877dde231a3b32487c3b91a"
+    },
+    {
+      "path": "docs/artifacts/validation/goal-tree-2026-11-05/06-goal-overview-deduplicated.png",
+      "title": "T70实际目标树与上级关联 · 06-goal-overview-deduplicated",
+      "sha256": "81f2fd4b0adc557f27bd94326c992f9bb270f0d805552599d86736c87be5d5f4"
+    },
+    {
+      "path": "docs/artifacts/validation/goal-tree-2026-11-05/checks.json",
+      "title": "T70实际目标树与上级关联 · checks",
+      "sha256": "5663f3ca33126cbb84531d15a44751ee2fcbffb51c6631974674373e585c65be"
     }
   ]
 }

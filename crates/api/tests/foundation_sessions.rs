@@ -1137,3 +1137,158 @@ fn confirming_different_actual_goals_preserves_the_legacy_plan_snapshot_and_rece
         2
     );
 }
+
+#[test]
+fn all_goal_horizons_are_actual_targets_and_ancestors_count_once() {
+    let (mut db, u, _, _, _) = fixture();
+    let root = put(
+        &mut db,
+        &u,
+        Mutation::Goal(
+            serde_json::from_value(json!({"title":"合成长期真实目标","level":"long"})).unwrap(),
+        ),
+    );
+    let mid = put(
+        &mut db,
+        &u,
+        Mutation::Goal(
+            serde_json::from_value(
+                json!({"title":"合成中期目标","level":"medium","parent_id":root.id()}),
+            )
+            .unwrap(),
+        ),
+    );
+    let leaf = put(
+        &mut db,
+        &u,
+        Mutation::Goal(
+            serde_json::from_value(
+                json!({"title":"合成短期目标","level":"short","parent_id":mid.id()}),
+            )
+            .unwrap(),
+        ),
+    );
+    let make = |targets: Vec<&str>, legacy: Vec<&str>| -> Input {
+        serde_json::from_value(json!({"business_date":"2020-01-01","time_slot":"晚上","targets":targets.iter().enumerate().map(|(i,id)|json!({"goal_id":id,"role":if i==0{"main"}else{"secondary"}})).collect::<Vec<_>>(),"focus_goal_ids":legacy,"summary":{"targets":targets.iter().map(|id|json!({"goal_id":id,"performed":true,"observation":"合成：主动邀请一起玩"})).collect::<Vec<_>>(),"confirmation":"none"}})).unwrap()
+    };
+    let first = store::write_foundation_session(
+        &mut db,
+        &u,
+        cmd(
+            &id(),
+            None,
+            Action::Complete,
+            Some(make(vec![leaf.id()], vec![])),
+        ),
+    )
+    .unwrap();
+    assert_eq!(first.actual_targets.len(), 1);
+    assert_eq!(
+        first.actual_targets[0]
+            .ancestors
+            .iter()
+            .map(|g| g.id.as_str())
+            .collect::<std::collections::HashSet<_>>(),
+        [root.id(), mid.id()].into_iter().collect()
+    );
+    let long_id = id();
+    let long_request = cmd(
+        &long_id,
+        None,
+        Action::Complete,
+        Some(make(vec![root.id()], vec![root.id()])),
+    );
+    let long_saved = store::write_foundation_session(&mut db, &u, long_request.clone()).unwrap();
+    assert_eq!(long_saved.actual_targets.len(), 1);
+    assert_eq!(long_saved.actual_targets[0].goal.id, root.id());
+    assert!(long_saved.planned_targets.is_empty());
+    assert_eq!(
+        serde_json::to_value(store::write_foundation_session(&mut db, &u, long_request).unwrap())
+            .unwrap(),
+        serde_json::to_value(&long_saved).unwrap()
+    );
+    let both = store::write_foundation_session(
+        &mut db,
+        &u,
+        cmd(
+            &id(),
+            None,
+            Action::Complete,
+            Some(make(vec![root.id(), mid.id(), leaf.id()], vec![])),
+        ),
+    )
+    .unwrap();
+    assert_eq!(both.actual_targets.len(), 3);
+    let report = store::foundation_coverage_at(
+        &mut db,
+        coverage::Request {
+            days: 30,
+            source: "family".into(),
+        },
+        "2020-01-01",
+    )
+    .unwrap();
+    let row = report.goals.iter().find(|g| g.id == root.id()).unwrap();
+    assert_eq!(report.records.family, 3);
+    assert_eq!(row.linked.family, 3);
+    assert_eq!(row.direct.family, 2);
+    assert_eq!(row.descendants.family, 2);
+    assert_eq!(row.focus.family, 2);
+    assert_eq!(
+        report
+            .goals
+            .iter()
+            .find(|g| g.id == mid.id())
+            .unwrap()
+            .linked
+            .family,
+        2
+    );
+    // A later goal move must never rewrite the ancestor snapshots of old actuals.
+    let other = put(
+        &mut db,
+        &u,
+        Mutation::Goal(
+            serde_json::from_value(json!({"title":"后来另一个方向","level":"long"})).unwrap(),
+        ),
+    );
+    let Saved::Goal(mut mid_goal) = mid else {
+        panic!("expected goal")
+    };
+    mid_goal.input.parent_id = Some(other.id().into());
+    store::write_foundation(
+        &mut db,
+        &u,
+        skarma_core::foundation::model::Write {
+            provided_fields: None,
+            method_change: None,
+            method_create_mode: None,
+            id: mid_goal.id.clone(),
+            operation_id: id(),
+            expected_version: Some(mid_goal.version),
+            change_note: "合成调整上级".into(),
+            mutation: Mutation::Goal(mid_goal.input),
+        },
+    )
+    .unwrap();
+    let mut revision = cmd(
+        &first.id,
+        Some(first.version),
+        Action::Complete,
+        Some(first.input.clone()),
+    );
+    revision.change_note = "合成修订观察，保留当时层级".into();
+    let revised = store::write_foundation_session(&mut db, &u, revision).unwrap();
+    assert!(
+        revised.actual_targets[0]
+            .ancestors
+            .iter()
+            .any(|g| g.id == root.id())
+    );
+    assert!(
+        !revised.actual_targets[0]
+            .ancestors
+            .iter()
+            .any(|g| g.id == other.id())
+    );
+}
