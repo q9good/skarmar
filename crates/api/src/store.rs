@@ -238,3 +238,13 @@ pub fn data_transfer(
         skarma_core::foundation::transfer::command(sql, actor, request)
     })
 }
+
+/// Explicit offline maintenance; no general HTTP delete or account bootstrap.
+pub fn remove_selected_goals(
+    db: &mut Connection,
+    acknowledgment: &str,
+) -> Result<serde_json::Value> {
+    transaction(db, |sql| {
+        skarma_core::foundation::goal_removal::apply_once(sql, acknowledgment)
+    })
+}

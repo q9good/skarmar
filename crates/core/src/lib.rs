@@ -32,6 +32,7 @@ pub enum Command {
     ImportCommit(import::ImportCommitInput),
     RuntimeInfo,
     FormalLaunchStatus,
+    GoalRemovalStatus,
     DataTransfer(foundation::transfer::Command),
     FoundationQueued {
         user_id: String,
@@ -106,6 +107,7 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
             &command,
             Command::RuntimeInfo
                 | Command::FormalLaunchStatus
+                | Command::GoalRemovalStatus
                 | Command::DataTransfer(_)
                 | Command::Authenticated { .. }
                 | Command::Auth(_)
@@ -302,6 +304,8 @@ pub fn execute(db: &dyn Sql, command: Command) -> Result<Value> {
         Command::RuntimeInfo => {
             serde_json::json!({"model":if prd {"prd_v1"} else {"legacy"},"contract":if prd {"skarmar.prd.v1"} else {"legacy"}})
         }
+        Command::GoalRemovalStatus if prd => foundation::goal_removal::status(db)?,
+        Command::GoalRemovalStatus => return Err(store::ApiError::missing()),
         Command::FormalLaunchStatus if prd => foundation::launch::status(db)?,
         Command::FormalLaunchStatus => return Err(store::ApiError::missing()),
         Command::FoundationQueued { .. }

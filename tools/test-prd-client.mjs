@@ -524,3 +524,10 @@ test('uncertain operations survive authentication, contract or local retry failu
  for(const status of [400,409,413,422])assert.equal(resetAfterFailure(true,true,{status,message:'记录已更新，请核对最新内容'}),true);
  assert.equal(resetAfterFailure(false,true,{status:401}),true);assert.equal(resetAfterFailure(true,true,{status:404}),false);assert.equal(resetAfterFailure(true,true,{status:404},true),true);
 });
+
+test('confirmed removed goals disappear from cached/merged catalogues and old receipts never resurrect them',()=>{
+ const goal={id:'removed',version:1,input:{...newGoal(),title:'合成旧缓存目标'}},kept={id:'kept',version:1,input:{...newGoal(),title:'合成保留目标'}};
+ const old={...emptySnapshot,goals:[goal,kept]},latest={...emptySnapshot,goals:[kept],removed_goal_ids:['removed']};
+ const merged=mergeSnapshot(old,latest);assert.deepEqual(merged.goals,[kept]);assert.deepEqual(merged.removed_goal_ids,['removed']);
+ assert.deepEqual(acceptSaved(merged,{kind:'goal',value:goal}).goals,[kept]);assert.deepEqual(old.goals,[goal,kept]);
+});

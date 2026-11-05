@@ -262,9 +262,16 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
     // Summary selections describe what actually happened. Validate role/reference
     // inputs, but keep the last saved plan snapshot instead of inventing a plan
     // retrospectively (a direct summary has no planned targets or methods).
+    let removed = super::goal_removal::removed_ids(db)?;
+    let current_targets = input
+        .targets
+        .iter()
+        .filter(|t| !removed.contains(&t.goal_id))
+        .cloned()
+        .collect::<Vec<_>>();
     let candidate_targets = targets(
         db,
-        &input.targets,
+        &current_targets,
         old.as_ref().map_or(&[], |s| s.planned_targets.as_slice()),
         input.summary.is_some(),
     )?;

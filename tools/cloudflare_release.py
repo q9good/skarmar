@@ -27,6 +27,9 @@ WORKER = "skarma-web"
 ORIGIN = "https://skarma.vip"
 SHA = re.compile(r"[0-9a-f]{40}")
 UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+GOAL_REMOVAL_ACK = "remove-reviewed-two-goals-20261105"
+GOAL_REMOVAL_PREVIOUS = "10ff3a07-ee68-4305-bc41-bb58a27f0812"
+
 FORMAL_ACK = "retain-goals-courses-teachers-accounts-20261101"
 FORMAL_PREVIOUS = "b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa"
 
@@ -280,10 +283,19 @@ def formal_launch_check():
     return "completed_and_verified"
 
 
-def run_release(config, source_sha, api, receipt, activate_prd_empty=False, formal_launch=False):
+def goal_removal_check():
+    status, body = public_request("/api/release/goal-removal")
+    require(status == 200 and json.loads(body) == {"batch": "reviewed-goals-20261105", "completed": True},
+            "Selected-goal removal is not confirmed. The new version is active; do not repeat deployment or force references.")
+    return "reviewed_two_completed"
+
+
+def run_release(config, source_sha, api, receipt, activate_prd_empty=False, formal_launch=False, remove_goals=False):
     require(os.environ.get("SKARMA_FORMAL_LAUNCH") == FORMAL_ACK if formal_launch
             else "SKARMA_FORMAL_LAUNCH" not in os.environ,
             "Cleanup builds require the explicit reviewed one-time release mode.")
+    require(os.environ.get("SKARMA_GOAL_REMOVAL") == GOAL_REMOVAL_ACK if remove_goals else "SKARMA_GOAL_REMOVAL" not in os.environ,
+            "Selected-goal removal builds require the explicit reviewed release mode.")
     deployment_id, previous_id, previous = api.current()
     preserved = validate_live(config, previous)
     expected = copy.deepcopy(preserved)
@@ -303,6 +315,10 @@ def run_release(config, source_sha, api, receipt, activate_prd_empty=False, form
                 "One-time formal launch requires the reviewed existing PRD version; never retry by redeploying.")
         require(os.environ.get("SKARMA_FORMAL_LAUNCH") == FORMAL_ACK, "Formal build acknowledgment is missing.")
         receipt["formal_launch"] = "20261101"
+    if remove_goals:
+        require(not formal_launch and not activate_prd_empty and prd and previous_id == GOAL_REMOVAL_PREVIOUS,
+                "Selected-goal removal requires the reviewed existing PRD version and cannot initialize, restore or repeat a release.")
+        receipt["goal_removal"] = "reviewed-goals-20261105"
     routing = api.routing()
     receipt.update(previous_version=previous_id, state="preflight_passed")
     wrangler(["versions", "upload", "--dry-run", "--keep-vars", *extra_args], "dry-run")
@@ -332,6 +348,8 @@ def run_release(config, source_sha, api, receipt, activate_prd_empty=False, form
             receipt["checks"] = smoke(initialize_prd=prd)
             if formal_launch:
                 receipt["checks"]["formal_launch"] = formal_launch_check()
+            if remove_goals:
+                receipt["checks"]["goal_removal"] = goal_removal_check()
             receipt["state"] = "deployed_and_verified"
             return
         except ReleaseError as error:
@@ -382,12 +400,18 @@ def main():
     mode.add_argument("--verify-from-event", action="store_true", help="Read an explicit verify version marker from the GitHub event.")
     parser.add_argument("--activate-prd-empty", action="store_true", help="Explicit one-time empty PRD domain; preserve original auth and legacy tables.")
     parser.add_argument("--formal-launch-20261101", action="store_true", help="One-time authorized trial cleanup; keep goals, courses, teachers and accounts.")
+    parser.add_argument("--remove-reviewed-goals-20261105", action="store_true", help="Owner-authorized removal of the reviewed two unreferenced non-long catalogue goals, preserving audit and all other data.")
     args = parser.parse_args()
     receipt = {"worker": WORKER, "origin": ORIGIN, "source_sha": args.source_sha, "state": "not_deployed"}
     os.umask(0o077)
     OUTPUT.mkdir(parents=True, exist_ok=True)
     wrote_config = False
     try:
+        require("SKARMA_GOAL_REMOVAL" not in os.environ, "Goal-removal acknowledgment must only be set by explicit release mode.")
+        require(not args.remove_reviewed_goals_20261105 or (args.deploy and not args.formal_launch_20261101 and not args.activate_prd_empty),
+                "Selected-goal removal requires deploy and cannot combine with another cleanup or model cutover.")
+        if args.remove_reviewed_goals_20261105:
+            os.environ["SKARMA_GOAL_REMOVAL"] = GOAL_REMOVAL_ACK
         require("SKARMA_FORMAL_LAUNCH" not in os.environ, "Build acknowledgment must be selected only by the explicit formal-launch mode.")
         require(not args.formal_launch_20261101 or (args.deploy and not args.activate_prd_empty),
                 "Formal launch requires ordinary deploy and cannot initialize another model.")
@@ -419,13 +443,15 @@ def main():
         if expected_version:
             verify_existing(config, expected_version, api, receipt)
         else:
-            run_release(config, args.source_sha, api, receipt, activate_prd_empty=args.activate_prd_empty, formal_launch=args.formal_launch_20261101)
+            run_release(config, args.source_sha, api, receipt, activate_prd_empty=args.activate_prd_empty, formal_launch=args.formal_launch_20261101, remove_goals=args.remove_reviewed_goals_20261105)
     except (ReleaseError, OSError, ValueError, KeyError) as error:
         # Unexpected exceptions/JSON/OS errors can contain private paths or API values.
         receipt["error"] = str(error) if isinstance(error, ReleaseError) else "Release failed; inspect private runner diagnostics."
         print(receipt["error"], file=sys.stderr)
         return 1
     finally:
+        if args.remove_reviewed_goals_20261105:
+            os.environ.pop("SKARMA_GOAL_REMOVAL", None)
         if args.formal_launch_20261101:
             os.environ.pop("SKARMA_FORMAL_LAUNCH", None)
         if wrote_config:

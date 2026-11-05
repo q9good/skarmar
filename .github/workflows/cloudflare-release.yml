@@ -74,6 +74,9 @@ jobs:
           if [[ "$HEAD_MESSAGE" == *"[formal-launch:20261101]"* ]]; then
             [[ "$HEAD_MESSAGE" == *"[deploy-cloudflare]"* ]] && [[ "$HEAD_MESSAGE" != *"[verify-cloudflare:"* ]] && test -z "$VERIFY_VERSION" && test "$RESTORE_DEMO" != 'true' && test "$ACTIVATE_PRD_EMPTY" != 'true' || { echo '::error::Formal launch cannot restore demo data, reinitialize the model or verify-only'; exit 1; }
           fi
+          if [[ "$HEAD_MESSAGE" == *"[remove-goals:20261105]"* ]]; then
+            [[ "$HEAD_MESSAGE" == *"[deploy-cloudflare]"* ]] && [[ "$HEAD_MESSAGE" != *"[verify-cloudflare:"* ]] && [[ "$HEAD_MESSAGE" != *"[formal-launch:"* ]] && test -z "$VERIFY_VERSION" && test "$RESTORE_DEMO" != 'true' && test "$ACTIVATE_PRD_EMPTY" != 'true' || { echo '::error::Selected-goal removal cannot restore, initialize, verify-only or perform a different cleanup'; exit 1; }
+          fi
           if [ "$RESTORE_DEMO" = 'true' ]; then
             test -z "$VERIFY_VERSION" && [[ "$HEAD_MESSAGE" != *"[verify-cloudflare:"* ]] || { echo '::error::Restore cannot run in verify-only mode'; exit 1; }
             test -n "$SKARMA_TEST_LOGIN" || { echo '::error::Missing repository secret SKARMA_TEST_LOGIN (existing approved application login)'; exit 1; }
@@ -128,6 +131,9 @@ jobs:
           cargo build -p skarma-api --locked -j 4
           (cd crates/worker && worker-build --release)
           node tools/check-prd-empty-baseline.mjs
+      - name: Rehearse reviewed goal removal on synthetic Durable Objects
+        if: contains(github.event.head_commit.message, '[remove-goals:20261105]')
+        run: node tools/check-goal-removal.mjs
       - name: Verify existing target, upload version, promote and check
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -149,6 +155,9 @@ jobs:
           fi
           if [[ "$HEAD_MESSAGE" == *"[formal-launch:20261101]"* ]]; then
             mode_args+=(--formal-launch-20261101)
+          fi
+          if [[ "$HEAD_MESSAGE" == *"[remove-goals:20261105]"* ]]; then
+            mode_args+=(--remove-reviewed-goals-20261105)
           fi
           python3 tools/cloudflare_release.py "${mode_args[@]}" --source-sha "$GITHUB_SHA"
       - name: Link the synthetic courses after confirmed activation

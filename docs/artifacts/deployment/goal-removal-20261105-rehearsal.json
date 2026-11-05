@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "date": "2026-11-05",
+  "production_executed": false,
+  "rust_tests": 175,
+  "client_cases": 82,
+  "release_guard_cases": 37,
+  "demo_guard_cases": 9,
+  "typecheck": "passed",
+  "web_build": "passed",
+  "native_wasm_clippy": "passed",
+  "do_rehearsal": "ordinary -> synthetic bounded removal -> ordinary; accounts/sessions/courses/teachers/methods/records preserved, exact receipts/history, no resurrection, idempotence",
+  "browser_groups": [
+    "goal-removal-cache-and-original-observations",
+    "all-level-goal-tree",
+    "formal-epoch-protection",
+    "sessions-and-shared-edits"
+  ],
+  "new_schema_migration": false,
+  "all_data_clear": false
+}

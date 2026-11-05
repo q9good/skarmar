@@ -454,5 +454,32 @@ class EmptyPrdReleaseTests(unittest.TestCase):
             self.assertRegex(observed[0],r'^__Host-skarma_session=[0-9a-f]{64}$')
 
 
+
+
+class SelectedGoalRemovalGuards(unittest.TestCase):
+    def test_missing_confirmation_is_not_claimed_as_deleted(self):
+        with patch.object(release,'public_request',return_value=(200,b'{"batch":"reviewed-goals-20261105","completed":false}')):
+            with self.assertRaises(release.ReleaseError):release.goal_removal_check()
+    def test_synthetic_rehearsal_marker_is_never_a_production_confirmation(self):
+        with patch.object(release,'public_request',return_value=(200,b'{"batch":"synthetic-goals-20261105","completed":true}')):
+            with self.assertRaises(release.ReleaseError):release.goal_removal_check()
+    def test_ambient_goal_cleanup_cannot_run_as_an_ordinary_release(self):
+        import os
+        with patch.dict(os.environ, {'SKARMA_GOAL_REMOVAL':release.GOAL_REMOVAL_ACK}):
+            with self.assertRaises(release.ReleaseError):
+                release.run_release(config(),SOURCE,FakeAPI(),{})
+    def test_cleanup_wrong_existing_version_stops_before_build(self):
+        import os
+        cfg=config();cfg['vars'].update(release.PRD_VARS)
+        api=FakeAPI();api.old['resources']['bindings'] += [{'type':'plain_text','name':k,'text':v} for k,v in release.PRD_VARS.items()]
+        with patch.dict(os.environ, {'SKARMA_GOAL_REMOVAL':release.GOAL_REMOVAL_ACK}),patch.object(release,'wrangler') as build:
+            with self.assertRaises(release.ReleaseError):
+                release.run_release(cfg,SOURCE,api,{},remove_goals=True)
+            build.assert_not_called()
+    def test_exact_completed_reviewed_marker(self):
+        with patch.object(release,'public_request',return_value=(200,b'{"batch":"reviewed-goals-20261105","completed":true}')):
+            self.assertEqual(release.goal_removal_check(),'reviewed_two_completed')
+
+
 if __name__ == "__main__":
     unittest.main()

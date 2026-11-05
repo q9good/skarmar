@@ -316,6 +316,8 @@ pub struct Revision {
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Snapshot {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub removed_goal_ids: Vec<String>,
     pub schema: String,
     pub goals: Vec<Goal>,
     pub methods: Vec<Method>,

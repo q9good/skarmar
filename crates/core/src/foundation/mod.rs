@@ -5,6 +5,7 @@ mod comparison;
 pub mod coverage;
 pub mod export;
 pub mod followups;
+pub mod goal_removal;
 pub mod launch;
 pub mod lesson_model;
 pub mod lessons;
@@ -144,6 +145,9 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
     Ok(())
 }
 fn get(db: &dyn Sql, id: &str) -> Result<Option<Saved>> {
+    if goal_removal::removed_ids(db)?.iter().any(|v| v == id) {
+        return Ok(None);
+    }
     db.query("SELECT data FROM prd_entities WHERE id=?1", params![id])?
         .first()
         .map(|row| serde_json::from_str(&row[0]).map_err(ApiError::from))
@@ -230,6 +234,11 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
             ));
         }
         return Ok(serde_json::from_str(&row[2])?);
+    }
+    if goal_removal::removed_ids(db)?.contains(&request.id) {
+        return Err(ApiError::conflict(
+            "此目标已删除，不能通过旧填写重新创建或修改",
+        ));
     }
     let previous = get(db, &request.id)?;
     if request
@@ -568,7 +577,9 @@ pub fn catalog_snapshot(db: &dyn Sql, id: &str, expected: CatalogKind) -> Result
     })
 }
 pub fn snapshot(db: &dyn Sql) -> Result<Snapshot> {
+    let removed_goal_ids = goal_removal::removed_ids(db)?;
     let mut result = Snapshot {
+        removed_goal_ids: removed_goal_ids.clone(),
         schema: "skarmar.prd.v1".into(),
         goals: vec![],
         methods: vec![],
@@ -580,7 +591,8 @@ pub fn snapshot(db: &dyn Sql) -> Result<Snapshot> {
     };
     for row in db.query("SELECT data FROM prd_entities ORDER BY id", &[])? {
         match serde_json::from_str(&row[0])? {
-            Saved::Goal(value) => result.goals.push(value),
+            Saved::Goal(value) if !removed_goal_ids.contains(&value.id) => result.goals.push(value),
+            Saved::Goal(_) => {}
             Saved::Method(value) => result.methods.push(value),
             Saved::Catalog(value) => result.catalog.push(value),
         }

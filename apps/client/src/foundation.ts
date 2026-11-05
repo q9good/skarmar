@@ -12,7 +12,7 @@ export type RecordOf<T> = { id: string; version: number; input: T };
 export type Goal = RecordOf<GoalInput>;
 export type Method = RecordOf<MethodInput>&{basis_snapshots?:{id:string;version:number;kind:string;content:string;conditions:string}[]};
 export type Catalog = RecordOf<CatalogInput>;
-export type Snapshot = { schema: 'skarmar.prd.v1'; goals: Goal[]; methods: Method[]; catalog: Catalog[]; lessons: Lesson[]; sessions:Session[]; knowledge: Knowledge[]; actions: NextAction[] };
+export type Snapshot = { removed_goal_ids?:string[]; schema: 'skarmar.prd.v1'; goals: Goal[]; methods: Method[]; catalog: Catalog[]; lessons: Lesson[]; sessions:Session[]; knowledge: Knowledge[]; actions: NextAction[] };
 export type Mutation = { kind: 'goal'; value: GoalInput } | { kind: 'method'; value: MethodInput } | { kind: 'catalog'; value: CatalogInput };
 export type Saved = { kind: 'goal'; value: Goal } | { kind: 'method'; value: Method } | { kind: 'catalog'; value: Catalog };
 export type Write = { method_change?:'adjustment'|'correction';method_create_mode?:'full'|'quick';operation_id: string; id: string; expected_version: number | null; change_note: string; mutation: Mutation };
@@ -27,10 +27,10 @@ function merge<T extends { id: string; version: number }>(old: T[], next: T[]): 
   for (const item of next) if (!map.has(item.id) || map.get(item.id)!.version <= item.version) map.set(item.id, item);
   return [...map.values()];
 }
-export const mergeSnapshot = (old: Snapshot, next: Snapshot): Snapshot => ({ schema: next.schema,
-  goals: merge(old.goals, next.goals), methods: merge(old.methods, next.methods), catalog: merge(old.catalog, next.catalog), lessons: merge(old.lessons ?? [], next.lessons ?? []), sessions:merge(old.sessions??[],next.sessions??[]),
+export const mergeSnapshot = (old: Snapshot, next: Snapshot): Snapshot => {const removed=[...new Set([...(old.removed_goal_ids??[]),...(next.removed_goal_ids??[])])];return ({ ...(removed.length?{removed_goal_ids:removed}:{}), schema: next.schema,
+  goals: merge(old.goals, next.goals).filter(g=>!removed.includes(g.id)), methods: merge(old.methods, next.methods), catalog: merge(old.catalog, next.catalog), lessons: merge(old.lessons ?? [], next.lessons ?? []), sessions:merge(old.sessions??[],next.sessions??[]),
   knowledge: merge((old.knowledge ?? []).map(k => ({...k, id:k.input.id})), (next.knowledge ?? []).map(k => ({...k, id:k.input.id}))),
-  actions: merge((old.actions ?? []).map(k => ({...k, id:k.input.id})), (next.actions ?? []).map(k => ({...k, id:k.input.id}))) });
+  actions: merge((old.actions ?? []).map(k => ({...k, id:k.input.id})), (next.actions ?? []).map(k => ({...k, id:k.input.id}))) });};
 export const acceptSaved = (state: Snapshot, saved: Saved) => mergeSnapshot(state, { ...emptySnapshot,
   goals: saved.kind === 'goal' ? [saved.value] : [], methods: saved.kind === 'method' ? [saved.value] : [], catalog: saved.kind === 'catalog' ? [saved.value] : [] });
 export function findSaved(state: Snapshot, id: string): Saved | undefined {

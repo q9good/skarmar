@@ -312,6 +312,10 @@ impl DurableObject for SkarmaSpace {
                         }
                         skarma_core::foundation::launch::apply_once(&sql, ack)?;
                     }
+                    if let Some(ack)=option_env!("SKARMA_GOAL_REMOVAL") {
+                        if cfg.model!=DataModel::PrdV1||cfg.demo||cfg.space!="default" {return Err(ApiError::conflict("本次目标维护只能用于原 default 新模型空间"));}
+                        skarma_core::foundation::goal_removal::apply_once(&sql,ack)?;
+                    }
                     if let Some((filename, bytes)) = upload {
                         skarma_core::execute(&sql, command.clone())?;
                         let input = skarma_http::import::parse(&filename, &bytes)?;

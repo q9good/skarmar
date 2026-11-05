@@ -735,6 +735,16 @@ pub fn router_with_auth<R: Repository>(repo: R, config: auth::AuthConfig) -> Rou
             }),
         )
         .route(
+            "/release/goal-removal",
+            get({
+                let repo = auth_state.repo.clone();
+                move || {
+                    let repo = repo.clone();
+                    async move { repo.execute(Command::GoalRemovalStatus).await.map(Json) }
+                }
+            }),
+        )
+        .route(
             "/health",
             get(|| async { Json(serde_json::json!({"status":"ok"})) }),
         )
