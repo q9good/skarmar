@@ -1,0 +1,18 @@
+{
+  "source_sha": "7159e2652f27e6cb772976800b2a03880ab7a5ef",
+  "origin": "https://skarma.vip",
+  "checks": {
+    "homepage": "matched_except_known_cf_analytics",
+    "javascript": "matched",
+    "cf_analytics_tags": 1,
+    "health": 200,
+    "anonymous": "passed",
+    "origins": "passed",
+    "prd_database": "startup_completed",
+    "goal_removal": "reviewed_two_completed",
+    "formal_epoch": "completed_and_verified"
+  },
+  "business_login": false,
+  "business_rows_exported": false,
+  "all_data_clear": false
+}

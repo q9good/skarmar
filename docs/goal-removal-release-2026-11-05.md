@@ -44,4 +44,26 @@
 
 最新维护发布仅允许`6c51deec`作为上一版本，重新运行含既有经验／行动的DO演练；其他目标下级、方法和课程当前引用仍阻止整批操作。没有扩大为级联删除。
 
-当前状态：上述跟进保留补充通过178Rust、83客户端、37发布保护、类型／Web／Wasm Clippy、5组浏览器及含已有经验／行动的DO实际演练，准备从6c51deec发布，尚未确认生产目录删除完成。最终实际版本和回执待确认。
+## 最终完成（2026-11-06）
+
+最终源码`7159e2652f27e6cb772976800b2a03880ab7a5ef`，
+[run42137241991](https://github.com/q9good/skarmar/actions/runs/42137241991)的validate／release均success。
+原版本`6c51deec-6c7a-49cc-9d2b-8e296a5264a7`，上传并实际激活
+`965b6832-9b54-4a53-8711-df0ede5c0e3d`。最终回执`deployed_and_verified`，
+`goal_removal=reviewed_two_completed`；公开完成状态为已审核批次及`completed:true`，
+标记内部再次核对两个唯一ID及原实体摘要。两条目标已从当前目录及候选中移除，历史留存。
+
+runner再次执行Rust／Web／Wasm检查和包含既有经验／行动的合成DO演练后，比较原存储绑定、
+变量、runtime、路由并激活。正式启用清库、初始化、示例恢复和补关联均skipped。保持原Worker、
+SkarmaSpace／SKARMA_DB／default、skarma.vip、精确来源、账号、其余业务与全部历史、v7、
+`formal-20261101`及草稿／离线队列键。没有以删除目标为由删除经验、困难、行动或训练内容。
+
+同一源码本机178Rust、83客户端、37发布保护、类型／Web／Wasm Clippy、5组浏览器及DO演练通过。
+独立公开复核：首页／JS字节、health200、匿名权限、来源检查、PRD启动、两项完成状态和原正式代际
+均通过；没有使用真实账号登录、导出业务行或执行生产样本写入。原生云环境凭据问题T12、
+Opus／真机／读屏待办和`implementationCommit`保持原状。
+
+[最终脱敏回执](artifacts/deployment/goal-removal-20261106-final-receipt.json)与
+[独立公开复核](artifacts/deployment/goal-removal-20261106-independent.json)已登记；
+原先的部分结果没有改写为成功。此前截图／合成演练中的`production_executed:false`等属性保持生成时事实。
+维护标记已完成，不要重跑旧发布事件；后续使用普通发布，不能复用旧清库、初始化或本次删除标记。

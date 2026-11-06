@@ -1,5 +1,12 @@
 # 从 Codex Cloud 触发现有 Cloudflare 应用发布
 
+2026-11-06目标树与两项目录删除（T70/T71）已完成：源码`7159e26`，
+[run42137241991](https://github.com/q9good/skarmar/actions/runs/42137241991) validate／release均success，
+实际激活`965b6832-9b54-4a53-8711-df0ede5c0e3d`，回执deployed_and_verified、
+reviewed_two_completed，独立公共检查及正式代际核验通过。见[执行及部分结果记录](goal-removal-release-2026-11-05.md)。
+这是用户新授权的精确两项目录删除，保留原记录／跟进／历史／账号与其余正式数据；
+旧清库、初始化、示例恢复均skipped。维护已完成，后续普通发布不要重用删除标记或重跑旧事件。
+
 2026-11-04后续普通发布（T69）已完成：应用`895a665`，部署源码`25ca4d9`，
 [run41766466317](https://github.com/q9good/skarmar/actions/runs/41766466317) validate／release均success，
 实际激活`10ff3a07-ee68-4305-bc41-bb58a27f0812`。见[活动式计划与目标总览发布](cloudflare-release-activity-2026-11-04.md)。
