@@ -182,19 +182,10 @@ fn inspect(
         return Ok(Err("candidate_missing"));
     }
     let ids = groups.into_iter().map(|g| g[0].clone()).collect::<Vec<_>>();
-    // Session references are immutable historical snapshots. Existing records
-    // retain them; session writes only reuse snapshots already saved on that record.
-    // All other live bindings keep their original refusal guard.
-    for table in [
-        "prd_entities",
-        "prd_lessons",
-        "prd_knowledge",
-        "prd_actions",
-        "prd_feedback",
-        "prd_annotations",
-        "prd_reviews",
-        "prd_observations",
-    ] {
+    // Delete catalogue membership, never historical records or followups. These
+    // retain original bindings; only same-record existing bindings may be reused.
+    // Child goals, live methods and course organization still require explicit handling.
+    for table in ["prd_entities", "prd_lessons"] {
         for row in db.query(&format!("SELECT data FROM {table}"), &[])? {
             let v: Value = serde_json::from_str(&row[0])?;
             let own = table == "prd_entities" && ids.iter().any(|id| v["value"]["id"] == *id);

@@ -133,7 +133,15 @@ pub fn write_knowledge(db: &dyn Sql, actor: &User, r: KnowledgeWrite) -> Result<
     {
         return Err(ApiError::invalid("经验和困难不能直接互换类型"));
     }
-    super::lessons::bindings(db, &input.goal_ids, &input.method_ids, true)?;
+    super::lessons::bindings_preserving(
+        db,
+        &input.goal_ids,
+        &input.method_ids,
+        true,
+        previous
+            .as_ref()
+            .map_or(&[], |k| k.input.goal_ids.as_slice()),
+    )?;
     let mut details = r.details;
     if previous.is_none()
         && (details.title.trim().is_empty() || details.title.chars().count() > 120)
@@ -1017,7 +1025,13 @@ fn write_action(db: &dyn Sql, actor: &User, r: ActionWrite) -> Result<Value> {
     {
         return Err(ApiError::invalid("请填写下一步并明确状态"));
     }
-    super::lessons::bindings(db, &r.input.goal_ids, &r.input.method_ids, true)?;
+    super::lessons::bindings_preserving(
+        db,
+        &r.input.goal_ids,
+        &r.input.method_ids,
+        true,
+        &a.input.goal_ids,
+    )?;
     if a.status != r.state && r.note.trim().is_empty() {
         return Err(ApiError::invalid("改变下一步状态时请说明原因"));
     }

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {newGoal} from '../apps/client/src/foundation.ts';
+import {newGoal,emptySnapshot,mergeSnapshot,goalLabel,existingGoalOptions} from '../apps/client/src/foundation.ts';
 import {visibleGoals,actualGoalRelations} from '../apps/client/src/actual-goal-relations.ts';
 import {goalOverviewRows} from '../apps/client/src/goal-overview.ts';
 const goal=(id,level='long',parent_id=null,archived=false)=>({id,version:1,input:{...newGoal(),title:id,level,parent_id,archived}});
@@ -27,4 +27,10 @@ test('unknown, missing, cyclic and wrong-level parent links never invent unrelat
 test('overview uses the server union rather than summing overlapping direct, descendant and legacy focus counts',()=>{
  const g=goals[0],report={goals:[{id:g.id,linked:{family:2,lesson:1,selected:3},focus:{family:1,lesson:1,selected:2},counts:{family:2,lesson:1,selected:3},descendants:{family:2,lesson:1,selected:3}}]};
  assert.deepEqual(goalOverviewRows([g],report)[0].counts,{family:2,lesson:1,selected:3});assert.equal(goalOverviewRows([g],null)[0].counts,null);
+});
+
+test('retired goal labels never become new catalogue choices and remain available only to existing bindings',()=>{
+ const retired=goal('retired','short'),live=goal('live');const data={...emptySnapshot,goals:[live],removed_goal_ids:[retired.id],retired_goals:[retired]};
+ assert.deepEqual(existingGoalOptions(data,[]).map(g=>g.id),['live']);assert.deepEqual(existingGoalOptions(data,[retired.id]).map(g=>g.id),['live','retired']);assert.equal(goalLabel(data,retired.id),'retired（已删除）');assert.equal(goalLabel(data,live.id),'live');
+ const next=mergeSnapshot(data,{...emptySnapshot,goals:[retired]});assert.deepEqual(next.goals.map(g=>g.id),['live']);assert.equal(next.retired_goals[0].id,retired.id);assert.equal(goalLabel(next,retired.id),'retired（已删除）');
 });

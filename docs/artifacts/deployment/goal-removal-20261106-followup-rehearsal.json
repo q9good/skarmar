@@ -1,0 +1,29 @@
+{
+  "synthetic": true,
+  "date": "2026-11-06",
+  "production_executed": false,
+  "rust_tests": 178,
+  "client_cases": 83,
+  "release_guards": 37,
+  "typecheck": "passed",
+  "web_build": "passed",
+  "wasm_clippy": "passed",
+  "browser_groups": [
+    "retired-goal-cache-old-summary-and-knowledge-reassignment",
+    "followups",
+    "observations",
+    "sessions",
+    "all-level-goal-tree"
+  ],
+  "do_rehearsal": "ordinary -> bounded removal with saved session/knowledge/actions -> ordinary; current business JSON, history, receipts and identity retained; old session/output revisions accepted; new deleted-goal association refused",
+  "native_extra_cases": [
+    "retained independent knowledge editing",
+    "old metric/measurement/moment editing",
+    "new retired-goal metric/measurement/moment rejected",
+    "transaction rollback",
+    "child-goal and live-method refusal"
+  ],
+  "data_epoch": "formal-20261101",
+  "new_schema_migration": false,
+  "all_data_clear": false
+}

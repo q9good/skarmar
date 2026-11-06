@@ -645,7 +645,17 @@ fn outputs(db: &dyn Sql, actor: &User, s: &Session, stamp: &str, note: &str) -> 
         {
             return Err(ApiError::invalid("请填写知识内容并明确经验阶段"));
         }
-        super::lessons::bindings(db, &input.goal_ids, &input.method_ids, true)?;
+        let prior_goals = existing
+            .iter()
+            .find(|v| v.input.id == input.id)
+            .map_or(&[][..], |v| v.input.goal_ids.as_slice());
+        super::lessons::bindings_preserving(
+            db,
+            &input.goal_ids,
+            &input.method_ids,
+            true,
+            prior_goals,
+        )?;
         if let Some(date) = &input.next_review_date {
             valid_date(date)?;
         }
@@ -734,7 +744,17 @@ fn outputs(db: &dyn Sql, actor: &User, s: &Session, stamp: &str, note: &str) -> 
         if input.content.trim().is_empty() {
             return Err(ApiError::invalid("请填写下一步内容"));
         }
-        super::lessons::bindings(db, &input.goal_ids, &input.method_ids, true)?;
+        let prior_goals = existing
+            .iter()
+            .find(|v| v.input.id == input.id)
+            .map_or(&[][..], |v| v.input.goal_ids.as_slice());
+        super::lessons::bindings_preserving(
+            db,
+            &input.goal_ids,
+            &input.method_ids,
+            true,
+            prior_goals,
+        )?;
         let old = existing.iter().find(|a| a.input.id == input.id);
         if old.is_some_and(|a| json(&a.input).ok() == json(input).ok()) {
             continue;

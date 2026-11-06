@@ -1,0 +1,22 @@
+{
+  "worker": "skarma-web",
+  "origin": "https://skarma.vip",
+  "source_sha": "fc1ce126af6f96a04a9d91cc4f98cfed670a3a9b",
+  "state": "deployed_public_checks_pending",
+  "operation": "deploy",
+  "model": "prd_v1",
+  "goal_removal": "reviewed-goals-20261105",
+  "previous_version": "5446c475-2022-4ecd-9311-c0af976f03e3",
+  "uploaded_version": "6c51deec-6c7a-49cc-9d2b-8e296a5264a7",
+  "deployed_version": "6c51deec-6c7a-49cc-9d2b-8e296a5264a7",
+  "checks": {
+    "homepage": "matched_except_known_cf_analytics",
+    "javascript": "matched",
+    "cf_analytics_tags": 1,
+    "health": 200,
+    "anonymous": "passed",
+    "origins": "passed",
+    "prd_database": "startup_completed"
+  },
+  "error": "Selected-goal removal is not confirmed. The new version is active; do not repeat deployment or force references."
+}

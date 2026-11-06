@@ -28,7 +28,7 @@ ORIGIN = "https://skarma.vip"
 SHA = re.compile(r"[0-9a-f]{40}")
 UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
 GOAL_REMOVAL_ACK = "remove-reviewed-two-goals-20261105"
-GOAL_REMOVAL_PREVIOUS = "5446c475-2022-4ecd-9311-c0af976f03e3"
+GOAL_REMOVAL_PREVIOUS = "6c51deec-6c7a-49cc-9d2b-8e296a5264a7"
 
 FORMAL_ACK = "retain-goals-courses-teachers-accounts-20261101"
 FORMAL_PREVIOUS = "b3fdf484-0f07-4522-bc8d-8d4c5f3a84fa"

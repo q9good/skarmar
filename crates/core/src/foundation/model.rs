@@ -318,6 +318,8 @@ pub struct Revision {
 pub struct Snapshot {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub removed_goal_ids: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub retired_goals: Vec<Goal>,
     pub schema: String,
     pub goals: Vec<Goal>,
     pub methods: Vec<Method>,

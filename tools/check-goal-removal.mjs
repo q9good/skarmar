@@ -23,7 +23,7 @@ try{
  await put('method',{title:'合成保留方法',goal_ids:[keep.saved.id]});
  const sid=randomUUID();await call('PUT','/prd/sessions/'+sid,{id:sid,operation_id:randomUUID(),expected_version:null,action:'complete',change_note:'',input:{business_date:'2020-01-01',time_slot:'晚上',summary:{targets:[{goal_id:keep.saved.id,performed:true,observation:'合成保留家庭记录'}],confirmation:'none'}}});
  const lid=randomUUID();await call('PUT','/prd/lessons/'+lid,{id:lid,operation_id:randomUUID(),expected_version:null,action:{kind:'observation',value:{business_date:'2020-01-01',course_id:course.saved.id,teacher_id:teacher.saved.id,notes:'合成保留课堂观察'}}});
- const retiredSessionId=randomUUID(),retiredInput={business_date:'2020-01-01',time_slot:'下午',summary:{targets:[{goal_id:a.saved.id,performed:true,observation:'合成已保存旧目标观察'}],confirmation:'none'}};
+ const retiredSessionId=randomUUID(),retiredInput={business_date:'2020-01-01',time_slot:'下午',summary:{targets:[{goal_id:a.saved.id,performed:true,observation:'合成已保存旧目标观察'}],confirmation:'none',new_knowledge:[{id:randomUUID(),kind:'experience',content:'合成保留旧关联经验',stage:'try',goal_ids:[a.saved.id]}],new_actions:[{id:randomUUID(),content:'合成保留旧关联行动',goal_ids:[a.saved.id]}]}};
  const retiredBefore=(await call('PUT','/prd/sessions/'+retiredSessionId,{id:retiredSessionId,operation_id:randomUUID(),expected_version:null,action:'complete',change_note:'',input:retiredInput})).data;
  const before=await state(),identity=(await call('GET','/auth/me')).data;await mf.dispose();mf=null;
  execFileSync('worker-build',['--release'],{cwd:resolve(root,'crates/worker'),env:{...env,SKARMA_GOAL_REMOVAL:'remove-synthetic-two-goals-20261105'},stdio:['ignore','pipe','pipe']});mf=new Miniflare(options(resolve(build,'index.js')));

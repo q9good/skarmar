@@ -183,6 +183,12 @@ pub fn command(db: &dyn Sql, actor: &User, r: Write) -> Result<Value> {
                     .goals
                     .into_iter()
                     .find(|g| g.id == input.goal_id)
+                    .or_else(|| {
+                        previous
+                            .as_ref()
+                            .and_then(|v| v.goal.clone())
+                            .filter(|g| g.id == input.goal_id)
+                    })
                     .ok_or_else(ApiError::missing)?;
                 if current.version != input.goal_version {
                     return Err(ApiError::conflict("目标说明已更新，请核对后定义指标"));
@@ -197,6 +203,13 @@ pub fn command(db: &dyn Sql, actor: &User, r: Write) -> Result<Value> {
                     return Err(ApiError::invalid("请选择有效的测量指标"));
                 }
                 let definition: Metric = serde_json::from_value(metric.input.clone())?;
+                if previous.is_none()
+                    && super::goal_removal::removed_ids(db)?.contains(&definition.goal_id)
+                {
+                    return Err(ApiError::invalid(
+                        "目标已删除，不能新建测量；原测量仍可更正",
+                    ));
+                }
                 match definition.template.as_str() {
                     "count" => {
                         let (Some(n), Some(k)) = (input.opportunities, input.achieved) else {
@@ -277,7 +290,13 @@ pub fn command(db: &dyn Sql, actor: &User, r: Write) -> Result<Value> {
                 }
                 let goals = super::snapshot(db)?.goals;
                 for id in &input.goal_ids {
-                    if !goals.iter().any(|g| g.id == *id) {
+                    let retained = super::goal_removal::removed_ids(db)?.contains(id)
+                        && previous.as_ref().is_some_and(|v| {
+                            v.input["goal_ids"]
+                                .as_array()
+                                .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(id)))
+                        });
+                    if !goals.iter().any(|g| g.id == *id) && !retained {
                         return Err(ApiError::invalid("关联目标不存在"));
                     }
                 }

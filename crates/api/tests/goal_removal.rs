@@ -125,14 +125,7 @@ fn removes_only_reviewed_catalogue_members_keeps_entities_history_accounts_and_r
 }
 #[test]
 fn missing_ambiguous_referenced_or_wrong_level_candidates_make_no_changes() {
-    for case in [
-        "missing",
-        "duplicate",
-        "child",
-        "long",
-        "method",
-        "knowledge",
-    ] {
+    for case in ["missing", "duplicate", "child", "long", "method"] {
         let (mut db, u) = setup();
         let a = put(
             &mut db,
@@ -176,10 +169,6 @@ fn missing_ambiguous_referenced_or_wrong_level_candidates_make_no_changes() {
             )
             .unwrap();
         }
-        if case == "knowledge" {
-            let kid = id();
-            store::foundation_process(&mut db,&u,serde_json::from_value(json!({"kind":"knowledge","value":{"id":kid,"operation_id":id(),"expected_version":null,"action":"create","details":{"title":"合成仍关联的困难"},"input":{"id":kid,"kind":"difficulty","content":"合成仍关联的困难","goal_ids":[a.id()]}}})).unwrap()).unwrap();
-        }
         let before = state(&mut db);
         assert_eq!(
             store::remove_selected_goals(&mut db, removal::TEST_ACK).unwrap()["completed"],
@@ -191,7 +180,6 @@ fn missing_ambiguous_referenced_or_wrong_level_candidates_make_no_changes() {
         let reason = match case {
             "missing" | "long" => "candidate_missing",
             "duplicate" => "candidate_ambiguous",
-            "knowledge" => "linked_followups",
             _ => "linked_entities",
         };
         assert_eq!(
@@ -236,6 +224,14 @@ fn referenced_session_snapshots_survive_removal_and_can_be_revised_but_not_reuse
     put(&mut db, &u, "合成待移除乙", Level::Short, None);
     let sid = id();
     let input:session::Input=serde_json::from_value(json!({"business_date":"2020-01-01","time_slot":"晚上","summary":{"targets":[{"goal_id":a.id(),"performed":true,"observation":"合成原观察"}],"confirmation":"none"}})).unwrap();
+    let mut input = input;
+    let aid = id();
+    let kid = id();
+    input.summary.as_mut().unwrap().new_actions = vec![
+        serde_json::from_value(json!({"id":aid,"content":"合成保留下一步","goal_ids":[a.id()]}))
+            .unwrap(),
+    ];
+    input.summary.as_mut().unwrap().new_knowledge=vec![serde_json::from_value(json!({"id":kid,"kind":"experience","content":"合成保留经验","stage":"try","goal_ids":[a.id()]})).unwrap()];
     let first = store::write_foundation_session(
         &mut db,
         &u,
@@ -258,6 +254,7 @@ fn referenced_session_snapshots_survive_removal_and_can_be_revised_but_not_reuse
     let after = state(&mut db);
     assert_eq!(after["sessions"], before["sessions"]);
     assert_eq!(after["knowledge"], before["knowledge"]);
+    assert_eq!(after["actions"], before["actions"]);
     assert_eq!(
         serde_json::to_value(session_history(&db, &sid).unwrap()).unwrap(),
         history_before
@@ -300,4 +297,117 @@ fn referenced_session_snapshots_survive_removal_and_can_be_revised_but_not_reuse
         .is_err()
     );
     assert_eq!(session_history(&db, &sid).unwrap().len(), 2);
+}
+
+#[test]
+fn retained_followup_bindings_are_editable_but_never_available_for_new_records() {
+    let (mut db, u) = setup();
+    let a = put(&mut db, &u, "合成待移除甲", Level::Short, None);
+    put(&mut db, &u, "合成待移除乙", Level::Short, None);
+    let kid = id();
+    let command = json!({"kind":"knowledge","value":{"id":kid,"operation_id":id(),"expected_version":null,"action":"create","details":{"title":"合成保留困难"},"input":{"id":kid,"kind":"difficulty","content":"合成原困难","goal_ids":[a.id()]}}});
+    store::foundation_process(
+        &mut db,
+        &u,
+        serde_json::from_value(command.clone()).unwrap(),
+    )
+    .unwrap();
+    let before = state(&mut db);
+    assert_eq!(
+        store::remove_selected_goals(&mut db, removal::TEST_ACK).unwrap()["completed"],
+        true
+    );
+    let after = state(&mut db);
+    assert_eq!(after["knowledge"], before["knowledge"]);
+    assert_eq!(after["retired_goals"].as_array().unwrap().len(), 2);
+    let mut edit = command.clone();
+    edit["value"]["operation_id"] = json!(id());
+    edit["value"]["expected_version"] = json!(1);
+    edit["value"]["action"] = json!("edit");
+    edit["value"]["input"]["content"] = json!("合成修订困难观察");
+    let saved =
+        store::foundation_process(&mut db, &u, serde_json::from_value(edit).unwrap()).unwrap();
+    assert_eq!(saved["input"]["goal_ids"], json!([a.id()]));
+    assert_eq!(saved["version"], 2);
+    let other = id();
+    let mut new = command;
+    new["value"]["id"] = json!(other);
+    new["value"]["input"]["id"] = json!(other);
+    new["value"]["operation_id"] = json!(id());
+    assert!(store::foundation_process(&mut db, &u, serde_json::from_value(new).unwrap()).is_err());
+}
+
+#[test]
+fn old_metrics_measurements_and_moments_survive_but_new_deleted_goal_links_are_rejected() {
+    let (mut db, u) = setup();
+    let a = put(&mut db, &u, "合成待移除甲", Level::Short, None);
+    put(&mut db, &u, "合成待移除乙", Level::Short, None);
+    fn observe(
+        db: &mut Connection,
+        u: &User,
+        id: &str,
+        kind: &str,
+        version: Option<u64>,
+        input: Value,
+    ) -> store::Result<Value> {
+        store::foundation_process(db,u,serde_json::from_value(json!({"kind":"observe","value":{"id":id,"operation_id":super_id(),"expected_version":version,"action":"save","kind":kind,"note":"合成核对","input":input}})).unwrap())
+    }
+    fn super_id() -> String {
+        id()
+    }
+    let metric = id();
+    let metric_input = json!({"goal_id":a.id(),"goal_version":1,"name":"合成测量指标","template":"count","criterion":"5次机会","support":"示范一次","unit":""});
+    observe(&mut db, &u, &metric, "metric", None, metric_input.clone()).unwrap();
+    let measure = id();
+    let measure_input = json!({"business_date":"2020-01-01","metric_id":metric,"metric_version":1,"opportunities":5,"achieved":2});
+    observe(
+        &mut db,
+        &u,
+        &measure,
+        "measurement",
+        None,
+        measure_input.clone(),
+    )
+    .unwrap();
+    let moment = id();
+    let moment_input =
+        json!({"business_date":"2020-01-01","text":"合成原瞬间","goal_ids":[a.id()]});
+    observe(&mut db, &u, &moment, "moment", None, moment_input.clone()).unwrap();
+    let rows_before: Vec<String> = db
+        .prepare("SELECT data FROM prd_observations ORDER BY id")
+        .unwrap()
+        .query_map([], |r| r.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(
+        store::remove_selected_goals(&mut db, removal::TEST_ACK).unwrap()["completed"],
+        true
+    );
+    let rows_after: Vec<String> = db
+        .prepare("SELECT data FROM prd_observations ORDER BY id")
+        .unwrap()
+        .query_map([], |r| r.get(0))
+        .unwrap()
+        .collect::<Result<_, _>>()
+        .unwrap();
+    assert_eq!(rows_after, rows_before);
+    observe(
+        &mut db,
+        &u,
+        &metric,
+        "metric",
+        Some(1),
+        metric_input.clone(),
+    )
+    .unwrap();
+    let mut edit = measure_input.clone();
+    edit["achieved"] = json!(3);
+    observe(&mut db, &u, &measure, "measurement", Some(1), edit).unwrap();
+    let mut edit = moment_input.clone();
+    edit["text"] = json!("合成修订瞬间");
+    observe(&mut db, &u, &moment, "moment", Some(1), edit).unwrap();
+    assert!(observe(&mut db, &u, &id(), "metric", None, metric_input).is_err());
+    assert!(observe(&mut db, &u, &id(), "measurement", None, measure_input).is_err());
+    assert!(observe(&mut db, &u, &id(), "moment", None, moment_input).is_err());
 }

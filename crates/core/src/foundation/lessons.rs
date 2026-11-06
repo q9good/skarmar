@@ -90,13 +90,25 @@ pub(super) fn bindings(
     methods: &[String],
     required: bool,
 ) -> Result<()> {
+    bindings_preserving(db, goals, methods, required, &[])
+}
+pub(super) fn bindings_preserving(
+    db: &dyn Sql,
+    goals: &[String],
+    methods: &[String],
+    required: bool,
+    previous_goals: &[String],
+) -> Result<()> {
+    let retired = super::goal_removal::removed_ids(db)?;
     unique(goals)?;
     unique(methods)?;
     if required && goals.is_empty() && methods.is_empty() {
         return Err(ApiError::invalid("请明确关联至少一个目标或方法"));
     }
     for id in goals {
-        if !matches!(get(db, id)?, Some(Saved::Goal(_))) {
+        if !(matches!(get(db, id)?, Some(Saved::Goal(_)))
+            || retired.contains(id) && previous_goals.contains(id))
+        {
             return Err(ApiError::invalid("关联目标不存在"));
         }
     }

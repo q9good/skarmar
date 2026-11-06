@@ -580,6 +580,7 @@ pub fn snapshot(db: &dyn Sql) -> Result<Snapshot> {
     let removed_goal_ids = goal_removal::removed_ids(db)?;
     let mut result = Snapshot {
         removed_goal_ids: removed_goal_ids.clone(),
+        retired_goals: vec![],
         schema: "skarmar.prd.v1".into(),
         goals: vec![],
         methods: vec![],
@@ -592,7 +593,7 @@ pub fn snapshot(db: &dyn Sql) -> Result<Snapshot> {
     for row in db.query("SELECT data FROM prd_entities ORDER BY id", &[])? {
         match serde_json::from_str(&row[0])? {
             Saved::Goal(value) if !removed_goal_ids.contains(&value.id) => result.goals.push(value),
-            Saved::Goal(_) => {}
+            Saved::Goal(value) => result.retired_goals.push(value),
             Saved::Method(value) => result.methods.push(value),
             Saved::Catalog(value) => result.catalog.push(value),
         }

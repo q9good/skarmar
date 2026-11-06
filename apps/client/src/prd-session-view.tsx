@@ -1,3 +1,4 @@
+import {existingGoalOptions} from './foundation';
 import {coverageScale} from './ui-palette';
 import {UiButton,UiCheck} from './ui-components';
 import {FamilyPlanEditor} from './family-plan-editor';
@@ -45,7 +46,7 @@ function KnowledgeBrief({items}:{items:Snapshot['knowledge']}){
  const difficulty=items.find(k=>k.input.kind==='difficulty'&&['pending','following'].includes(stateOf(k))),experience=items.find(k=>k.input.kind==='experience'&&stateOf(k)==='active');
  return <>{difficulty&&<Text numberOfLines={2}>留意困难：{difficulty.input.content}</Text>}{experience&&<Text numberOfLines={2}>可参考经验：{experience.input.content}</Text>}</>;
 }
-function Bindings({data,goals,methods,change,disabled}:{data:Snapshot;goals:string[];methods:string[];change:(g:string[],m:string[])=>void;disabled:boolean}){return <><Text>关联目标</Text><RelationPicker label="关联目标" options={data.goals.map(g=>({id:g.id,label:g.input.title}))} selected={goals} disabled={disabled} toggle={id=>change(goals.includes(id)?goals.filter(v=>v!==id):[...goals,id],methods)}/><Text>关联方法</Text><RelationPicker label="关联方法" options={data.methods.map(m=>({id:m.id,label:m.input.title}))} selected={methods} disabled={disabled} toggle={id=>change(goals,methods.includes(id)?methods.filter(v=>v!==id):[...methods,id])}/></>;}
+function Bindings({data,goals,methods,change,disabled}:{data:Snapshot;goals:string[];methods:string[];change:(g:string[],m:string[])=>void;disabled:boolean}){return <><Text>关联目标</Text><RelationPicker label="关联目标" options={existingGoalOptions(data,goals).map(g=>({id:g.id,label:g.input.title}))} selected={goals} disabled={disabled} toggle={id=>change(goals.includes(id)?goals.filter(v=>v!==id):[...goals,id],methods)}/><Text>关联方法</Text><RelationPicker label="关联方法" options={data.methods.map(m=>({id:m.id,label:m.input.title}))} selected={methods} disabled={disabled} toggle={id=>change(goals,methods.includes(id)?methods.filter(v=>v!==id):[...methods,id])}/></>;}
 
 export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead,openGoal,openAction,requested,onRequested,requestedActions,onRequestedActions,afterPrimary}:{data:Snapshot;mode:'today'|'records'|'drafts';refresh:()=>Promise<void>;accepted:(s:Session)=>void;acceptMethod:(s:Saved)=>void;snapshotRead?:(s:Snapshot)=>void;openGoal:(id:string)=>void;openAction?:(id:string)=>void;requested?:{id:string;nonce:string}|null;onRequested?:()=>void;requestedActions?:{ids:string[];nonce:string}|null;onRequestedActions?:()=>void;afterPrimary?:React.ReactNode}){
  const draftStore=useRef<DraftStore<SessionDraft>|null>(null);
