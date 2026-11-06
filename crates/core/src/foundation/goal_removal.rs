@@ -182,10 +182,12 @@ fn inspect(
         return Ok(Err("candidate_missing"));
     }
     let ids = groups.into_iter().map(|g| g[0].clone()).collect::<Vec<_>>();
+    // Session references are immutable historical snapshots. Existing records
+    // retain them; session writes only reuse snapshots already saved on that record.
+    // All other live bindings keep their original refusal guard.
     for table in [
         "prd_entities",
         "prd_lessons",
-        "prd_sessions",
         "prd_knowledge",
         "prd_actions",
         "prd_feedback",

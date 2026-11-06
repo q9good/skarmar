@@ -102,16 +102,18 @@ fn targets(
     input
         .iter()
         .map(|t| {
-            let g = goal(db, &t.goal_id)?;
-            if !allow_long && g.input.level == crate::model::Level::Long {
-                return Err(ApiError::invalid("长期方向请放在长期关注点"));
-            }
             let (g, parents) = if let Some(before) = old.iter().find(|b| b.goal.id == t.goal_id) {
+                // A removed catalogue member remains valid only as the original
+                // snapshot on this existing record, never as a new association.
                 (before.goal.clone(), before.ancestors.clone())
             } else {
+                let g = goal(db, &t.goal_id)?;
                 let parents = ancestors(db, &g)?;
                 (g, parents)
             };
+            if !allow_long && g.input.level == crate::model::Level::Long {
+                return Err(ApiError::invalid("长期方向请放在长期关注点"));
+            }
             Ok(TargetSnapshot {
                 input: t.clone(),
                 goal: g,

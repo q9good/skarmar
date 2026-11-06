@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "date": "2026-11-06",
+  "production_executed": false,
+  "rust_tests": 176,
+  "client_cases": 82,
+  "release_guard_cases": 37,
+  "typecheck": "passed",
+  "web_build": "passed",
+  "targeted_browser_groups": [
+    "goal-removal-cache-and-retained-record-editor",
+    "all-level-goal-tree",
+    "sessions-and-shared-edits"
+  ],
+  "do_rehearsal": "ordinary -> scoped removal with existing referenced completed session -> ordinary; current sessions and original snapshots retained byte-for-byte; original session revisable; a new session cannot associate deleted goals; original accounts/courses/teachers/methods/records/history/receipts retained",
+  "other_current_reference_guards": [
+    "child-goals",
+    "methods",
+    "knowledge"
+  ],
+  "new_schema_migration": false,
+  "all_data_clear": false
+}

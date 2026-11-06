@@ -44,6 +44,11 @@ fn put(db: &mut Connection, u: &User, title: &str, level: Level, parent: Option<
     )
     .unwrap()
 }
+fn session_history(db: &Connection, id: &str) -> rusqlite::Result<Vec<String>> {
+    db.prepare("SELECT data FROM prd_session_revisions WHERE session_id=?1 ORDER BY version")?
+        .query_map([id], |r| r.get(0))?
+        .collect()
+}
 fn state(db: &mut Connection) -> Value {
     serde_json::to_value(store::foundation_snapshot(db).unwrap()).unwrap()
 }
@@ -120,7 +125,14 @@ fn removes_only_reviewed_catalogue_members_keeps_entities_history_accounts_and_r
 }
 #[test]
 fn missing_ambiguous_referenced_or_wrong_level_candidates_make_no_changes() {
-    for case in ["missing", "duplicate", "child", "long"] {
+    for case in [
+        "missing",
+        "duplicate",
+        "child",
+        "long",
+        "method",
+        "knowledge",
+    ] {
         let (mut db, u) = setup();
         let a = put(
             &mut db,
@@ -142,6 +154,32 @@ fn missing_ambiguous_referenced_or_wrong_level_candidates_make_no_changes() {
         if case == "child" {
             put(&mut db, &u, "合成保留子目标", Level::Short, Some(a.id()));
         }
+        if case == "method" {
+            store::write_foundation(
+                &mut db,
+                &u,
+                Write {
+                    provided_fields: None,
+                    method_change: None,
+                    method_create_mode: None,
+                    id: id(),
+                    operation_id: id(),
+                    expected_version: None,
+                    change_note: "".into(),
+                    mutation: Mutation::Method(
+                        serde_json::from_value(
+                            json!({"title":"合成仍关联的方法","goal_ids":[a.id()]}),
+                        )
+                        .unwrap(),
+                    ),
+                },
+            )
+            .unwrap();
+        }
+        if case == "knowledge" {
+            let kid = id();
+            store::foundation_process(&mut db,&u,serde_json::from_value(json!({"kind":"knowledge","value":{"id":kid,"operation_id":id(),"expected_version":null,"action":"create","details":{"title":"合成仍关联的困难"},"input":{"id":kid,"kind":"difficulty","content":"合成仍关联的困难","goal_ids":[a.id()]}}})).unwrap()).unwrap();
+        }
         let before = state(&mut db);
         assert_eq!(
             store::remove_selected_goals(&mut db, removal::TEST_ACK).unwrap()["completed"],
@@ -153,6 +191,7 @@ fn missing_ambiguous_referenced_or_wrong_level_candidates_make_no_changes() {
         let reason = match case {
             "missing" | "long" => "candidate_missing",
             "duplicate" => "candidate_ambiguous",
+            "knowledge" => "linked_followups",
             _ => "linked_entities",
         };
         assert_eq!(
@@ -180,4 +219,85 @@ fn late_marker_failure_rolls_back_catalogue_and_schedule_changes() {
         .unwrap(),
         2
     );
+}
+
+#[test]
+fn referenced_session_snapshots_survive_removal_and_can_be_revised_but_not_reused() {
+    use skarma_core::foundation::session_model as session;
+    let (mut db, u) = setup();
+    let parent = put(&mut db, &u, "合成保留上级", Level::Long, None);
+    let a = put(
+        &mut db,
+        &u,
+        "合成待移除甲",
+        Level::Medium,
+        Some(parent.id()),
+    );
+    put(&mut db, &u, "合成待移除乙", Level::Short, None);
+    let sid = id();
+    let input:session::Input=serde_json::from_value(json!({"business_date":"2020-01-01","time_slot":"晚上","summary":{"targets":[{"goal_id":a.id(),"performed":true,"observation":"合成原观察"}],"confirmation":"none"}})).unwrap();
+    let first = store::write_foundation_session(
+        &mut db,
+        &u,
+        session::Write {
+            id: sid.clone(),
+            operation_id: id(),
+            expected_version: None,
+            action: session::Action::Complete,
+            input: Some(input.clone()),
+            change_note: "".into(),
+        },
+    )
+    .unwrap();
+    let before = state(&mut db);
+    let history_before = serde_json::to_value(session_history(&db, &sid).unwrap()).unwrap();
+    assert_eq!(
+        store::remove_selected_goals(&mut db, removal::TEST_ACK).unwrap()["completed"],
+        true
+    );
+    let after = state(&mut db);
+    assert_eq!(after["sessions"], before["sessions"]);
+    assert_eq!(after["knowledge"], before["knowledge"]);
+    assert_eq!(
+        serde_json::to_value(session_history(&db, &sid).unwrap()).unwrap(),
+        history_before
+    );
+    assert_eq!(first.actual_targets[0].ancestors[0].id, parent.id());
+    let mut edit = input.clone();
+    edit.summary.as_mut().unwrap().targets[0].observation = "合成修订观察".into();
+    let revised = store::write_foundation_session(
+        &mut db,
+        &u,
+        session::Write {
+            id: sid.clone(),
+            operation_id: id(),
+            expected_version: Some(1),
+            action: session::Action::Complete,
+            input: Some(edit),
+            change_note: "合成更正当时表现".into(),
+        },
+    )
+    .unwrap();
+    assert_eq!(revised.actual_targets[0].goal.id, a.id());
+    assert_eq!(
+        serde_json::to_value(&revised.actual_targets[0].ancestors).unwrap(),
+        serde_json::to_value(&first.actual_targets[0].ancestors).unwrap()
+    );
+    assert_eq!(revised.actual_targets[0].input.note, "合成修订观察");
+    assert!(
+        store::write_foundation_session(
+            &mut db,
+            &u,
+            session::Write {
+                id: id(),
+                operation_id: id(),
+                expected_version: None,
+                action: session::Action::Complete,
+                input: Some(input),
+                change_note: "禁止新记录借用已删除目标".into()
+            }
+        )
+        .is_err()
+    );
+    assert_eq!(session_history(&db, &sid).unwrap().len(), 2);
 }

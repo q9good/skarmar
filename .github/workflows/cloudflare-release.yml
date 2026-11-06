@@ -40,26 +40,6 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_cloudflare_release.py' -v
           python3 -m unittest discover -s tools -p 'test_restore_demo_batch.py' -v
 
-  inspect_goal_removal:
-    needs: validate
-    if: github.repository == 'q9good/skarmar' && github.ref == 'refs/heads/feat/tencent-informed-web' && contains(github.event.head_commit.message, '[inspect-goal-removal]')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
-      - name: Read only the bounded removal diagnosis with an existing application identity
-        env:
-          SKARMA_TEST_LOGIN: ${{ secrets.SKARMA_TEST_LOGIN }}
-        run: python3 tools/inspect_goal_removal.py
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: goal-removal-inspection-${{ github.sha }}
-          path: .local/goal-removal-inspection/result.json
-          include-hidden-files: true
-          retention-days: 7
-
   release:
     needs: validate
     if: >-

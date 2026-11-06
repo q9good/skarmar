@@ -23,6 +23,8 @@ try{
  await put('method',{title:'合成保留方法',goal_ids:[keep.saved.id]});
  const sid=randomUUID();await call('PUT','/prd/sessions/'+sid,{id:sid,operation_id:randomUUID(),expected_version:null,action:'complete',change_note:'',input:{business_date:'2020-01-01',time_slot:'晚上',summary:{targets:[{goal_id:keep.saved.id,performed:true,observation:'合成保留家庭记录'}],confirmation:'none'}}});
  const lid=randomUUID();await call('PUT','/prd/lessons/'+lid,{id:lid,operation_id:randomUUID(),expected_version:null,action:{kind:'observation',value:{business_date:'2020-01-01',course_id:course.saved.id,teacher_id:teacher.saved.id,notes:'合成保留课堂观察'}}});
+ const retiredSessionId=randomUUID(),retiredInput={business_date:'2020-01-01',time_slot:'下午',summary:{targets:[{goal_id:a.saved.id,performed:true,observation:'合成已保存旧目标观察'}],confirmation:'none'}};
+ const retiredBefore=(await call('PUT','/prd/sessions/'+retiredSessionId,{id:retiredSessionId,operation_id:randomUUID(),expected_version:null,action:'complete',change_note:'',input:retiredInput})).data;
  const before=await state(),identity=(await call('GET','/auth/me')).data;await mf.dispose();mf=null;
  execFileSync('worker-build',['--release'],{cwd:resolve(root,'crates/worker'),env:{...env,SKARMA_GOAL_REMOVAL:'remove-synthetic-two-goals-20261105'},stdio:['ignore','pipe','pipe']});mf=new Miniflare(options(resolve(build,'index.js')));
  assert.deepEqual((await call('GET','/release/goal-removal',undefined,200,null)).data,{batch:'synthetic-goals-20261105',completed:true});
@@ -34,6 +36,10 @@ try{
  assert.equal((await call('GET','/prd/records/'+a.saved.id+'/history')).data.length,1);
  await call('GET','/release/goal-removal',undefined,200,null);assert.deepEqual(await state(),after);
  await mf.dispose();mf=null;mf=new Miniflare(options(resolve(normal,'index.js')));assert.deepEqual(await state(),after);assert.deepEqual((await call('GET','/auth/me')).data,identity);
+ const revised=(await call('PUT','/prd/sessions/'+retiredSessionId,{id:retiredSessionId,operation_id:randomUUID(),expected_version:1,action:'complete',change_note:'合成修订旧观察',input:{...retiredInput,summary:{...retiredInput.summary,targets:[{...retiredInput.summary.targets[0],observation:'合成修订旧目标观察'}]}}})).data;
+ assert.deepEqual(revised.actual_targets[0].goal,retiredBefore.actual_targets[0].goal);assert.equal(revised.actual_targets[0].input.note,'合成修订旧目标观察');
+ const forbiddenId=randomUUID();await call('PUT','/prd/sessions/'+forbiddenId,{id:forbiddenId,operation_id:randomUUID(),expected_version:null,action:'complete',change_note:'',input:retiredInput},422);
+ assert.equal((await call('GET','/prd/sessions/'+retiredSessionId+'/history')).data.length,2);
  const again=await put('goal',{title:'合成待移除甲',level:'short'});assert((await state()).goals.some(g=>g.id===again.saved.id),'a new explicit record must not be repeatedly removed by title');
  console.log('PASS synthetic DO removal: exact two catalogue entries, original accounts/sessions/courses/teachers/methods/records retained; anonymous read-only status, immutable receipts/history, no resurrection, idempotence and future ordinary upgrade');
 }finally{if(mf)await mf.dispose();if(haveNormal){await rm(build,{recursive:true,force:true});await cp(normal,build,{recursive:true});}await rm(scratch,{recursive:true,force:true});}
