@@ -525,9 +525,9 @@
     {
       "id": "T75",
       "title": "普通发布目标方法关系图、课堂回看与今天到期提醒",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/cloudflare-release-2026-11-07.md",
-      "verification": "用户明确授权部署d71b1ec。37项发布保护、9项示例保护、191项SHA通过；原生Cloud仍无CF绑定，沿用已验证Actions凭据与原生产配置。仅普通发布，保留账号和全部正式业务／历史／来源及v7／formal-20261101／草稿键，不启用任何清理、初始化、示例恢复或目录删除。实际激活及公开验收待本轮run，不将准备或dry-run当作上线。"
+      "verification": "2026-11-07用户明确要求部署T72–T74。应用d71b1ec，普通发布触发a0d930ec0ef34a7f7c7777e6da46ce73ac657569，run42419768909的validate／release均success；原965b6832，上传与实际激活7df61582-5c77-49ab-b90b-ecfe7cf5d4f0，脱敏回执deployed_and_verified。runner类型／Web、Rust测试及Wasm Clippy通过，原绑定／变量／runtime／路由核对一致后切换100%。清理／初始化／示例恢复／目录删除／课程补关联和相关演练全部skipped。云端独立验证首页仅去严格匹配CF Analytics后与构建相同、JS字节匹配、health200、匿名401／未知404、合法来源200／非法或缺标记403，未签发随机会话验证PRD启动。发布前后formal-20261101标记保持。原Worker／DO／default／域名／精确来源、账号和全部正式业务／审计／冻结引用／v7／草稿队列键保留；未登录真实账号、未读业务、未写样本／清库／新建资源。发布前37发布保护、9示例保护及191项SHA通过，新增两份已核对脱敏结果后193项SHA。T12、Opus／真机／读屏与implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1641,6 +1641,18 @@
       "title": "合成：目标方法、课堂回看与到期提醒验收摘要",
       "sha256": "c08e66cf8e2e2df480d280cbd7da7d601bec0488fabdf1a56e3a160ad88427ff",
       "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261107-receipt.json",
+      "title": "目标方法关系图与课堂回看正式发布脱敏回执",
+      "sha256": "03c68396d05d69e66a7a3dd9c9a83b4b4eb24f75f39cff062ffd05bfc4b50e08",
+      "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261107-independent-checks.json",
+      "title": "目标方法关系图版本的独立公共验收与正式代际核对",
+      "sha256": "a89c78ba5856c5f53ffbb2aab2bb9b6b2b1c7f8aca30e08773cb45af66899834",
+      "synthetic": false
     }
   ]
 }

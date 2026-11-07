@@ -42,4 +42,4 @@
 | 今天的到期复盘与新课堂观察 | [390px](artifacts/validation/goal-method-workflow-2026-11-07/05-today-due-and-new-classroom-390.png) |
 | 当前课记、保留引用依据且无修改历史入口 | [390px](artifacts/validation/goal-method-workflow-2026-11-07/06-current-classroom-without-history-390.png) |
 
-本轮仅本机实现与合成验证后推送，未部署、未访问生产业务或删除数据。线上仍是T71版本`965b6832-9b54-4a53-8711-df0ede5c0e3d`。Opus独立验收、真机／读屏和T12仍是原有待办，`implementationCommit`保持原独立验收提交。
+实现阶段仅本机合成验证后推送，没有部署、访问生产业务或删除数据；截图和checks保留生成时deployed:false。随后用户明确要求上线，已通过[T75普通发布](cloudflare-release-2026-11-07.md)激活`7df61582-5c77-49ab-b90b-ecfe7cf5d4f0`，runner与独立公开检查通过，账号和全部正式数据保持。Opus独立验收、真机／读屏和T12仍是原有待办，`implementationCommit`保持原独立验收提交。

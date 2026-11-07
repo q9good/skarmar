@@ -48,6 +48,18 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-11-07：目标方法与课堂回看已发布（T75）
+
+用户明确要求部署T72–T74。[发布记录](cloudflare-release-2026-11-07.md)。
+应用d71b1ec，普通触发a0d930e，[run42419768909](https://github.com/q9good/skarmar/actions/runs/42419768909)
+validate／release均success；原965b6832，上传并实际激活`7df61582-5c77-49ab-b90b-ecfe7cf5d4f0`，
+回执deployed_and_verified。runner重新执行类型／Web、Rust测试与Wasm Clippy，比较原绑定／变量／runtime／路由后激活。
+所有清理／初始化／示例恢复／目录删除／课程补关联及对应演练均skipped；原账号、正式业务／历史／冻结来源、
+Worker／DO／default／域名／精确来源、v7／formal-20261101及草稿键保持。未登录或读取真实业务、未写样本／清库／新建资源。
+独立公开检查确认首页／JS与构建匹配、health200、匿名401／未知404、来源保护、PRD启动；正式代际前后保持。
+两份脱敏结果登记后193项SHA通过；分支在run完成前保持触发SHA，之后才收尾。T12、Opus／真机／读屏及implementationCommit不变。
+下方T72–T74“未部署”属于实现时的本机证据；现已通过本项发布，截图与checks不改写生成时deployed:false。
+
 ### 2026-11-07：目标方法关系图、课堂回看与到期提醒（T72–T74，本机完成）
 
 [实现、验证与6张合成手机截图](object-map-and-classroom-review-2026-11-07.md)，PRD0.15。
