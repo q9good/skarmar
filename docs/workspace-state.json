@@ -521,6 +521,13 @@
       "status": "done",
       "evidence": "docs/object-map-and-classroom-review-2026-11-07.md",
       "verification": "2026-11-07当前源码本机合成验收：今天展示到期具体项目与入口，业务日当天及逾期可见，未来／关闭／暂停恢复边界有客户端和原生日程测试。前台定期和返回刷新，失败明确显示并重试；浏览器受控日程验证入口与恢复，无后台系统推送承诺。 本轮推送代码与191项SHA证据，未部署、未访问或删除生产数据；v7／formal-20261101、账号、业务历史、冻结来源与草稿／离线队列键保留。Opus／真机／读屏、T12和implementationCommit仍维持原状态。"
+    },
+    {
+      "id": "T75",
+      "title": "普通发布目标方法关系图、课堂回看与今天到期提醒",
+      "status": "in_progress",
+      "evidence": "docs/cloudflare-release-2026-11-07.md",
+      "verification": "用户明确授权部署d71b1ec。37项发布保护、9项示例保护、191项SHA通过；原生Cloud仍无CF绑定，沿用已验证Actions凭据与原生产配置。仅普通发布，保留账号和全部正式业务／历史／来源及v7／formal-20261101／草稿键，不启用任何清理、初始化、示例恢复或目录删除。实际激活及公开验收待本轮run，不将准备或dry-run当作上线。"
     }
   ],
   "artifacts": [
