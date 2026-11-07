@@ -313,16 +313,7 @@ pub fn source(db: &dyn Sql, s: &Source) -> Result<Value> {
             Ok(serde_json::to_value(snapshot)?)
         }
         "lesson" => {
-            let current = super::lessons::get_lesson(db, &s.id)?.ok_or_else(ApiError::missing)?;
-            let snapshot = if current.version == s.version {
-                current
-            } else {
-                super::lessons::history(db, &s.id)?
-                    .into_iter()
-                    .find(|r| r.lesson.version == s.version)
-                    .ok_or_else(|| ApiError::invalid("来源课记版本不存在"))?
-                    .lesson
-            };
+            let snapshot = super::lessons::historical_lesson(db, &s.id, s.version)?;
             if snapshot.status != "recorded" {
                 return Err(ApiError::invalid("来源课记未正式记录"));
             }
@@ -720,7 +711,7 @@ pub fn read_view(db: &dyn Sql, r: Read) -> Result<Value> {
             {
                 summaries.insert(k.input.id.clone(), summary(db, &k)?);
             }
-            let requests=super::lessons::list_lessons(db)?.into_iter().filter(|l|l.status=="recorded"&&l.request_generation>0&&(l.organization.processed_request_generation<l.request_generation||l.organization.state!="done")).map(|l|value!({"id":l.id,"business_date":l.observation.business_date,"course":l.course.name,"claimed_by":l.organization.claimed_by,"claimed_name":l.organization.claimed_name,"message":l.request_message})).collect::<Vec<_>>();
+            let requests=super::lessons::list_lessons(db)?.into_iter().filter(|l|l.status=="recorded"&&l.request_generation>0&&(l.organization.processed_request_generation<l.request_generation||l.organization.state!="done")).map(|l|{let current_claim=l.organization.state=="claimed"&&l.organization.processed_request_generation==l.request_generation;value!({"id":l.id,"business_date":l.observation.business_date,"course":l.course.name,"claimed_by":if current_claim{l.organization.claimed_by}else{None},"claimed_name":if current_claim{l.organization.claimed_name}else{None},"message":l.request_message})}).collect::<Vec<_>>();
             let actions = super::lessons::list_actions(db)?
                 .into_iter()
                 .filter(|a| a.status == "pending")

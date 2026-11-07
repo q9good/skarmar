@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-06",
+  "updatedAt": "2026-11-07",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -500,6 +500,27 @@
       "status": "done",
       "evidence": "docs/goal-removal-release-2026-11-05.md",
       "verification": "用户新授权的两项目录移除及目标树发布完成。源码7159e2652f27e6cb772976800b2a03880ab7a5ef，run42137241991 validate/release success；原6c51deec，实际激活965b6832-9b54-4a53-8711-df0ede5c0e3d，deployed_and_verified/reviewed_two_completed，独立公共及formal-20261101检查通过。此前89b1203和fc1ce12实际激活但因旧记录引用删除未完成，普通诊断a299fb7与所有原回执保持事实。最终维护仅从当前目录移除两项，原目标实体/修订及全部既有家庭/跟进/观察内容、关联、源快照与历史保留；旧记录可维护或明确改关联，新记录拒绝已删目标。子目标/方法/课程当前引用仍保护，未清库、初始化、重建或补种。178Rust、83客户端、37发布保护、类型/Web/Wasm Clippy、5组浏览器及含经验/行动的实际DO演练通过，runner重新校验后核对原绑定/变量/runtime/路由并激活。原账号、其余正式业务、Worker/DO/default/域名/来源/v7/正式代际/草稿队列键保留；未真实登录、导出业务行或写生产测试。184项SHA。原截图与演练保持生成时属性；维护完成后不重跑旧事件，后续普通发布。T12、Opus/真机/读屏及implementationCommit不变。"
+    },
+    {
+      "id": "T72",
+      "title": "合并目标方法管理并在家庭计划展示优先级关系图",
+      "status": "done",
+      "evidence": "docs/object-map-and-classroom-review-2026-11-07.md",
+      "verification": "2026-11-07当前源码本机合成验收：目标／方法导航合并，关系图默认，长中短真实层级和多对多方法支持展开、详情与知识开关；计划只读参考，活动仍唯一必填，实际关联仍在总结确认。全部目标与方法可设优先级，今天长期关注动态排序，重点困难／到期／关注间隔仅影响提示。87客户端、类型／Web、13组浏览器通过，320／390截图仅合成。 本轮推送代码与191项SHA证据，未部署、未访问或删除生产数据；v7／formal-20261101、账号、业务历史、冻结来源与草稿／离线队列键保留。Opus／真机／读屏、T12和implementationCommit仍维持原状态。"
+    },
+    {
+      "id": "T73",
+      "title": "取消课堂观察修改列表并自动提醒家人回看与转化",
+      "status": "done",
+      "evidence": "docs/object-map-and-classroom-review-2026-11-07.md",
+      "verification": "2026-11-07当前源码本机合成验收：取消课堂逐次观察历史入口与新观察修订追加，保留旧审计、幂等成功回执与全部引用快照；补充自动提醒全家，已处理后再补充重新提示，旧认领不误报当前请求。整理支持正常新建目标／方法并返回，想法不虚增课内实际覆盖，完成需最新请求与观察。182Rust、完整SQLite／Rust DO与重启契约、课堂及跨成员浏览器通过。 本轮推送代码与191项SHA证据，未部署、未访问或删除生产数据；v7／formal-20261101、账号、业务历史、冻结来源与草稿／离线队列键保留。Opus／真机／读屏、T12和implementationCommit仍维持原状态。"
+    },
+    {
+      "id": "T74",
+      "title": "核验并完善今天到期复盘与前台恢复提醒",
+      "status": "done",
+      "evidence": "docs/object-map-and-classroom-review-2026-11-07.md",
+      "verification": "2026-11-07当前源码本机合成验收：今天展示到期具体项目与入口，业务日当天及逾期可见，未来／关闭／暂停恢复边界有客户端和原生日程测试。前台定期和返回刷新，失败明确显示并重试；浏览器受控日程验证入口与恢复，无后台系统推送承诺。 本轮推送代码与191项SHA证据，未部署、未访问或删除生产数据；v7／formal-20261101、账号、业务历史、冻结来源与草稿／离线队列键保留。Opus／真机／读屏、T12和implementationCommit仍维持原状态。"
     }
   ],
   "artifacts": [
@@ -1571,6 +1592,48 @@
       "title": "两项目标删除与正式代际的独立公开复核",
       "sha256": "7f1364b78bf8bae7c19427768e2f9dda222802cef53b1a1cf571d754569ff6bc",
       "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/validation/goal-method-workflow-2026-11-07/01-merged-map-390.png",
+      "title": "合成：合并后的目标方法关系图",
+      "sha256": "2874556eb1e72b5c3a37512b37e833f7eaa004946c47fc0032f2babe337f2891",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/goal-method-workflow-2026-11-07/02-hierarchy-and-method-320.png",
+      "title": "合成：320px层级、共享方法与知识路径",
+      "sha256": "b192b1c248e1e7c7dfe7ce929156ce895d648714dc33885007a7236735670c5b",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/goal-method-workflow-2026-11-07/03-readonly-plan-map-390.png",
+      "title": "合成：活动优先的计划与只读关系图",
+      "sha256": "15ad9a5c77e16b552104e718ff1362451dd20e12934011790d0d62ce0a6477e5",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/goal-method-workflow-2026-11-07/04-parent-review-and-convert-390.png",
+      "title": "合成：课堂观察回看与目标方法转化",
+      "sha256": "743a2597de2fc0ff7003a9797d3db7fb00eae78fe543eadd74deb5852bfcd344",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/goal-method-workflow-2026-11-07/05-today-due-and-new-classroom-390.png",
+      "title": "合成：今天到期复盘与新课堂观察提醒",
+      "sha256": "e4c75655308ef96789a0703f98305838b81452bc2b8333eb1c06450381a1aa2f",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/goal-method-workflow-2026-11-07/06-current-classroom-without-history-390.png",
+      "title": "合成：当前课记保留引用依据而无修改列表",
+      "sha256": "002e6d7c80ac5bd5d1e2087df4ca7264d14703043af4dd53d20fb2c8cb15cd10",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/goal-method-workflow-2026-11-07/checks.json",
+      "title": "合成：目标方法、课堂回看与到期提醒验收摘要",
+      "sha256": "c08e66cf8e2e2df480d280cbd7da7d601bec0488fabdf1a56e3a160ad88427ff",
+      "synthetic": true
     }
   ]
 }

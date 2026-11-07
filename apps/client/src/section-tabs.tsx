@@ -7,6 +7,8 @@ import {neutral,palettes} from './ui-palette';
 // Muted accents share the existing grey-green canvas. Labels and selected borders
 // carry the distinction as well, so colour is never the only signal.
 export const sectionTones = {
+  goal: {ink:palettes.goal.ink, pale:palettes.goal.soft},
+  method: {ink:palettes.method.ink, pale:palettes.method.soft},
   classroom: {ink:palettes.classroom.ink, pale:palettes.classroom.soft},
   family: {ink:palettes.family.ink, pale:palettes.family.soft},
   tasks: {ink:palettes.tasks.ink, pale:palettes.tasks.soft},

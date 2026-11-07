@@ -11,7 +11,7 @@ export function historyEvidence(data:Snapshot,today:string,source:'family'|'less
  return rows.sort((a,b)=>b.date.localeCompare(a.date)||b.stamp.localeCompare(a.stamp)||a.kind.localeCompare(b.kind)||a.id.localeCompare(b.id));
 }
 // Membership uses the historical snapshot, not today's parent/method mapping.
-export function matchesEvidence(row:Evidence,id:string,kind:'goal'|'method',long=false){return kind==='method'?row.methods.includes(id):long?row.focus.includes(id)||row.below.includes(id):row.direct.includes(id)||row.below.includes(id);}
+export function matchesEvidence(row:Evidence,id:string,kind:'goal'|'method',long=false){return kind==='method'?row.methods.includes(id):row.direct.includes(id)||row.below.includes(id)||(long&&row.focus.includes(id));}
 export function timeDistribution(rows:Evidence[],today:string){
  const start=dateShift(today,-89),window=rows.filter(r=>r.date>=start&&r.date<=today);
  const weeks=Array.from({length:13},(_,i)=>{const end=dateShift(today,-7*(12-i)),from=dateShift(end,-6);return {start:from<start?start:from,end,count:window.filter(r=>r.date>=from&&r.date<=end).length};});
@@ -24,7 +24,8 @@ export function prioritizeMethods(data:Snapshot,overdueGoalIds:string[]){
   const difficult=data.knowledge.some(k=>!k.deleted&&k.input.kind==='difficulty'&&['pending','following'].includes(k.details?.state||'pending')&&(k.input.method_ids.includes(m.id)||k.input.goal_ids.some(id=>m.input.goal_ids.includes(id))));
   const delayed=m.input.goal_ids.some(id=>overdue.has(id));
   const achieved=m.input.goal_ids.length>0&&m.input.goal_ids.every(id=>data.goals.find(g=>g.id===id)?.input.state==='achieved');
-  const rank=m.input.pinned||m.input.needs_attention?0:difficult?1:delayed?2:achieved?4:3;
+  const priority=m.input.priority??(m.input.pinned?2:1),inactive=(m.input.state??'active')!=='active';
+  const rank=inactive?950:achieved?850:(2-priority)*100+(m.input.needs_attention?0:difficult?5:delayed?20:40);
   return {id:m.id,rank,reason:m.input.pinned?'家人手动置顶':m.input.needs_attention?`家人标记需注意：${m.input.attention_reason}`:difficult?'关联未解决困难，先看看是否需要调整':delayed?'关联目标已超出家庭记录的期望间隔':achieved?'仅关联已达成目标，保留供复习':'使用中的方法',title:m.input.title};
  }).sort((a,b)=>a.rank-b.rank||a.title.localeCompare(b.title,'zh-CN')||a.id.localeCompare(b.id));
 }

@@ -18,7 +18,7 @@ with sync_playwright() as p:
  btn('退出其他设备').click();btn('确认退出本账号其他设备').click();expect(page.get_by_text('其他设备已退出，这台设备保持登录。',exact=True)).to_be_visible();assert b.request.get(BASE+'/api/auth/me').status==401;assert a.request.get(BASE+'/api/auth/me').ok
  print('PASS trusted opt-in secure cookie attributes and cancellable scoped other-device revocation',flush=True)
  # Open a real goal draft, then receive an impending-expiry metadata response on reload.
- btn('返回').click();btn('目标').click();btn('新建目标').click();reveal_control(page,'textbox','本领名称').fill('续期保留填写');btn('关闭填写目标').click()
+ btn('返回').click();reveal_control(page,'button','目标').click();btn('新建目标').click();reveal_control(page,'textbox','本领名称').fill('续期保留填写');btn('关闭填写目标').click()
  def expires_in(seconds):
   def handler(route):
    response=route.fetch();body=response.json();body['session']={'expires_at':__import__('time').time()+seconds,'trusted_device':True};route.fulfill(response=response,json=body)
@@ -26,7 +26,7 @@ with sync_playwright() as p:
  # Keep server metadata consistent for the whole phase, including concurrent refreshes.
  outside=expires_in(14*86400+60);page.route('**/api/auth/me',outside);page.reload();expect(btn('记录课堂')).to_be_enabled();expect(btn('重新验证并继续填写')).to_have_count(0)
  page.unroute('**/api/auth/me',outside)
- inside=expires_in(14*86400-60);page.route('**/api/auth/me',inside);page.reload();expect(btn('重新验证并继续填写')).to_be_visible();btn('目标').click();btn('继续填写：续期保留填写').click();expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期保留填写')
+ inside=expires_in(14*86400-60);page.route('**/api/auth/me',inside);page.reload();expect(btn('重新验证并继续填写')).to_be_visible();reveal_control(page,'button','目标').click();btn('继续填写：续期保留填写').click();expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期保留填写')
  # Reauthenticate from the active form itself; it must remain mounted under the renewal overlay.
  field=page.get_by_role('textbox',name='本领名称',exact=True);field.fill('续期中的原表单');btn('登录即将到期，先验证登录再继续填写').click();reveal_control(page,'textbox','续期密码').fill('synthetic-prd-ui-password');page.unroute('**/api/auth/me',inside);btn('验证并回到填写').click();expect(page.get_by_role('dialog',name='续期登录',exact=True)).to_have_count(0);expect(page.get_by_role('textbox',name='本领名称',exact=True)).to_have_value('续期中的原表单')
  assert a.request.get(BASE+'/api/auth/me').ok;assert not errors,errors

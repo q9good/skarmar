@@ -5,7 +5,7 @@ export type CatalogSnapshot = { id: string; version: number; kind: 'course' | 't
 export type GoalInput = { long_priority?:number|null;resume_on?:string|null;title: string; level: Level; meaning: string; parent_id: string | null; domain: CatalogSnapshot | null; criteria: string; support: string;
   template: 'count' | 'duration' | 'steps' | 'text' | null; state: 'not_started' | 'active' | 'maintaining' | 'paused' | 'achieved' | null;
   archived: boolean; frequency: 'weekly' | 'fortnightly' | 'monthly' | 'none' | null; attention_start: string | null; due: string | null };
-export type MethodInput = { basis?:{id:string;version:number}[]; resume_on?:string|null;title: string; description: string; steps: string; observe: string; scope: string; goal_ids: string[]; guidance: string;
+export type MethodInput = { priority?:number|null; basis?:{id:string;version:number}[]; resume_on?:string|null;title: string; description: string; steps: string; observe: string; scope: string; goal_ids: string[]; guidance: string;
   state: 'active' | 'paused' | 'retired' | null; pinned: boolean; needs_attention: boolean; attention_reason: string };
 export type CatalogInput = { kind: 'course' | 'teacher' | 'domain'; name: string; active: boolean };
 export type RecordOf<T> = { id: string; version: number; input: T };
@@ -65,7 +65,7 @@ export function decodeDrafts(raw: string | null): Record<string, Draft> {
     }
     if (m.kind === 'method') {
       const legacyKeys=Object.keys(newMethod()).filter(k=>!['observe','scope'].includes(k));
-      return legacyKeys.every(k => k in v) && typeof v.title === 'string' && typeof v.description === 'string' && typeof v.steps === 'string' && (v.observe===undefined||typeof v.observe==='string') && (v.scope===undefined||typeof v.scope==='string') && typeof v.guidance === 'string' && Array.isArray(v.goal_ids) && v.goal_ids.every(id => typeof id === 'string') && typeof v.pinned === 'boolean' && typeof v.needs_attention === 'boolean' && typeof v.attention_reason === 'string';
+      return legacyKeys.every(k => k in v) && (v.priority===undefined||v.priority===null||Number.isInteger(v.priority)&&Number(v.priority)>=0&&Number(v.priority)<=2) && typeof v.title === 'string' && typeof v.description === 'string' && typeof v.steps === 'string' && (v.observe===undefined||typeof v.observe==='string') && (v.scope===undefined||typeof v.scope==='string') && typeof v.guidance === 'string' && Array.isArray(v.goal_ids) && v.goal_ids.every(id => typeof id === 'string') && typeof v.pinned === 'boolean' && typeof v.needs_attention === 'boolean' && typeof v.attention_reason === 'string';
     }
     return m.kind === 'catalog' && ['course','teacher','domain'].includes(String(v.kind)) && typeof v.name === 'string' && typeof v.active === 'boolean';
   };

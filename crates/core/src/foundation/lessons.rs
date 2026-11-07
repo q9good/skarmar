@@ -236,6 +236,34 @@ pub fn withdrawal_capability(db: &dyn Sql, actor: &User, id: &str) -> Result<Wit
 fn inbound(db: &dyn Sql, id: &str) -> Result<bool> {
     Ok(!inbound_references(db, id)?.is_empty())
 }
+// Observation edits update the current record without appending a user history.
+// Successful operation receipts still provide immutable, versioned source material
+// for offline retries and explicit references, independently of the history UI.
+pub fn historical_lesson(db: &dyn Sql, id: &str, version: u64) -> Result<Lesson> {
+    valid_id(id)?;
+    if let Some(current) = get_lesson(db, id)?
+        && current.version == version
+    {
+        return Ok(current);
+    }
+    if let Some(found) = history(db, id)?
+        .into_iter()
+        .find(|r| r.lesson.version == version)
+    {
+        return Ok(found.lesson);
+    }
+    receipt_lesson(db, id, "version", version)?
+        .ok_or_else(|| ApiError::invalid("所引用的课堂内容不存在"))
+}
+fn receipt_lesson(db: &dyn Sql, id: &str, field: &str, version: u64) -> Result<Option<Lesson>> {
+    if !["version", "observation_version"].contains(&field) || version > i64::MAX as u64 {
+        return Err(ApiError::invalid("课堂引用不正确"));
+    }
+    let rows=db.query(&format!("SELECT response FROM prd_operations WHERE json_extract(response,'$.id')=?1 AND json_extract(response,'$.{field}')=?2 AND json_type(response,'$.observation')='object' LIMIT 1"),params![id,version as i64])?;
+    rows.first()
+        .map(|r| serde_json::from_str(&r[0]).map_err(ApiError::from))
+        .transpose()
+}
 pub(super) fn source_observation(
     db: &dyn Sql,
     lesson: &Lesson,
@@ -244,11 +272,40 @@ pub(super) fn source_observation(
     if version == lesson.observation_version {
         return Ok(lesson.observation.clone());
     }
-    history(db, &lesson.id)?
+    if let Some(r) = history(db, &lesson.id)?
         .into_iter()
-        .find(|r| r.lesson.observation_version == version && r.event == "observation")
-        .map(|r| r.lesson.observation)
-        .ok_or_else(|| ApiError::invalid("所引用的课堂观察版本不存在"))
+        .find(|r| r.lesson.observation_version == version)
+    {
+        return Ok(r.lesson.observation);
+    }
+    receipt_lesson(db, &lesson.id, "observation_version", version)?
+        .map(|l| l.observation)
+        .ok_or_else(|| ApiError::invalid("所引用的课堂观察不存在"))
+}
+fn has_observation(v: &ObservationInput) -> bool {
+    [
+        &v.notes,
+        &v.teacher_notes,
+        &v.difficulty_notes,
+        &v.helpful_notes,
+        &v.progress_notes,
+        &v.interest_notes,
+        &v.cause_guess,
+    ]
+    .iter()
+    .any(|s| !s.trim().is_empty())
+}
+fn material_observation_changed(a: &ObservationInput, b: &ObservationInput) -> bool {
+    a.business_date != b.business_date
+        || a.course_id != b.course_id
+        || a.teacher_id != b.teacher_id
+        || a.notes != b.notes
+        || a.teacher_notes != b.teacher_notes
+        || a.difficulty_notes != b.difficulty_notes
+        || a.helpful_notes != b.helpful_notes
+        || a.progress_notes != b.progress_notes
+        || a.interest_notes != b.interest_notes
+        || a.cause_guess != b.cause_guess
 }
 pub fn write(db: &dyn Sql, actor: &User, request: LessonWrite) -> Result<Lesson> {
     write_at(db, actor, request, Utc::now())
@@ -346,11 +403,20 @@ pub(crate) fn write_at(
             l.observation_version += 1;
             l.course = course;
             l.teacher = teacher;
-            if input.request_review {
+            let review_needed = old.as_ref().map_or(has_observation(&input), |before| {
+                (has_observation(&input) || has_observation(&before.observation))
+                    && material_observation_changed(&input, &before.observation)
+            });
+            if input.request_review || review_needed {
                 l.request_generation += 1;
                 l.requested_by = Some(actor.id.clone());
                 l.request_name = Some(actor.display_name.clone());
-                l.request_message = input.review_message.clone();
+                l.request_message = if input.review_message.trim().is_empty() && review_needed {
+                    "课堂观察有更新，请回看并按需整理为目标、方法或经验；不必每条都转成训练。"
+                        .into()
+                } else {
+                    input.review_message.clone()
+                };
             }
             l.observation = input;
             (l, "observation")
@@ -422,6 +488,13 @@ pub(crate) fn write_at(
             if input.processing != Processing::Keep {
                 if input.request_generation != l.request_generation {
                     return Err(ApiError::conflict("查看请求已有变化，请刷新后核对"));
+                }
+                if input.processing == Processing::Complete
+                    && input.seen_observation_version != l.observation_version
+                {
+                    return Err(ApiError::conflict(
+                        "课堂观察有更新，请核对最新观察后再标为已处理",
+                    ));
                 }
                 let other = l.organization.processed_request_generation == l.request_generation
                     && l.organization.state == "claimed"
@@ -728,14 +801,16 @@ pub(crate) fn write_at(
     )?;
     if changed {
         db.execute("INSERT INTO prd_lessons(id,version,data) VALUES(?1,?2,?3) ON CONFLICT(id) DO UPDATE SET version=excluded.version,data=excluded.data",params![lesson.id,lesson.version as i64,json(&lesson)?])?;
-        let revision = LessonRevision {
-            lesson: lesson.clone(),
-            actor_id: actor.id.clone(),
-            actor_name: actor.display_name.clone(),
-            event: event.into(),
-            recorded_at: stamp,
-        };
-        db.execute("INSERT INTO prd_lesson_revisions(lesson_id,version,operation_id,data) VALUES(?1,?2,?3,?4)",params![lesson.id,lesson.version as i64,request.operation_id,json(&revision)?])?;
+        if event != "observation" || old.is_none() {
+            let revision = LessonRevision {
+                lesson: lesson.clone(),
+                actor_id: actor.id.clone(),
+                actor_name: actor.display_name.clone(),
+                event: event.into(),
+                recorded_at: stamp,
+            };
+            db.execute("INSERT INTO prd_lesson_revisions(lesson_id,version,operation_id,data) VALUES(?1,?2,?3,?4)",params![lesson.id,lesson.version as i64,request.operation_id,json(&revision)?])?;
+        }
     }
     if !db
         .query(

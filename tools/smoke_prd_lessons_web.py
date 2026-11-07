@@ -59,10 +59,13 @@ with sync_playwright() as p:
     nav(b,'记一条经验');reveal_control(b,'textbox','经验内容 2').fill('测试：轮流前先示范');reveal_control(b,'combobox','经验阶段 2').select_option('try')
     nav(b,'写下下一步');reveal_control(b,'textbox','下一步 1').fill('测试：下次请老师示范')
     nav(b,'调整下一步关联 1');b.go_back();expect(b.get_by_role('dialog')).to_have_count(1)
-    reveal_control(b,'combobox','这条记录如何处理').select_option('complete');submit(b,'保存整理')
+    reveal_control(b,'combobox','这条记录如何处理').select_option('keep');submit(b,'保存整理')
     s=state();assert len(s['knowledge'])==2 and len(s['actions'])==1
     assert all(k['source_observation_version']==2 and k['source_observation']['notes']=='测试：玩轮流游戏' for k in s['knowledge'])
     assert s['lessons'][0]['observation']['notes']=='测试：后来补充观察'
+    lesson_detail(b);nav(b,'整理这条记录');reveal_control(b,'combobox','这条记录如何处理').select_option('complete');submit(b,'保存整理')
+    assert state()['lessons'][0]['organization']['state']=='done'
+    assert all(k['source_observation_version']==2 for k in state()['knowledge'])
     print('PASS independent observation/organization saves, explicit linked experience/difficulty/action and immutable source observation',flush=True)
     nav(b,'目标');nav(b,'查看目标：测试自己穿鞋');expect(b.get_by_text('关联困难：测试：等待时需要支持',exact=True)).to_be_visible();expect(b.get_by_text('关联经验：测试：轮流前先示范',exact=True)).to_be_visible()
     nav(b,'关闭查看详情与修改记录');nav(b,'方法');nav(b,'查看方法：测试等待示范');expect(b.get_by_text('关联困难：测试：等待时需要支持',exact=True)).to_be_visible()
@@ -103,7 +106,7 @@ with sync_playwright() as p:
     # Creator can withdraw the unreferenced second record, while original source is protected.
     nav(a,'课堂记录');a.get_by_test_id('prd-lesson-'+second_id).get_by_role('button',name=re.compile(r'^查看课记：')).click();nav(a,'撤销这条课记');submit(a,'确认操作')
     assert next(l for l in state()['lessons'] if l['id']==second_id)['status']=='withdrawn'
-    nav(a,'课堂记录');lesson_detail(a);nav(a,'查看课记修改记录');expect(a.get_by_text('观察第 1 版 · 整理第 1 版',exact=True)).to_be_visible();nav(a,'删除课记（管理员）');nav(a,'确认操作');expect(a.get_by_role('alert')).to_be_visible();assert next(l for l in state()['lessons'] if l['id']==lesson_id)['status']=='recorded'
+    nav(a,'课堂记录');lesson_detail(a);expect(button(a,'查看课记修改记录')).to_have_count(0);nav(a,'删除课记（管理员）');nav(a,'确认操作');expect(a.get_by_role('alert')).to_be_visible();assert next(l for l in state()['lessons'] if l['id']==lesson_id)['status']=='recorded'
     dismiss(a,'核对课记操作')
     print('PASS month totals, duplicate lessons, marked errors still counted, creator withdrawal, member/admin permissions and source protection',flush=True)
     # Capability preflight is advisory: a concurrent plan reference after the read still blocks the transaction.

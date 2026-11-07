@@ -1,4 +1,5 @@
 """R15 accessibility, reflow and conditional-refresh checks on a disposable localhost PRD database."""
+from prd_ui_helpers import reveal_control
 import json,os,re
 from urllib.parse import urlparse
 from playwright.sync_api import expect,sync_playwright
@@ -52,7 +53,7 @@ with sync_playwright() as p:
   no_horizontal_overflow()
  page.set_viewport_size({'width':360,'height':640})
 
- button('目标').click()
+ reveal_control(page,'button','目标').click()
  button('新建目标').click()
  dialog=page.get_by_role('dialog',name='填写目标',exact=True)
  title=field('本领名称',dialog)

@@ -314,15 +314,7 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
         if current.status != "recorded" {
             return Err(ApiError::conflict("来源课记已撤销或删除"));
         }
-        let snapshot = if current.version == source.version {
-            current
-        } else {
-            super::lessons::history(db, &source.id)?
-                .into_iter()
-                .find(|r| r.lesson.version == source.version)
-                .ok_or_else(|| ApiError::invalid("来源课记版本不存在"))?
-                .lesson
-        };
+        let snapshot = super::lessons::historical_lesson(db, &source.id, source.version)?;
         session.lesson_sources.push(snapshot);
     }
     let complete = matches!(request.action, Action::Complete);

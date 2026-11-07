@@ -3,3 +3,5 @@ import './test-prd-client.mjs';
 import './test-ui-redesign.mjs';
 import './test-activity-plan.mjs';
 import './test-actual-goal-relations.mjs';
+
+import './test-object-priority.mjs';

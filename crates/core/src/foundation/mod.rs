@@ -141,6 +141,9 @@ pub fn initialize(db: &dyn Sql) -> Result<()> {
     if version < 7 {
         return initialize(db);
     }
+    // Receipt lookups replace the observation revision feed. Index only lesson
+    // receipts, keeping historical-source reads bounded as the outbox grows.
+    db.execute_batch("CREATE INDEX IF NOT EXISTS prd_receipt_lesson_version ON prd_operations(json_extract(response,'$.id'),json_extract(response,'$.version')) WHERE json_type(response,'$.observation')='object'; CREATE INDEX IF NOT EXISTS prd_receipt_observation_version ON prd_operations(json_extract(response,'$.id'),json_extract(response,'$.observation_version')) WHERE json_type(response,'$.observation')='object';")?;
 
     Ok(())
 }
@@ -340,6 +343,9 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
             )
         }
         Mutation::Method(mut input) => {
+            if input.priority.is_some_and(|v| v > 2) {
+                return Err(ApiError::invalid("方法关注优先级须为高、普通或低"));
+            }
             if let Some(date) = &input.resume_on {
                 valid_date(date)?;
             }

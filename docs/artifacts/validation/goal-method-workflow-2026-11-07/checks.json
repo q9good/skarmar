@@ -1,0 +1,31 @@
+{
+  "synthetic": true,
+  "production_accessed": false,
+  "deployed": false,
+  "viewports": [
+    320,
+    390
+  ],
+  "screenshots": [
+    "01-merged-map-390.png",
+    "02-hierarchy-and-method-320.png",
+    "03-readonly-plan-map-390.png",
+    "04-parent-review-and-convert-390.png",
+    "05-today-due-and-new-classroom-390.png",
+    "06-current-classroom-without-history-390.png"
+  ],
+  "checks": [
+    "dynamic long focus",
+    "merged default tree and management",
+    "many-to-many methods and scoped knowledge",
+    "activity-only plan unchanged by tree browsing",
+    "observation auto-review across family members",
+    "normal goal/method creation returns to organization",
+    "explicit idea conversion without false course coverage",
+    "subsequent observation reopens review and preserves source snapshot",
+    "no classroom history control or appended observation history",
+    "due date and focus refresh with controlled board fixture",
+    "reminder read failure and recovery",
+    "no browser errors or horizontal overflow"
+  ]
+}

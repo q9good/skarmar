@@ -51,9 +51,9 @@ with sync_playwright() as p:
  assert activity.bounding_box()['y']<page.get_by_test_id('plan-reference-goals').bounding_box()['y']
  shot('02-plan-first');activity.fill('一起玩轮流滚球，尝试等待和主动求助。')
  # All applicable methods are references now; none is preselected as planned or actual.
- refs=page.get_by_test_id('plan-reference-knowledge');expect(refs).to_contain_text('先跟随兴趣，再加入互动（合成）')
- click('查看更多经验参考');expect(refs.get_by_text('示范后留出回应时间（合成）',exact=True)).to_have_count(1)
- click('查看参考知识：示范后留出回应时间（合成）');expect(page.get_by_role('dialog',name='参考知识',exact=True)).to_be_visible();click('关闭参考知识')
+ graph=page.get_by_test_id('plan-goal-method-map');graph.get_by_role('checkbox',name='显示关联经验和困难',exact=True).click();click('展开全部关系');refs=graph.get_by_test_id('map-goal-'+goal['id']);expect(refs).to_contain_text('先跟随兴趣，再加入互动（合成）')
+ expect(refs.get_by_text(re.compile('示范后留出回应时间（合成）')).first).to_be_visible()
+ click('查看关系图知识：示范后留出回应时间（合成） · '+goal['id']);expect(page.get_by_role('dialog',name='关系图关联知识',exact=True)).to_be_visible();click('关闭关系图关联知识')
  shot('04-plan-knowledge',refs)
  expect(plan).to_be_visible();expect(activity).to_have_value('一起玩轮流滚球，尝试等待和主动求助。')
  page.reload();expect(button('记录家庭')).to_be_enabled();page.get_by_role('button',name=re.compile('^继续干预填写：')).click()

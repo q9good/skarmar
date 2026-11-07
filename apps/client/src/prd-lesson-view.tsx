@@ -65,7 +65,7 @@ function CatalogChoice({ kind, value, relatedId, change, data, accepted, lesson,
   </View>;
 }
 const themes = [
-  ['teacher_notes','老师交代的练习或建议','老师明确说回家要练什么？建议怎样帮助孩子？','例如：回家玩轮流游戏，先示范再等待回应'],
+  ['teacher_notes','老师交代的练习或建议','想支持什么目标？遇到什么困难？老师怎样分析原因，建议怎样做？请把猜测与事实分开。','例如：目标是听完指令再开始；玩收玩具时常漏掉第二步。老师猜测是还没注意到提示，建议先叫名字、等他表示准备好，再给一个短指令；熟练后逐步增加步骤。'],
   ['difficulty_notes','我看到需要支持或提高的','当时想做什么？哪一步遇到了困难？怎样帮助后有什么变化？','例如：换材料时离开，大人陪他休息后再试'],
   ['helpful_notes','我看到的好方法','老师或孩子用了什么做法？在什么情况下有帮助？','例如：先让孩子选材料，再示范一步，他愿意接着试'],
   ['progress_notes','做得更好了／在别处也会了','和以前比有什么变化？换材料或换人时也会吗？','例如：换一本书，也会主动指给人看'],
@@ -87,20 +87,22 @@ function ObservationFields({ value, change, disabled }: { value: Observation; ch
       <Check title="这门课程刚开始上（家人明确标记，可选）" checked={value.course_started===true} disabled={disabled} press={()=>change({course_started:!value.course_started})}/>
       <Text>第一次录入不等于第一次上课。</Text>
     </Disclosure>
+    <Text>补充或更新观察后，会自动提醒家人回看，再决定是否整理为目标、方法或经验。</Text>
     <Check title="请爸爸妈妈看看" checked={value.request_review} disabled={disabled} press={()=>change({request_review:!value.request_review})}/>
     {value.request_review&&<Field label="给家人的留言（可选）" value={value.review_message} change={review_message=>change({review_message})} disabled={disabled} placeholder="不写留言也可以发出查看请求"/>}
   </>;
 }
 function Bindings({ data, goalIds, methodIds, change, disabled }: { data:Snapshot; goalIds:string[]; methodIds:string[]; change:(g:string[],m:string[])=>void; disabled:boolean }) {return <><Text>关联目标</Text><RelationPicker label="关联目标" options={data.goals.map(g=>({id:g.id,label:g.input.title}))} selected={goalIds} disabled={disabled} toggle={id=>change(goalIds.includes(id)?goalIds.filter(v=>v!==id):[...goalIds,id],methodIds)}/><Text>关联方法</Text><RelationPicker label="关联方法" options={data.methods.map(m=>({id:m.id,label:m.input.title}))} selected={methodIds} disabled={disabled} toggle={id=>change(goalIds,methodIds.includes(id)?methodIds.filter(v=>v!==id):[...methodIds,id])}/></>;}
 
-function OrganizationFields({ value, change, data, lesson, actorId, source, disabled,openKnowledge }: { value:OrganizationInput; change:(v:Partial<OrganizationInput>)=>void; data:Snapshot; lesson:Lesson; actorId:string; source?:Observation; disabled:boolean;openKnowledge?:(id:string)=>void }) {
+function OrganizationFields({ value, change, data, lesson, actorId, source, disabled,openKnowledge,createGoal,createMethod }: { createGoal?:()=>void;createMethod?:(ids:string[])=>void;value:OrganizationInput; change:(v:Partial<OrganizationInput>)=>void; data:Snapshot; lesson:Lesson; actorId:string; source?:Observation; disabled:boolean;openKnowledge?:(id:string)=>void }) {
   const [knowledgeEditor,setKnowledgeEditor]=useState<number|null>(null), [actionEditor,setActionEditor]=useState<number|null>(null);
   const toggle = (ids:string[],id:string)=>ids.includes(id)?ids.filter(v=>v!==id):[...ids,id];
   const selected=value.targets.map(t=>t.goal_id);
   const modifyKnowledge=(index:number,patch:Partial<NewKnowledge>)=>change({ new_knowledge:value.new_knowledge.map((k,i)=>i===index?{...k,...patch}:k) });
   return <>
-    <ContentGroup title="把课堂线索用于下一次家庭干预" tone="classroom"><Text>先核对原观察，再明确关联目标和实际方法；有价值的线索可以记为经验、困难或下一步。仅选目标不会把老师的建议当成已经训练，也不会自动判断方法有效。</Text></ContentGroup><Text style={{fontSize:18,fontWeight:'600'}}>整理时依据的课堂观察</Text><ReadObservation value={source ?? lesson.observation} />
-    {value.seen_observation_version!==lesson.observation_version && <><Text>原观察后来有补充。已有经验保留原内容，可核对后使用最新观察。</Text><Action title="改用最新观察继续整理" disabled={disabled} press={()=>change({seen_observation_version:lesson.observation_version})} /></>}
+    <ContentGroup title="把课堂线索用于下一次家庭干预" tone="classroom"><Text>先核对观察，再按需记为目标、方法、经验或下一步。老师的建议不直接计为实际训练。</Text></ContentGroup><Text style={{fontSize:18,fontWeight:'600'}}>整理时依据的课堂观察</Text><ReadObservation value={source ?? lesson.observation} />
+    {(value.seen_observation_version!==lesson.observation_version||value.request_generation!==lesson.request_generation) && <><Text>原观察后来有补充。已有经验保留原内容，可核对后使用最新观察。</Text><Action title="改用最新观察继续整理" disabled={disabled} press={()=>change({seen_observation_version:lesson.observation_version,request_generation:lesson.request_generation})} /></>}
+    <View style={{gap:8}}><Text>没有合适条目时，可以在这里新建。</Text>{createGoal&&<Action title="根据观察新建目标" disabled={disabled} press={createGoal}/>} {createMethod&&<Action title="根据观察新建方法" disabled={disabled} press={()=>createMethod([...selected,...value.focus_goal_ids])}/>}<Text>保存后返回核对；回家建议不计本课覆盖。</Text></View>
     <Text style={{fontSize:18,fontWeight:'600'}}>这堂课明确涉及的目标</Text>
     <RelationPicker label="课堂目标" options={data.goals.filter(g=>g.input.level!=='long').map(g=>({id:g.id,label:g.input.title}))} selected={selected} disabled={disabled} toggle={id=>change({targets:selected.includes(id)?value.targets.filter(t=>t.goal_id!==id):[...value.targets,{goal_id:id,note:''}]})}/>
     {value.targets.map(t=><Field key={t.goal_id} label={`${data.goals.find(g=>g.id===t.goal_id)?.input.title}的一句观察（可选）`} value={t.note} change={note=>change({targets:value.targets.map(v=>v.goal_id===t.goal_id?{...v,note}:v)})} disabled={disabled}/>)}
@@ -127,7 +129,7 @@ function OrganizationFields({ value, change, data, lesson, actorId, source, disa
   </>;
 }
 
-export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, refresh, savedLesson, catalogSaved, openGoal, openMethod, scrollTop, interventionEntry, openAction,requested,onRequested,openKnowledge,inboxManaged=false }: { data:Snapshot; actorId:string; actorName:string; admin:boolean; mode:'today'|'records'|'drafts'; refresh:()=>Promise<void>; savedLesson:(l:Lesson)=>void; catalogSaved:(s:Saved)=>void; openGoal:(id:string)=>void; openMethod:(id:string)=>void; scrollTop:()=>void; interventionEntry?:React.ReactNode;openAction?:(id:string)=>void;requested?:{id:string;nonce:string;view?:'detail'|'organize'}|null;onRequested?:()=>void;inboxManaged?:boolean;openKnowledge?:(id:string)=>void }) {
+export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, refresh, savedLesson, catalogSaved, openGoal, openMethod, scrollTop, interventionEntry, openAction,requested,onRequested,openKnowledge,inboxManaged=false,createGoal,createMethod }: { createGoal?:()=>void;createMethod?:(ids:string[])=>void;data:Snapshot; actorId:string; actorName:string; admin:boolean; mode:'today'|'records'|'drafts'; refresh:()=>Promise<void>; savedLesson:(l:Lesson)=>void; catalogSaved:(s:Saved)=>void; openGoal:(id:string)=>void; openMethod:(id:string)=>void; scrollTop:()=>void; interventionEntry?:React.ReactNode;openAction?:(id:string)=>void;requested?:{id:string;nonce:string;view?:'detail'|'organize'}|null;onRequested?:()=>void;inboxManaged?:boolean;openKnowledge?:(id:string)=>void }) {
   const draftStore=useRef<DraftStore<LessonDraft>|null>(null);
  const outbox=useLessonOutbox();
   const data={...remoteData,catalog:[...remoteData.catalog,...outbox.catalog.filter(c=>!remoteData.catalog.some(r=>r.id===c.id))]};
@@ -136,10 +138,9 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
   const authScope = useAuth().identity.space;
   const storageKey = dataKey(`skarmar:${authScope}:${scope}:lesson-drafts:v1`);
   const [drafts,setDrafts]=useState<Record<string,LessonDraft>>({}), [editor,setEditor]=useState<string|null>(null), [ready,setReady]=useState(false), [error,setError]=useState(''), [notice,setNotice]=useState(''), [busy,setBusy]=useState(false), [receipt,setReceipt]=useState<string|null>(null), [detail,setDetail]=useState<string|null>(null);
-  const [historyPage,setHistoryPage]=useState(0),[historyMore,setHistoryMore]=useState(false),[historyLoading,setHistoryLoading]=useState(false);const historySequence=useRef(0);
   const [customRange,setCustomRange]=useState(false),[rangeFrom,setRangeFrom]=useState(''),[rangeTo,setRangeTo]=useState('');
   const [otherTasks,setOtherTasks]=useState(false);
-  const [discard,setDiscard]=useState(false), [historyOpen,setHistoryOpen]=useState(false), [history,setHistory]=useState<import('./prd-lessons').LessonRevision[]>([]), [historyError,setHistoryError]=useState('');
+  const [discard,setDiscard]=useState(false);
   const [totalsBy,setTotalsBy]=useState<'teacher'|'course'>('teacher');
   const [section,setSection]=useState<'classroom'|'totals'>('classroom'), [month,setMonth]=useState(()=>localDate().slice(0,7)), [countMonth,setCountMonth]=useState(()=>shiftMonth(localDate().slice(0,7),-1)), [selectedGroup,setSelectedGroup]=useState<string|null>(null), [search,setSearch]=useState(''), [teachersOnly,setTeachersOnly]=useState(false);
   const [withdrawal,setWithdrawal]=useState<WithdrawalCapability|null>(null),[withdrawalLoading,setWithdrawalLoading]=useState(false),[withdrawalError,setWithdrawalError]=useState('');
@@ -215,12 +216,6 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
     }finally{setBusy(false);inFlight.current=false;}
   };
   const selected=detail?data.lessons.find(l=>l.id===detail):undefined;
-  useEffect(()=>{++historySequence.current;setHistoryLoading(false);setHistoryMore(false);setHistoryOpen(false);setHistory([]);setHistoryError('');},[detail]);
-  useEffect(()=>{
-    if(!historyOpen||!selected)return;
-    void loadLessonHistory(selected.id);
-    return()=>{++historySequence.current;};
-  },[historyOpen,selected?.id,selected?.version]);
   useEffect(()=>{
     let current=true;setWithdrawal(null);setWithdrawalError('');
     if(!selected){setWithdrawalLoading(false);return()=>{current=false;};}
@@ -228,7 +223,6 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
     void request<WithdrawalCapability>(`/prd/lessons/${selected.id}/withdrawal-capability`).then(value=>{if(!current)return;if(value.lesson_version!==selected.version){setWithdrawalError('课记已有新版本，请刷新后核对可撤销条件。');return;}setWithdrawal(value);}).catch(e=>{if(current)setWithdrawalError(note(e));}).finally(()=>{if(current)setWithdrawalLoading(false);});
     return()=>{current=false;};
   },[selected?.id,selected?.version]);
-  async function loadLessonHistory(id:string,page=0){const seq=++historySequence.current;setHistoryLoading(true);setHistoryError('');try{const v=await request<{items:import('./prd-lessons').LessonRevision[];has_more:boolean}>(`/prd/process?view=lesson_history&id=${id}&page=${page}`);if(seq!==historySequence.current)return;setHistory(old=>page?[...old,...v.items].filter((r,i,all)=>all.findIndex(v=>v.lesson.version===r.lesson.version)===i):v.items);setHistoryPage(page);setHistoryMore(v.has_more);}catch(e){if(seq===historySequence.current)setHistoryError(note(e));}finally{if(seq===historySequence.current)setHistoryLoading(false);}}
   const confirmed=receipt?data.lessons.find(l=>l.id===receipt):undefined;
   const today=localDate(), active=data.lessons.filter(l=>l.status==='recorded');
   const monthBounds=monthRange(section==='totals'?countMonth:month);
@@ -287,7 +281,7 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
         {active.filter(l=>l.id!==draft.request.id&&l.observation.business_date===observe.business_date&&l.course.id===observe.course_id&&l.teacher.id===observe.teacher_id).map(l=><Text key={l.id}>同日已有记录：{l.creator_name}，{new Date(l.created_at).toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai'})}；确实是另一节仍可提交。</Text>)}
         {draft.phase==='basic'?<Action title="补充观察" disabled={busy||Boolean(draft.pending)} press={()=>void persist({...refs.current,[editor!]:{...draft,phase:'observation'}})}/>:<ObservationFields value={observe} change={patch} disabled={busy||Boolean(draft.pending)}/>}
       </>}
-      {draft.request.action.kind==='organization'&&remote&&<OrganizationFields openKnowledge={openKnowledge} value={draft.request.action.value} change={patch} data={options} lesson={remote} source={draft.source} actorId={actorId} disabled={busy||Boolean(draft.pending)}/>}
+      {draft.request.action.kind==='organization'&&remote&&<OrganizationFields createGoal={createGoal} createMethod={createMethod} openKnowledge={openKnowledge} value={draft.request.action.value} change={patch} data={options} lesson={remote} source={draft.source} actorId={actorId} disabled={busy||Boolean(draft.pending)}/>}
       {draft.phase==='administration'&&<Text>{draft.request.action.kind==='withdraw'?'确认撤销这条课记？撤销后不计节数。':draft.request.action.kind==='delete'?'确认删除课记？需要管理员权限，已有派生引用时会阻止操作。':draft.request.action.kind==='acknowledge'?'告诉记录者“看到了，谢谢”，不会将待办标为已处理。':'标记记错会保留节数，待管理员核对。'}</Text>}
 
       {!draft.pending&&!busy&&<Action title="放弃这份本机草稿" press={()=>setDiscard(true)}/>}
@@ -298,13 +292,11 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
       <Text style={{fontSize:18,fontWeight:'600'}}>{selected.observation.business_date} · {selected.course.name} · {selected.teacher.name}</Text><Text>记录者：{selected.creator_name}{selected.marked_error?' · 待核对':''}</Text><ReadObservation value={selected.observation}/><LessonPractice lesson={selected} data={data} openKnowledge={openKnowledge}/>
       {selected.organization.seen_observation_version>0&&selected.organization.seen_observation_version!==selected.observation_version&&<Text>原观察有后续补充，请核对先前整理内容。</Text>}
       <Action title="补充／修改课堂观察" press={()=>open(selected,'observation')}/><Action title="整理这条记录" press={()=>open(selected,'organization')}/>
-      {selected.organization.claimed_name&&<Text>整理人：{selected.organization.claimed_name} · {selected.organization.state==='done'?'已处理':'整理中'}</Text>}{selected.organization.outcome&&<Text>处理说明：{selected.organization.outcome}</Text>}
+      {selected.organization.claimed_name&&<Text>整理人：{selected.organization.claimed_name} · {selected.organization.state==='done'?(needsReview(selected)?'上次已处理；新补充待回看':'已处理'):'整理中'}</Text>}{selected.organization.outcome&&<Text>处理说明：{selected.organization.outcome}</Text>}
       {selected.organization.targets.map(t=><View key={t.goal.id} style={{gap:6}}><Text>关联目标：{t.goal.input.title} · {t.target.note}</Text><Action title={`查看关联目标：${t.goal.input.title}`} press={()=>{setDetail(null);openGoal(t.goal.id);}}/></View>)}
       {selected.organization.methods.map(m=><Action key={m.id} title={`查看实际方法：${m.input.title}`} press={()=>{setDetail(null);openMethod(m.id);}}/>)}
-      {data.knowledge.filter(k=>!k.deleted&&k.source_lesson_id===selected.id).map(k=><Text key={k.input.id}>{k.input.kind==='difficulty'?'已记困难':'已记经验'}：{k.input.content} · 依据观察第 {k.source_observation_version} 版</Text>)}
+      {data.knowledge.filter(k=>!k.deleted&&k.source_lesson_id===selected.id).map(k=><Text key={k.input.id}>{k.input.kind==='difficulty'?'已记困难':'已记经验'}：{k.input.content} · 保留整理时的课堂依据</Text>)}
       {data.actions.filter(a=>a.source_lesson_id===selected.id).map(a=><Text key={a.input.id}>下一步：{a.input.content}（{({pending:'待做',in_plan:'已纳入计划',completed:'已完成',cancelled:'取消'} as Record<string,string>)[a.status]??a.status}）</Text>)}
-      <Action title={historyOpen?'收起课记修改记录':'查看课记修改记录'} press={()=>setHistoryOpen(v=>!v)}/>
-      {historyOpen&&<View style={{gap:10}}>{historyError&&<Text accessibilityRole="alert">{historyError}</Text>}{history.map(h=><View key={h.lesson.version} style={{gap:6}}><Text>{new Date(h.recorded_at).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})} · {h.actor_name} · {({observation:'基础与观察',organization:'整理与关联',withdrawn:'撤销',deleted:'管理员删除',marked_error:'待核对标记',acknowledged:'回应'} as Record<string,string>)[h.event]??h.event}</Text><Text>观察第 {h.lesson.observation_version} 版 · 整理第 {h.lesson.organization_version} 版</Text><ReadObservation value={h.lesson.observation}/></View>)}{historyMore&&<Action title='更早的课记版本' disabled={historyLoading} press={()=>void loadLessonHistory(selected.id,historyPage+1)}/>}</View>}
       <Text>看到了：{selected.acknowledgements.length} 位家人。轻量回应不等于已整理。</Text>
       <Action title={selected.acknowledgements.includes(actorId)?'已回应：看到了，谢谢':'看到了，谢谢'} disabled={selected.acknowledgements.includes(actorId)} press={()=>perform(selected,'acknowledge')}/>
       {withdrawalLoading?<Text>正在核对这条课记是否可撤销…</Text>:withdrawal?.allowed?<><Text>{withdrawal.reason}</Text><Action title="撤销这条课记" press={()=>perform(selected,'withdraw')}/></>:<><Text>{withdrawal?.reason||withdrawalError||'暂未能核对撤销条件；可标记记错，请管理员处理。'}</Text>{selected.marked_error?<Text accessibilityRole="alert" style={{color:neutral.danger,fontWeight:'600'}}>已标记记错，等待管理员处理；本节仍计入课时。</Text>:<Action title="标记记错，请管理员处理" press={()=>perform(selected,'mark_error')}/>}</>}

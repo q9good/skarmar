@@ -14,7 +14,7 @@ with sync_playwright() as p:
     for page in [a,b]:page.on('pageerror',lambda e:errors.append(str(e)))
     def login(page,user,password):
         page.goto(BASE);reveal_control(page,'textbox','账号').fill(user);page.get_by_label('密码',exact=True).fill(password);page.get_by_role('button',name='登录',exact=True).click()
-        page.get_by_role('button',name='目标',exact=True).click()
+        reveal_control(page,'button','目标').click()
         expect(page.get_by_role('button',name='新建目标',exact=True)).to_be_visible()
     def write(path,body):
         response=first.request.post(BASE+'/api'+path,data=body,headers={'X-Skarma-Request':'1'});assert response.ok,response.text();return response.json()
@@ -25,7 +25,7 @@ with sync_playwright() as p:
     def nav(page,title):
         if title=='课程和老师':
             page.get_by_role('button',name='我的账号',exact=True).click();page.get_by_role('button',name='维护课程和老师选项',exact=True).click()
-        else:page.get_by_role('button',name=title,exact=True).click()
+        else:reveal_control(page,'button',title).click()
     login(a,'owner','synthetic-prd-ui-password')
     assert not state()['goals'],'Use a fresh disposable PRD database'
     write('/auth/users',{'username':'family','display_name':'测试家人','password':'s','role':'member'})

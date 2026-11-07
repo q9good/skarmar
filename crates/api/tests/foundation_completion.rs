@@ -119,7 +119,7 @@ fn lesson_feedback_is_atomic_idempotent_and_keeps_the_selected_observation_versi
         StatusCode::INTERNAL_SERVER_ERROR
     );
     let current = store::foundation_lesson_history(&mut f.db, &f.l).unwrap();
-    assert_eq!(current.len(), 2);
+    assert_eq!(current.len(), 1); // Observation supplements no longer append revision history.
     assert_eq!(current.last().unwrap().lesson.organization_version, 1);
     assert_eq!(
         f.db.query_row("SELECT COUNT(*) FROM prd_feedback", [], |r| r
@@ -596,6 +596,20 @@ fn entity_lesson_and_session_revision_pages_are_bounded_and_lossless() {
             json!({"view":view,"id":id,"page":1}),
         )
         .unwrap();
+        if view == "lesson_history" {
+            assert_eq!(first["items"].as_array().unwrap().len(), 1);
+            assert_eq!(first["has_more"], false);
+            assert!(second["items"].as_array().unwrap().is_empty());
+            let latest = store::foundation_snapshot(&mut f.db)
+                .unwrap()
+                .lessons
+                .into_iter()
+                .find(|l| l.id == f.l)
+                .unwrap();
+            assert_eq!(latest.observation_version, 32);
+            assert_eq!(latest.observation.notes, "课记文字31");
+            continue;
+        }
         assert_eq!(first["items"].as_array().unwrap().len(), 30, "{view}");
         assert_eq!(first["has_more"], true);
         assert_eq!(second["items"].as_array().unwrap().len(), 2, "{view}");

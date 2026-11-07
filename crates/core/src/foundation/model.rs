@@ -77,6 +77,8 @@ pub enum MethodState {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct MethodInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority: Option<u8>,
     #[serde(default)]
     pub basis: Vec<MethodBasis>,
     #[serde(default)]

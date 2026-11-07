@@ -25,8 +25,9 @@ export async function lessonContract(label,send,admin){
  await call('PUT','/prd/lessons/'+id,command(id,1,'organization',organization),admin,409);
  const source={id:randomUUID(),kind:'difficulty',content:'测试需要解决的困难',goal_ids:[goal],method_ids:[method],stage:null,next_review_date:null};
  const next={id:randomUUID(),content:'测试下一步',goal_ids:[goal],method_ids:[],assignee_id:member.id};
- const organized=command(id,2,'organization',{...organization,processing:'complete',new_knowledge:[source],new_actions:[next]});
+ const organized=command(id,2,'organization',{...organization,processing:'keep',new_knowledge:[source],new_actions:[next]});
  lesson=(await call('PUT','/prd/lessons/'+id,organized)).data;await call('PUT','/prd/lessons/'+id,organized);
+ lesson=(await call('PUT','/prd/lessons/'+id,command(id,lesson.organization_version,'organization',{...organization,seen_observation_version:lesson.observation_version,request_generation:lesson.request_generation,processing:'complete'}))).data;
  let snapshot=(await call('GET','/prd/state')).data;
  assert.equal(snapshot.knowledge.filter(k=>k.source_lesson_id===id).length,1);assert.equal(snapshot.actions.filter(a=>a.source_lesson_id===id).length,1);
  assert.equal(snapshot.knowledge.find(k=>k.input.id===source.id).source_observation.notes,'原始课堂观察');
@@ -39,18 +40,18 @@ export async function lessonContract(label,send,admin){
  await call('PUT','/prd/records/'+teacher,{id:teacher,operation_id:randomUUID(),expected_version:teacherRecord.version,change_note:'',mutation:{kind:'catalog',value:{kind:'teacher',name:'测试课记老师新名',active:true}}});
  lesson=(await call('PUT','/prd/lessons/'+id,command(id,2,'observation',{...observation,notes:'最后补充',request_review:false}),memberCookie)).data;
  assert.equal(lesson.teacher.name,'测试课记老师');
- const second=randomUUID();const another=(await call('PUT','/prd/lessons/'+second,command(second,null,'observation',{...observation,notes:'',teacher_notes:'',request_review:false}),memberCookie)).data;
+ const second=randomUUID();const another=(await call('PUT','/prd/lessons/'+second,command(second,null,'observation',{...observation,notes:'',teacher_notes:'',helpful_notes:'',request_review:false}),memberCookie)).data;
  assert.equal(another.teacher.id,teacher);assert.equal(another.teacher.name,'测试课记老师新名');
  await call('PUT','/prd/lessons/'+second,command(second,another.version,'withdraw'),admin,403);
  const marked=(await call('PUT','/prd/lessons/'+second,command(second,another.version,'mark_error',{marked:true}))).data;
  assert.equal(marked.status,'recorded');assert(marked.marked_error);
  const withdrawn=(await call('PUT','/prd/lessons/'+second,command(second,marked.version,'withdraw'),memberCookie)).data;assert.equal(withdrawn.status,'withdrawn');
- const third=randomUUID();const blank=(await call('PUT','/prd/lessons/'+third,command(third,null,'observation',{...observation,notes:'',teacher_notes:'',request_review:false}),memberCookie)).data;
+ const third=randomUUID();const blank=(await call('PUT','/prd/lessons/'+third,command(third,null,'observation',{...observation,notes:'',teacher_notes:'',helpful_notes:'',request_review:false}),memberCookie)).data;
  const reopened=(await call('PUT','/prd/lessons/'+third,command(third,blank.organization_version,'organization',{...organization,request_generation:0,targets:[],method_ids:[],processing:'reopen',outcome:'测试再次查看'}))).data;
  assert.equal(reopened.request_generation,1);assert.equal(reopened.organization.state,'pending');
  const removed=(await call('PUT','/prd/lessons/'+third,command(third,reopened.version,'delete'))).data;assert.equal(removed.status,'deleted');
  const future=randomUUID();await call('PUT','/prd/lessons/'+future,command(future,null,'observation',{...observation,business_date:'2099-01-01'}),memberCookie,422);
  snapshot=(await call('GET','/prd/state')).data;assert.equal(snapshot.lessons.filter(l=>l.status==='recorded').length,1);
- const revisions=(await call('GET','/prd/lessons/'+id+'/history')).data;assert.equal(revisions.filter(r=>r.event==='observation').length,3);
+ const revisions=(await call('GET','/prd/lessons/'+id+'/history')).data;assert.equal(revisions.filter(r=>r.event==='observation').length,1);
  console.log(`PASS ${label}: lesson partitions, old observation references, atomic outputs, names, withdrawal, admin deletion and counted/error flags`);
 }

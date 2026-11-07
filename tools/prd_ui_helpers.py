@@ -7,6 +7,13 @@ import json
 
 
 def reveal_control(scope, role, name, exact=True):
+    # These existing flows now enter the combined page before its maintenance tab.
+    if role == 'button' and isinstance(name, str) and name in {'目标', '方法'}:
+        legacy = scope.get_by_role(role, name=name, exact=exact)
+        combined = scope.get_by_role('button', name='目标与方法', exact=True)
+        legacy.or_(combined).first.wait_for(state='visible')
+        if legacy.count() == 0 and combined.count() == 1:
+            combined.click()
     target = scope.get_by_role(role, name=name, exact=exact, include_hidden=True)
     if target.count() == 1 and not target.is_visible():
         ids = target.evaluate("""e => {
