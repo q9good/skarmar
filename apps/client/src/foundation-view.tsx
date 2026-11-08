@@ -132,6 +132,7 @@ function MethodFields({ value, change, data, disabled, existing, newReference }:
   const [selecting,setSelecting]=useState(false),[search,setSearch]=useState('');
   return <>
     <Field label="方法名称" hint="怎样称呼这个做法？" value={value.title} change={title => change({ title })} placeholder="例如：示范后少提醒" disabled={disabled} />
+    <Select label="方法关注优先级" value={String(value.priority??(value.pinned?2:1))} disabled={disabled} options={[{value:'2',label:'高 · 优先显示'},{value:'1',label:'普通'},{value:'0',label:'低 · 靠后显示'}]} onChange={v=>change({priority:Number(v),pinned:false})}/>
     <Field label="具体做法／必填" value={methodSteps(value)} change={steps => change({ steps, description:'' })} multiline disabled={disabled} />
     {!existing&&<ReferencePicker kind="method" disabled={disabled} fork={!blankMethodReference(value)} choose={key=>{
       const ref=methodReference(key,value.goal_ids);
@@ -150,7 +151,6 @@ function MethodFields({ value, change, data, disabled, existing, newReference }:
     <Select label="方法状态" value={value.state ?? 'active'} disabled={disabled} options={[{ value: 'active', label: '使用中' }, { value: 'paused', label: '暂停' }, { value: 'retired', label: '停用' }]}
       onChange={state => change({ state: state as MethodInput['state'],resume_on:state==='paused'?value.resume_on??null:null })} />
     {value.state==='paused'&&<DateField label="确认方法是否恢复（留空不排期）" value={value.resume_on??''} onChange={v=>change({resume_on:v||null})} disabled={disabled}/>}
-    <Select label="方法关注优先级" value={String(value.priority??(value.pinned?2:1))} disabled={disabled} options={[{value:'2',label:'高 · 优先显示'},{value:'1',label:'普通'},{value:'0',label:'低 · 靠后显示'}]} onChange={v=>change({priority:Number(v),pinned:false})}/>
     <Check label="需要注意" checked={value.needs_attention} disabled={disabled} change={() => change({ needs_attention: !value.needs_attention })} />
     {value.needs_attention && <Field label="需要注意的原因" value={value.attention_reason} change={attention_reason => change({ attention_reason })} multiline disabled={disabled} />}
     </Disclosure>
@@ -205,6 +205,7 @@ export function FoundationWorkspace() {
   const [account, setAccount] = useState(false);
   const [editor, setEditor] = useState<string | null>(null);
   const [discard,setDiscard]=useState(false);
+  const [priorityOnly,setPriorityOnly]=useState(false);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
@@ -251,7 +252,14 @@ export function FoundationWorkspace() {
     if (!ready) return;
     const id = saved?.value.id ?? uuid();
     if (!draftsRef.current[id]) void persist({ ...draftsRef.current, [id]: { id, operation_id: uuid(), expected_version: saved?.value.version ?? null, change_note: '', mutation, ...(mutation.kind==='method'&&!saved?{method_create_mode:'full' as const}:{}) } });
-    setEditor(id); setDiscard(false);setError(''); setNotice('');
+    setPriorityOnly(false);setEditor(id); setDiscard(false);setError(''); setNotice('');
+  };
+  const beginPriority=(kind:'goal'|'method',id:string)=>{
+    const saved=findSaved(data,id);if(!saved||(saved.kind!=='goal'&&saved.kind!=='method'))return;
+    const existing=draftsRef.current[id];begin(mutationOf(saved),saved);
+    if(existing){setError('这条记录有未提交填写，请先核对已有草稿，再调整优先级。');return;}
+    setPriorityOnly(true);
+    void persist({...draftsRef.current,[id]:{...draftsRef.current[id],change_note:'调整关注优先级',...(kind==='method'?{method_change:'correction' as const}:{})}});
   };
   const draft = editor ? drafts[editor] : undefined;
   const closeEditor=()=>{if(!submitting.current){setEditor(null);setDiscard(false);setError('');}};
@@ -337,14 +345,14 @@ export function FoundationWorkspace() {
           </> : tab === 'followups' ? <>
             {followupHub('full')}
           </> : tab === 'goals' ? <>
-            {objectSection==='map'?<GoalMethodMap data={data} schedules={priorityBoard?.schedules} openGoal={id=>void openDetail(id)} openMethod={id=>void openDetail(id)} editGoal={id=>{const g=data.goals.find(g=>g.id===id);if(g)begin({kind:'goal',value:g.input},{kind:'goal',value:g});}} editMethod={id=>{const m=data.methods.find(m=>m.id===id);if(m)begin({kind:'method',value:m.input},{kind:'method',value:m});}} openKnowledge={id=>setRequestedFollowup({kind:'knowledge',id,nonce:uuid()})}/>:<>
+            {objectSection==='map'?<GoalMethodMap prioritize={beginPriority} data={data} schedules={priorityBoard?.schedules} openGoal={id=>void openDetail(id)} openMethod={id=>void openDetail(id)} editGoal={id=>{const g=data.goals.find(g=>g.id===id);if(g)begin({kind:'goal',value:g.input},{kind:'goal',value:g});}} editMethod={id=>{const m=data.methods.find(m=>m.id===id);if(m)begin({kind:'method',value:m.input},{kind:'method',value:m});}} openKnowledge={id=>setRequestedFollowup({kind:'knowledge',id,nonce:uuid()})}/>:<>
             {(goalLevel!=='all'||goalSearch.trim())&&<View style={{gap:6}}><Text>当前筛选：{goalLevel==='all'?'全部期限':levelNames[goalLevel as keyof typeof levelNames]}{goalSearch.trim()?' · 搜索：'+goalSearch:''} · {goals.length} 项</Text><UiButton title="显示全部目标" press={()=>{setGoalLevel('all');setGoalSearch('');}}/></View>}
             <GoalOverview goals={goals} report={goalReport} view={goalView==='progress'?'progress':'coverage'} changeView={setGoalView} days={goalDays} source={goalSource} error={goalReportError} retry={()=>setProgressNonce(n=>n+1)} openGoal={id=>void openDetail(id)}/>
             <Disclosure title="筛选目标" summary={`${goalLevel==='all'?'全部期限':levelNames[goalLevel as keyof typeof levelNames]} · ${goalView==='progress'?'实际进展':`近${goalDays}天${{family:'家庭',lesson:'机构',combined:'合计'}[goalSource]}`}`}><Field label="搜索目标" value={goalSearch} change={setGoalSearch}/><View style={{gap:12,...(wide?{flexDirection:'row' as const,flexWrap:'wrap' as const}: {})}}><View style={{flex:1,minWidth:180,gap:12}}><Select label="目标期限筛选" value={goalLevel} onChange={setGoalLevel} options={[{value:'all',label:'全部期限'},...Object.entries(levelNames).map(([value,label])=>({value,label}))]}/>{goalView==='coverage'?<><Select label="目标覆盖来源" value={goalSource} onChange={v=>setGoalSource(v as typeof goalSource)} options={[{value:'family',label:'家庭干预'},{value:'lesson',label:'机构课程'},{value:'combined',label:'合计（分列来源）'}]}/><Select label="目标覆盖窗口" value={String(goalDays)} onChange={v=>setGoalDays(Number(v))} options={[7,30,90].map(n=>({value:String(n),label:`近${n}天`}))}/><Text>近{goalDays}天固定色阶：{coverageLegend(goalDays)}；不代表能力进步。{goalReport?`${goalReport.start} 至 ${goalReport.end}`:'正在读取覆盖'}，数字和来源同时显示。</Text></>:<><Text>实际进展来自各指标测量，不按覆盖次数计算能力百分比。这里显示各条件下最近测量；完整趋势在目标详情中查看。</Text>{progressError&&<Text accessibilityRole="alert">{progressError}</Text>}{!progress&&!progressError&&<Text>正在读取实际测量…</Text>}</>}
             <Check label="显示已收起目标" checked={showHidden} change={() => setShowHidden(!showHidden)} /></View></View></Disclosure>
             {!goals.length && <Text>写下想帮助孩子学会的本领，或者希望长期支持的方向。</Text>}
             {goals.map(g => <View key={g.id} style={s.card} testID={`prd-goal-${g.id}`}>
-              <View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看目标：${g.input.title}`} onPress={()=>void openDetail(g.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{g.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑目标：${g.input.title}`} label="编辑" quiet press={()=>begin({kind:'goal',value:g.input},{kind:'goal',value:g})}/></View>{goalView==='coverage'&&g.input.level!=='long'&&goalReport&&(()=>{const row=goalReport.goals.find(r=>r.id===g.id);return row?<View style={{padding:10,borderRadius:8,backgroundColor:coverageScale[row.band]}}><Text style={{color:row.band===4?'#FFFFFF':neutral.ink}}>近{goalDays}天 {row.counts.selected}次覆盖 · 家庭{row.counts.family}／机构{row.counts.lesson}</Text></View>:null;})()}<Text>{levelNames[g.input.level]} · {goalStateName(g.input)} · {priorityName(g.input.long_priority)}{g.input.archived ? ' · 已收起' : ''}</Text>
+              <View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看目标：${g.input.title}`} onPress={()=>void openDetail(g.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{g.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑目标：${g.input.title}`} label="编辑" quiet press={()=>begin({kind:'goal',value:g.input},{kind:'goal',value:g})}/></View>{goalView==='coverage'&&g.input.level!=='long'&&goalReport&&(()=>{const row=goalReport.goals.find(r=>r.id===g.id);return row?<View style={{padding:10,borderRadius:8,backgroundColor:coverageScale[row.band]}}><Text style={{color:row.band===4?'#FFFFFF':neutral.ink}}>近{goalDays}天 {row.counts.selected}次覆盖 · 家庭{row.counts.family}／机构{row.counts.lesson}</Text></View>:null;})()}<Action title={`调整优先级：${g.input.title}`} label={`优先级：${priorityName(g.input.long_priority)} · 调整`} secondary press={()=>beginPriority('goal',g.id)}/><Text>{levelNames[g.input.level]} · {goalStateName(g.input)} · {priorityName(g.input.long_priority)}{g.input.archived ? ' · 已收起' : ''}</Text>
               {g.input.meaning&&<Text numberOfLines={2}>{g.input.meaning}</Text>}
               {(g.input.domain||g.input.due)&&<Text>领域：{g.input.domain?.name||'未选择'} · 目标日期：{g.input.due||'未设置'}</Text>}
               {g.input.support&&<Text>预期帮助条件：{g.input.support}</Text>}
@@ -361,7 +369,7 @@ export function FoundationWorkspace() {
             <Text>先按关注优先级，同级结合需要注意、未解决困难、到期复盘和家庭关注间隔排序。修改会同步给家人；有困难时先检查支持方式，不表示应增加训练。</Text>
             </Disclosure>
             {methods.map(m => <View key={m.id} style={s.card} testID={`prd-method-${m.id}`}><View style={{flexDirection:'row',alignItems:'center',gap:12}}><Pressable accessibilityRole="button" accessibilityLabel={`查看方法：${m.input.title}`} onPress={()=>void openDetail(m.id)} style={{flex:1,flexDirection:'row',alignItems:'center',gap:8}}><Text style={[s.heading,{flex:1}]}>{m.input.title}</Text><Text>›</Text></Pressable><Action title={`编辑方法：${m.input.title}`} label="编辑" quiet press={()=>begin({kind:'method',value:m.input},{kind:'method',value:m})}/></View>
-              <Text>{methodAttention(data,m,today,priorityBoard?.schedules).reasons.join(' · ')}</Text><View style={{gap:4,padding:10,backgroundColor:palettes.classroom.soft,borderRadius:8}}><Text style={{fontWeight:'600'}}>用于这些目标</Text>{m.input.goal_ids.map(id=><Action key={id} title={`查看方法关联目标：${data.goals.find(g=>g.id===id)?.input.title??'待核对目标'}`} label={data.goals.find(g=>g.id===id)?.input.title??'待核对目标'} quiet press={()=>void openDetail(id)}/>)}</View>
+              <Action title={`调整优先级：${m.input.title}`} label={`优先级：${priorityName(m.input.priority??(m.input.pinned?2:1))} · 调整`} secondary press={()=>beginPriority('method',m.id)}/><Text>{methodAttention(data,m,today,priorityBoard?.schedules).reasons.join(' · ')}</Text><View style={{gap:4,padding:10,backgroundColor:palettes.classroom.soft,borderRadius:8}}><Text style={{fontWeight:'600'}}>用于这些目标</Text>{m.input.goal_ids.map(id=><Action key={id} title={`查看方法关联目标：${data.goals.find(g=>g.id===id)?.input.title??'待核对目标'}`} label={data.goals.find(g=>g.id===id)?.input.title??'待核对目标'} quiet press={()=>void openDetail(id)}/>)}</View>
               <Text>{methodSteps(m.input) || '快捷创建，具体做法待补充'}</Text>
               <Text style={s.hint}>经验 {relatedKnowledge(undefined,m.id).filter(k=>k.input.kind==='experience').length} · 困难 {relatedKnowledge(undefined,m.id).filter(k=>k.input.kind==='difficulty').length}</Text>
 </View>)}
@@ -381,7 +389,7 @@ export function FoundationWorkspace() {
 
       {tab!=='today'&&tab!=='followups'&&followupHub('hidden')}
     </ScrollView>
-    {!account && <View style={s.navigation}>{(['today', 'goals', 'records', 'followups'] as const).map(kind => <Pressable key={kind} accessibilityRole="button" accessibilityLabel={{ today:'今天',goals:'目标与方法',methods:'目标与方法',records:'记录',followups:'跟进'}[kind]} accessibilityState={{selected:tab===kind||kind==='goals'&&tab==='methods'}} aria-pressed={tab===kind||kind==='goals'&&tab==='methods'} onPress={()=>{setTab(kind);if(kind==='goals')setObjectSection('map');setShowHidden(false);setError('');setNotice('');}} style={{flex:1,minWidth:0,paddingHorizontal:2,paddingVertical:10,borderRadius:9,borderBottomWidth:3,borderBottomColor:(tab===kind||kind==='goals'&&tab==='methods')?pagePalette.ink:'transparent',backgroundColor:(tab===kind||kind==='goals'&&tab==='methods')?pagePalette.soft:'transparent'}}><Text style={{textAlign:'center',fontSize:17,fontWeight:(tab===kind||kind==='goals'&&tab==='methods')?'700':'500',color:(tab===kind||kind==='goals'&&tab==='methods')?pagePalette.ink:neutral.muted}}>{{ today:'今天',goals:'目标方法',methods:'目标与方法',records:'记录',followups:'跟进'}[kind]}</Text></Pressable>)}</View>}
+    {!account && <View style={s.navigation}>{(['today', 'goals', 'records', 'followups'] as const).map(kind => <Pressable key={kind} accessibilityRole="button" accessibilityLabel={{ today:'今天',goals:'目标与方法',methods:'目标与方法',records:'记录',followups:'跟进'}[kind]} accessibilityState={{selected:tab===kind||kind==='goals'&&tab==='methods'}} aria-pressed={tab===kind||kind==='goals'&&tab==='methods'} onPress={()=>{setTab(kind);if(kind==='goals')setObjectSection('map');setShowHidden(false);setError('');setNotice('');}} style={{flex:1,minWidth:0,paddingHorizontal:0,paddingVertical:10,borderRadius:9,borderBottomWidth:3,borderBottomColor:(tab===kind||kind==='goals'&&tab==='methods')?pagePalette.ink:'transparent',backgroundColor:(tab===kind||kind==='goals'&&tab==='methods')?pagePalette.soft:'transparent'}}><Text style={{textAlign:'center',fontSize:17,fontWeight:(tab===kind||kind==='goals'&&tab==='methods')?'700':'500',color:(tab===kind||kind==='goals'&&tab==='methods')?pagePalette.ink:neutral.muted}}>{{ today:'今天',goals:'目标方法',methods:'目标与方法',records:'记录',followups:'跟进'}[kind]}</Text></Pressable>)}</View>}
     {showDirections && <DetailOverlay title="长期关注" close={()=>setShowDirections(false)}>
       <Text style={s.hint}>先按高、普通、低关注排列；同级结合重点困难、到期复盘和家庭关注间隔。只调整展示，修改会同步给家人。</Text>
       {longDirections.map(g=>{
@@ -393,11 +401,11 @@ export function FoundationWorkspace() {
         })}
         {evidence.filter(e=>e.kind==='lesson').slice(0,2).map(e=><Text key={e.id}>最近课堂观察：{e.date} · {e.note}</Text>)}
         {relatedKnowledge(g.id).map(k=>knowledgeCard(k,g.id))}
-        <Action title={`查看目标：${g.input.title}`} secondary press={()=>{setShowDirections(false);void openDetail(g.id);}}/><Action title={`调整关注优先级：${g.input.title}`} secondary press={()=>{setShowDirections(false);begin({kind:"goal",value:g.input},{kind:"goal",value:g});}}/>
+        <Action title={`查看目标：${g.input.title}`} secondary press={()=>{setShowDirections(false);void openDetail(g.id);}}/><Action title={`调整关注优先级：${g.input.title}`} secondary press={()=>{setShowDirections(false);beginPriority('goal',g.id);}}/>
       </View>;})}
       {!longDirections.length&&<Action title="新建长期方向" press={()=>{setShowDirections(false);setTab('goals');begin({kind:'goal',value:{...newGoal(),level:'long'}});}}/>}
     </DetailOverlay>}
-    {draft && <DetailOverlay tone={draft.mutation.kind==='goal'?'goal':draft.mutation.kind==='method'?'method':'classroom'} title={draft.mutation.kind === 'goal' ? '填写目标' : draft.mutation.kind === 'method' ? '填写方法' : '维护选项'} close={closeEditor} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy ? '正在保存…' : draft.pending ? '重试同一次保存' : '保存'} disabled={busy || nameMissing || methodStepsMissing || (conflict && !draft.pending)} press={() => void submit()} /></>}>
+    {draft && <DetailOverlay tone={draft.mutation.kind==='goal'?'goal':draft.mutation.kind==='method'?'method':'classroom'} title={priorityOnly?'调整优先级':draft.mutation.kind === 'goal' ? '填写目标' : draft.mutation.kind === 'method' ? '填写方法' : '维护选项'} close={closeEditor} footer={<><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/><Action title={busy ? '正在保存…' : draft.pending ? '重试同一次保存' : '保存'} disabled={busy || nameMissing || methodStepsMissing || (conflict && !draft.pending)} press={() => void submit()} /></>}>
       {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/>
       {error ? <Text accessibilityRole="alert">{error}</Text> : null}
       {methodStepsMissing&&<Text accessibilityRole="alert">普通新建方法须填写具体做法。</Text>}
@@ -408,12 +416,17 @@ export function FoundationWorkspace() {
           catch (e) { setError(messageOf(e)); }
         })()} /></View>}
       {draft.conflict_backup && <View style={s.card}><Text style={s.heading}>你此前填写的备份</Text><Text style={s.hint}>对照下方最新表单，按需补回；长按文字可复制。</Text><ReadOnlyValues mutation={draft.conflict_backup} data={data} /></View>}
+      {priorityOnly&&(draft.mutation.kind==='goal'||draft.mutation.kind==='method')?<>
+        <Text style={s.heading}>{nameOf(draft.mutation)}</Text><Text>改变展示顺序，会同步给家人；不改变目标结果或训练次数。</Text>
+        <Select label="关注优先级" value={String(draft.mutation.kind==='goal'?draft.mutation.value.long_priority??1:draft.mutation.value.priority??(draft.mutation.value.pinned?2:1))} disabled={busy||Boolean(draft.pending)} options={[{value:'2',label:'高 · 优先显示'},{value:'1',label:'普通'},{value:'0',label:'低 · 靠后显示'}]} onChange={v=>patch(draft.mutation.kind==='goal'?{long_priority:Number(v)}:{priority:Number(v),pinned:false})}/>
+      </>:<>
       {draft.mutation.kind === 'goal' ? <GoalFields id={draft.id} value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} existing={draft.expected_version !== null} newReference={v=>begin({kind:'goal',value:v})} catalogSaved={saved=>setData(current=>acceptSaved(current,saved))} change={patch} /> : draft.mutation.kind === 'method' ?
         <MethodFields value={draft.mutation.value} data={candidate.options} disabled={busy || Boolean(draft.pending)} change={patch} existing={draft.expected_version!==null} newReference={v=>begin({kind:'method',value:v})} /> : <>
           <Field label={{course:'课程名称',teacher:'老师名称',domain:'领域名称'}[draft.mutation.value.kind]} value={draft.mutation.value.name} change={name => patch({ name })} placeholder={draft.mutation.value.kind === 'course' ? '例如：语言课' : draft.mutation.value.kind === 'teacher' ? '例如：张老师' : fieldMatrix['goal.domain'].example} disabled={busy || Boolean(draft.pending)} />
           <Check label="可在后续记录中选择" checked={draft.mutation.value.active} disabled={busy || Boolean(draft.pending)} change={() => patch({ active: !(draft.mutation.value as { active: boolean }).active })} />
         </>}
       {draft.mutation.kind==='method'&&latest?.kind==='method'&&(draft.method_change||draft.mutation.value.description!==latest.value.input.description||draft.mutation.value.steps!==latest.value.input.steps||draft.mutation.value.observe!==latest.value.input.observe||draft.mutation.value.scope!==latest.value.input.scope)&&<><Select label="这次方法修改的性质" value={draft.method_change??'adjustment'} disabled={busy||Boolean(draft.pending)} options={[{value:'adjustment',label:'调整实际做法，分开回看前后观察'},{value:'correction',label:'只更正文案，实际做法没有改变'}]} onChange={v=>void persist({...draftsRef.current,[draft.id]:{...draft,operation_id:uuid(),method_change:v as 'adjustment'|'correction'}})}/><Text>旧观察和方法版本都会保留；仅更正文案不会重新开始比较期。</Text></>}
+      </>}
       {draft.expected_version !== null && <Field label="修改说明" hint="改变状态时，请说明依据或原因。" value={draft.change_note} disabled={busy || Boolean(draft.pending)} change={change_note => void persist({ ...draftsRef.current, [draft.id]: { ...draft, operation_id: uuid(), change_note } })} placeholder="例如：先暂停，等调整好活动再试" />}
       <Action title="保留草稿并退出" secondary disabled={busy} press={closeEditor}/>
       {!draft.pending&&!discard&&<Action title="放弃这份填写" secondary disabled={busy} press={()=>setDiscard(true)}/>}
@@ -422,6 +435,7 @@ export function FoundationWorkspace() {
     {distribution&&<HistoryPanel data={data} object={distribution} close={()=>setDistribution(null)} openSession={id=>setRequestedSession({id,nonce:uuid()})}/>}
     {detail && <DetailOverlay title="查看详情与修改记录" close={() => { ++detailSequence.current; setDetailId(null); setHistory([]); }}>
       <Text style={s.heading}>{nameOf(mutationOf(detail))}</Text>
+      {(detail.kind==='goal'||detail.kind==='method')&&<Action title={`调整优先级：${nameOf(mutationOf(detail))}`} label="调整关注优先级" secondary press={()=>{setDetailId(null);beginPriority(detail.kind as 'goal'|'method',detail.value.id);}}/>}
       {detail.kind === 'goal' ? <><Text>{detail.value.input.meaning || '尚未补充生活意义'}</Text><Text>{detail.value.input.criteria || '尚未设置观察标准'}</Text><Text>预期帮助条件：{detail.value.input.support||'未填写'}</Text><Text>领域：{detail.value.input.domain?.name||'未选择'}；目标日期：{detail.value.input.due||'未设置'}</Text>
         <ContentGroup title="关联方法" tone="classroom">{data.methods.filter(m=>m.input.goal_ids.includes(detail.value.id)).map(m=><Action key={m.id} title={`查看关联方法：${m.input.title}`} label={m.input.title} secondary press={()=>void openDetail(m.id)}/>)}{!data.methods.some(m=>m.input.goal_ids.includes(detail.value.id))&&<Text>尚未关联方法。</Text>}</ContentGroup></> : detail.kind === 'method' ? <>
         <Text>具体做法：{methodSteps(detail.value.input)||'快捷创建，待补充'}</Text><Text>观察意图：{detail.value.input.observe||'未补充'}；适用条件：{methodScope(detail.value.input)||'未补充'}</Text><Text>当前说明第{detail.value.version}版；指导来源：{detail.value.input.guidance||'未补充'}</Text><MethodUsage data={data} id={detail.value.id} openVersion={version=>setDistribution({id:detail.value.id,kind:'method',version})}/>{detail.value.basis_snapshots?.map(b=><Text key={`${b.id}:${b.version}`}>调整依据：{b.content}（知识第{b.version}版）{b.conditions?`；当时条件：${b.conditions}`:''}</Text>)}

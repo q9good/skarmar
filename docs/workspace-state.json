@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-07",
+  "updatedAt": "2026-11-08",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -528,6 +528,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-11-07.md",
       "verification": "2026-11-07用户明确要求部署T72–T74。应用d71b1ec，普通发布触发a0d930ec0ef34a7f7c7777e6da46ce73ac657569，run42419768909的validate／release均success；原965b6832，上传与实际激活7df61582-5c77-49ab-b90b-ecfe7cf5d4f0，脱敏回执deployed_and_verified。runner类型／Web、Rust测试及Wasm Clippy通过，原绑定／变量／runtime／路由核对一致后切换100%。清理／初始化／示例恢复／目录删除／课程补关联和相关演练全部skipped。云端独立验证首页仅去严格匹配CF Analytics后与构建相同、JS字节匹配、health200、匿名401／未知404、合法来源200／非法或缺标记403，未签发随机会话验证PRD启动。发布前后formal-20261101标记保持。原Worker／DO／default／域名／精确来源、账号和全部正式业务／审计／冻结引用／v7／草稿队列键保留；未登录真实账号、未读业务、未写样本／清库／新建资源。发布前37发布保护、9示例保护及191项SHA通过，新增两份已核对脱敏结果后193项SHA。T12、Opus／真机／读屏与implementationCommit不变。"
+    },
+    {
+      "id": "T76",
+      "title": "逐项修复课堂示例草稿、机构覆盖入口、优先级、关系图与当月默认",
+      "status": "done",
+      "evidence": "docs/review-fixes-2026-11-08.md",
+      "verification": "2026-11-08先登记R01–R06再实施，最终六项浏览器专项逐项通过。课堂主题默认完整例子可收起且不写入值；草稿放弃明确弹窗，取消及存储失败保留／可重试，刷新不复活，不改课记，修复已确认上传课记后续草稿被隐藏。父母整理可选树状本课实际目标／方法及上级，API和目标总览实证机构／合计1、家庭0；重复不增、移除归零，长期可保留明确关注。目标／方法节点、列表、详情直达优先级，完整字段直接可见，另一家人可见；丢回执重试只改一版，409不覆盖，顺序更新。默认本地SVG节点实线／虚线图，共享方法一节点多入线，纵横布局／文字列表、限定知识及计划只读保留。课堂和课时核对默认当前业务月，可切月，重进恢复当月。90客户端、类型／Web、12组浏览器回归通过；最终收紧布局再通过六专项及关系／转化、活动计划、主题、R15四组。320／390／1440与大字，12图已逐张审查仅合成，加checks后206项SHA。未改Rust／schema，未拿历史182Rust冒充新跑；未部署／访问生产业务，账号／正式数据／历史／冻结来源、v7／formal-20261101／草稿队列键保持；T12、Opus／真机／读屏与implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1653,6 +1660,84 @@
       "title": "目标方法关系图版本的独立公共验收与正式代际核对",
       "sha256": "a89c78ba5856c5f53ffbb2aab2bb9b6b2b1c7f8aca30e08773cb45af66899834",
       "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/01-full-classroom-example.png",
+      "title": "合成：六项反馈逐项复核／01-full-classroom-example.png",
+      "sha256": "409f413f387a1e0fcd551df0e0550458c0b94de37b28dd8399d04350690f1971",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/02-visible-discard-confirmation.png",
+      "title": "合成：六项反馈逐项复核／02-visible-discard-confirmation.png",
+      "sha256": "6b86b6e3c2d0ece5a282d2046d517a97c754db1a3121ead8a6a1872fd75d0f84",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/03-explicit-institution-coverage.png",
+      "title": "合成：六项反馈逐项复核／03-explicit-institution-coverage.png",
+      "sha256": "a684228d2bfc55cc712cfdb61290e84267ec0ad99bdd12ec2d7b59b0ccd50675",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/09-institution-coverage-visible.png",
+      "title": "合成：六项反馈逐项复核／09-institution-coverage-visible.png",
+      "sha256": "9fc220617c7345470aa6dfd84c8ccfcc84e749bb1d7c81fe5c5a6f0bfcbb8d41",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/10-diagram-initial-screen.png",
+      "title": "合成：六项反馈逐项复核／10-diagram-initial-screen.png",
+      "sha256": "904685d1353cb59eaf19e34f45ee98e60b340432a531aadeff11d3a958986188",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/04-mobile-node-arrow-diagram.png",
+      "title": "合成：六项反馈逐项复核／04-mobile-node-arrow-diagram.png",
+      "sha256": "6b4aa7156517040871a94c60ba2424a441965cd2651d7f018a07a4b695f67d4b",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/05-direct-priority-control.png",
+      "title": "合成：六项反馈逐项复核／05-direct-priority-control.png",
+      "sha256": "e599a439a0c133c8b4a8ff01a2c04d3e2717cfefe0ca9afc070fdc7914a13817",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/06-diagram-320.png",
+      "title": "合成：六项反馈逐项复核／06-diagram-320.png",
+      "sha256": "02fc6cf69549e0fff9179eaecca0dfa8ca58dcc4e916bb88504537ad00e69f46",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/06-diagram-390.png",
+      "title": "合成：六项反馈逐项复核／06-diagram-390.png",
+      "sha256": "ebbee7f104d4fd13116d2d19ca30fe2ba9f4dc86239e44e8c84e38f00d78984a",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/06-diagram-1440.png",
+      "title": "合成：六项反馈逐项复核／06-diagram-1440.png",
+      "sha256": "1e54fca319110cfde57f6592cad83a15253c83314cd2869e1f1b6996b8a62cba",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/08-mobile-shared-method.png",
+      "title": "合成：六项反馈逐项复核／08-mobile-shared-method.png",
+      "sha256": "4e518f9a6cdd2f2756e8b47252fd6fcb3d6308ee984bfff66daab7520be5db54",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/07-current-month-institution-totals.png",
+      "title": "合成：六项反馈逐项复核／07-current-month-institution-totals.png",
+      "sha256": "1720d36192db407ced18e87bff725c00f1d2891657e7c1564e9d30a4fb350dee",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/review-fixes-2026-11-08/checks.json",
+      "title": "合成：六项反馈逐项复核／checks.json",
+      "sha256": "c492d5e259f3ffcb50917dcdeb0e47c0e6a7f082c5629bf1b11882bf5b1d9b0c",
+      "synthetic": true
     }
   ]
 }

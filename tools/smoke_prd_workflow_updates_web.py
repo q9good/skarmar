@@ -42,7 +42,7 @@ with sync_playwright() as p:
  hi=change_priority(hi,0);low=change_priority(low,2);a.evaluate("window.dispatchEvent(new Event('focus'))")
  expect(widget).to_contain_text('合成其他方向');a.wait_for_function("()=>{const e=document.querySelector('[aria-label=\"查看长期关注\"]');return e&&e.innerText.indexOf('合成其他方向')<e.innerText.indexOf('合成关注互动')}")
  hi=change_priority(hi,2);low=change_priority(low,0);a.reload();expect(a.get_by_role('button',name='记录课堂',exact=True)).to_be_visible()
- click('目标与方法');graph=a.get_by_test_id('goal-method-map');expect(graph).to_be_visible();expect(a.get_by_role('button',name='新建目标',exact=True)).to_have_count(0)
+ click('目标与方法');graph=a.get_by_test_id('goal-method-map');graph.get_by_role('button',name='层级列表',exact=True).click();expect(graph).to_be_visible();expect(a.get_by_role('button',name='新建目标',exact=True)).to_have_count(0)
  reveal_control(a,'checkbox','显示关联经验和困难').click();click('展开全部关系')
  branch=graph.get_by_test_id('map-goal-'+hi['id']);expect(branch.get_by_text('合成等待困难',exact=False).first).to_be_visible();expect(branch.get_by_text('合成其他原则不应串联',exact=False)).to_have_count(0)
  expect(graph.get_by_test_id('map-method-'+short['id']+'-'+m['id'])).to_be_visible();expect(graph.get_by_test_id('map-method-'+normal['id']+'-'+m['id'])).to_be_visible()
@@ -50,8 +50,8 @@ with sync_playwright() as p:
  a.set_viewport_size({'width':320,'height':844});snap('02-hierarchy-and-method-320',graph.get_by_test_id('map-goal-'+short['id']));a.set_viewport_size({'width':390,'height':844})
  click('目标');expect(a.get_by_role('button',name='新建目标',exact=True)).to_be_visible();click('方法');expect(a.get_by_role('button',name='新建方法',exact=True)).to_be_visible();click('今天')
  click('记录家庭');field('准备做什么').fill('合成活动：和孩子玩滚球，准备好时再试一步')
- plan=a.get_by_test_id('plan-goal-method-map');expect(plan).to_be_visible();expect(a.get_by_role('checkbox',name=re.compile('^选择目标：'))).to_have_count(0)
- plan.get_by_role('checkbox',name='显示关联经验和困难',exact=True).click();plan.get_by_role('button',name='展开全部关系',exact=True).click();snap('03-readonly-plan-map-390',a.get_by_label('准备做什么',exact=True))
+ plan=a.get_by_test_id('plan-goal-method-map');plan.get_by_role('button',name='层级列表',exact=True).click();expect(plan).to_be_visible();expect(a.get_by_role('checkbox',name=re.compile('^选择目标：'))).to_have_count(0)
+ plan.get_by_role('checkbox',name='显示关联经验和困难',exact=True).click();reveal_control(plan,'button','展开全部关系').click();snap('03-readonly-plan-map-390',a.get_by_label('准备做什么',exact=True))
  plan.get_by_test_id('map-method-'+short['id']+'-'+m['id']).get_by_role('button',name='查看方法：'+m['input']['title'],exact=True).click();expect(a.get_by_role('dialog',name='查看详情与修改记录',exact=True)).to_be_visible();click('关闭查看详情与修改记录');expect(field('准备做什么')).to_have_value('合成活动：和孩子玩滚球，准备好时再试一步')
  click('保存计划并退出');expect(a.get_by_role('dialog')).to_have_count(0)
  saved=call('GET','/prd/state')['sessions'][0];assert saved['status']=='planned' and not saved['actual_targets'] and not saved['input']['targets'] and not saved['input']['methods']
@@ -61,7 +61,7 @@ with sync_playwright() as p:
  lid=str(uuid4());obs={'business_date':today,'course_id':course['id'],'teacher_id':teacher['id'],'notes':''}
  original=call('PUT','/prd/lessons/'+lid,{'id':lid,'operation_id':str(uuid4()),'expected_version':None,'action':{'kind':'observation','value':obs}},context=observer);assert original['request_generation']==0
  b.reload();expect(b.get_by_role('button',name='记录课堂',exact=True)).to_be_visible();click('查看课记：合成课堂 · 合成授课老师',b);expect(b.get_by_role('button',name='查看课记修改记录',exact=True)).to_have_count(0)
- click('补充／修改课堂观察',b);reveal_control(b,'checkbox','老师交代的练习或建议').click();teacher_field=field('老师交代的练习或建议',b);placeholder=teacher_field.get_attribute('placeholder');assert '目标是' in placeholder;click('查看填写示例：老师交代的练习或建议',b);expect(b.get_by_text(re.compile('合成示例.*老师猜测.*建议'))).to_be_visible()
+ click('补充／修改课堂观察',b);reveal_control(b,'checkbox','老师交代的练习或建议').click();teacher_field=field('老师交代的练习或建议',b);placeholder=teacher_field.get_attribute('placeholder');assert placeholder=='在这里填写你的观察';expect(b.get_by_text(re.compile('合成示例.*老师猜测.*建议'))).to_be_visible()
  teacher_note='合成老师建议：先听完再开始；第二步容易漏。老师猜测尚未准备好，建议等他表示准备好，再给短指令。'
  teacher_field.fill(teacher_note);click('提交记录',b);expect(b.get_by_role('dialog')).to_have_count(0);expect(b.get_by_role('button',name='检查连接并继续上传',exact=True)).to_have_count(0,timeout=20000)
  a.evaluate("window.dispatchEvent(new Event('focus'))");expect(a.get_by_text('待回看课堂观察：'+today+' · 合成课堂',exact=True)).to_be_visible(timeout=10000)

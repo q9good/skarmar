@@ -5,3 +5,4 @@ import './test-activity-plan.mjs';
 import './test-actual-goal-relations.mjs';
 
 import './test-object-priority.mjs';
+import './test-goal-method-diagram.mjs';

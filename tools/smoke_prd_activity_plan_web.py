@@ -47,7 +47,7 @@ with sync_playwright() as p:
  expect(plan.get_by_role('textbox')).to_have_count(1);expect(btn('保存计划并退出')).to_be_disabled();expect(plan.get_by_role('checkbox',name=re.compile('^选择目标：'))).to_have_count(0)
  for name in ['选择本次目标','选择计划方法','快捷新增计划方法','补充其他信息（可选）']:expect(plan.get_by_role('button',name=name,exact=True)).to_have_count(0)
  field('准备做什么').fill('合成计划：准备玩球，愿意的话再试试别的玩法')
- graph=page.get_by_test_id('plan-goal-method-map');graph.get_by_role('checkbox',name='显示关联经验和困难',exact=True).click();click('展开全部关系')
+ graph=page.get_by_test_id('plan-goal-method-map');graph.get_by_role('button',name='层级列表',exact=True).click();graph.get_by_role('checkbox',name='显示关联经验和困难',exact=True).click();click('展开全部关系')
  expect(graph.get_by_test_id('map-goal-'+g['id'])).to_be_visible();expect(graph.get_by_test_id('map-goal-'+actual['id'])).to_have_count(1)
  ref=graph.get_by_test_id('map-knowledge-'+g['id']+'-'+direct['input']['id']);expect(ref).to_have_count(1)
  expect(ref).to_contain_text('直接关联：'+g['input']['title']);expect(ref).to_contain_text('经方法「'+m['input']['title']+'」')

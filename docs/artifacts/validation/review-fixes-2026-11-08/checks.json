@@ -1,0 +1,33 @@
+{
+  "synthetic": true,
+  "production_accessed": false,
+  "deployed": false,
+  "viewports": [
+    320,
+    390,
+    1440
+  ],
+  "large_text": true,
+  "results": {
+    "R01": "PASS: full wrapping example defaults open in large-text mode, toggles, stays out of saved value",
+    "R02": "PASS: Continue after confirmed creation, cancel retains, failure keeps text, explicit retry removes draft across refresh without server edits",
+    "R03": "PASS: Today optional actual goals/methods, inherited parents, persisted lesson/combined counts, family unchanged, repeat no duplicate, unlink clears coverage",
+    "R04": "PASS: direct priority dialog from real goal/method graph nodes and maintenance list; native edit field visible, ranking and second family visible; lost response retries once, concurrent edit blocks overwrite, refresh retains",
+    "R05": "PASS: local SVG node/arrow graph, shared method unique, vertical/horizontal, 320/390/1440 contained panning, plan read-only and actuals unchanged",
+    "R06": "PASS: classroom and totals default current business month; previous month works; returning from Today resets current month"
+  },
+  "screenshots": [
+    "01-full-classroom-example.png",
+    "02-visible-discard-confirmation.png",
+    "03-explicit-institution-coverage.png",
+    "09-institution-coverage-visible.png",
+    "10-diagram-initial-screen.png",
+    "04-mobile-node-arrow-diagram.png",
+    "05-direct-priority-control.png",
+    "06-diagram-320.png",
+    "06-diagram-390.png",
+    "06-diagram-1440.png",
+    "08-mobile-shared-method.png",
+    "07-current-month-institution-totals.png"
+  ]
+}

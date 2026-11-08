@@ -52,7 +52,7 @@ with sync_playwright() as p:
     lesson_detail(a);expect(button(a,'撤销这条课记')).to_be_visible();expect(button(a,'标记记错，请管理员处理')).to_have_count(0);nav(a,'补充／修改课堂观察');nav(a,'课程名称（必填）：测试语言课');a.go_back();expect(a.get_by_role('dialog')).to_have_count(1)
     expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_value('测试：玩轮流游戏');dismiss(a,'记录课堂')
     login(b,'family','s')
-    lesson_detail(b);expect(button(b,'撤销这条课记')).to_have_count(0);expect(button(b,'标记记错，请管理员处理')).to_be_visible();nav(b,'整理这条记录');reveal_control(b,'checkbox','测试自己穿鞋').click();reveal_control(b,'checkbox','实际方法：测试等待示范').click()
+    lesson_detail(b);expect(button(b,'撤销这条课记')).to_have_count(0);expect(button(b,'标记记错，请管理员处理')).to_be_visible();nav(b,'整理这条记录');reveal_control(b,'checkbox','选择目标：测试自己穿鞋').click();reveal_control(b,'checkbox','实际方法：测试等待示范').click()
     # Cross-partition update: observation changes while another member is organizing old observation.
     lesson_detail(a);nav(a,'补充／修改课堂观察');reveal_control(a,'textbox','今天课上怎么样？').fill('测试：后来补充观察');submit(a)
     nav(b,'记一条困难');reveal_control(b,'textbox','困难内容 1').fill('测试：等待时需要支持')
@@ -98,10 +98,10 @@ with sync_playwright() as p:
     assert len(call('GET','/prd/lessons/'+second_id+'/history'))==1
     print('PASS lost response reload/retry creates exactly one lesson/revision; real second lesson is allowed',flush=True)
     # Counting, error flag and protected withdrawal/deletion are exercised via UI.
-    nav(a,'记录');nav(a,'课时核对');nav(a,'下个月');nav(a,'测试王老师：2 节');expect(a.get_by_role('button',name=re.compile(r'^查看课记：'))).to_have_count(2)
+    nav(a,'记录');nav(a,'课时核对');nav(a,'测试王老师：2 节');expect(a.get_by_role('button',name=re.compile(r'^查看课记：'))).to_have_count(2)
     nav(a,'课堂记录');a.get_by_role('button',name=re.compile(r'^查看课记：')).last.click();expect(a.get_by_role('dialog')).to_have_count(1);nav(a,'标记记错，请管理员处理');submit(a,'确认操作');expect(a.get_by_text('标记记错，等待管理员处理 · 本节仍计入课时',exact=True)).to_be_visible()
     nav(a,'课时核对');expect(button(a,'测试王老师：2 节 · 待核对 1')).to_be_visible()
-    nav(b,'记录');nav(b,'课时核对');nav(b,'下个月');nav(b,'测试王老师：2 节 · 待核对 1');lesson_detail(b)
+    nav(b,'记录');nav(b,'课时核对');nav(b,'测试王老师：2 节 · 待核对 1');lesson_detail(b)
     assert button(b,'删除课记（管理员）').count()==0 and button(b,'撤销这条课记').count()==0;dismiss(b,'课记详情')
     # Creator can withdraw the unreferenced second record, while original source is protected.
     nav(a,'课堂记录');a.get_by_test_id('prd-lesson-'+second_id).get_by_role('button',name=re.compile(r'^查看课记：')).click();nav(a,'撤销这条课记');submit(a,'确认操作')
