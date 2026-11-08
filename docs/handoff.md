@@ -48,6 +48,18 @@ npm run sync:push
 
 ## 目前完成与待办
 
+### 2026-11-08：六项整改已普通发布（T77）
+
+用户明确要求部署T76。[本次D01–D04发布验收](cloudflare-release-2026-11-08.md)。
+应用a11913b，触发f852dc8，[run42483621978](https://github.com/q9good/skarmar/actions/runs/42483621978)
+validate／release均success；原7df61582，上传并激活`d4e115b1-8270-42c6-97e7-112ac119d2fd`，回执deployed_and_verified。
+runner类型／Web、182Rust及Wasm Clippy通过，比较原绑定／变量／runtime／路由后切换100%；清理／初始化／示例恢复／
+旧目标删除／合成课程补关联与对应演练全部skipped。独立公开核对首页／JS字节、健康／匿名／来源、DB启动及正式代际通过。
+原账号、全部正式数据／历史／冻结引用、Worker／DO／default／域名／精确来源、v7／formal-20261101与草稿队列键保持；
+无真实登录／业务读取／验收样本／清库／重建资源。分支保持至run结束，两份脱敏结果登记后208项SHA通过。
+下方T76的未部署属于开发验收阶段记录；12图和checks仍保留生成时deployed:false，不改写成线上证据。
+T12、Opus／真机／读屏及implementationCommit不变，后续继续使用普通发布，不重跑历史维护事件。
+
 ### 2026-11-08：六项试用反馈逐项整改（T76，本机完成，未部署）
 
 先登记[R01–R06需求、真实操作结果与12图](review-fixes-2026-11-08.md)，PRD0.16；AGENTS增加用户要求的先落盘、逐项复核与禁止静态存在冒充可用的约束。
