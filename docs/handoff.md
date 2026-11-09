@@ -48,7 +48,7 @@ npm run sync:push
 
 ## 目前完成与待办
 
-### 2026-11-09：家庭总结与计划提醒四项整改（T79，本机完成，待普通发布）
+### 2026-11-09：家庭总结与计划提醒四项整改已普通发布（T79）
 
 [先登记B01–B04、失败基线、逐项矩阵与9图](summary-and-reminders-2026-11-09.md)，PRD0.18。
 基线经验漏选阶段返回422，提示已滚出屏幕；明确阶段后可正常入库，不声称复现数据库／生产丢失。
@@ -58,8 +58,11 @@ npm run sync:push
 跟进课堂按日期展开：初始只有课程老师入口，先观察最后整理／关闭，同日多节不合并，处理后消失、新观察重开。
 99客户端、类型／Web、双运行环境完整合约／重启和12组相关浏览器通过；最终共享核验保护后针对6组复验。
 41发布保护、9示例保护通过，9图逐张仅合成，含两摘要232项SHA；后端／schema未改，不拿旧185Rust当本轮本机新跑。
-用户授权完成后直接普通发布，当前尚未部署；旧账号、全部正式业务／历史／冻结来源、原Worker／DO／default／域名／精确来源、v7／formal-20261101及草稿队列键保留。
-T12、Opus／真机／读屏及implementationCommit不变。以下T78是目前线上基线。
+应用2c0821b，普通触发9da2d08，[run42631081552](https://github.com/q9good/skarmar/actions/runs/42631081552) validate／release均success；实际激活`bda6d08a-5f09-4b22-80b5-02a07633829c`，deployed_and_verified。
+[发布记录](cloudflare-release-summary-2026-11-09.md)：runner类型／Web、185Rust／Wasm Clippy和release构建通过，独立公开字节／接口／PRD启动与正式代际前后保持通过；全部维护skipped。
+旧账号、全部正式业务／历史／冻结来源、原Worker／DO／default／域名／精确来源、v7／formal-20261101及草稿队列键保留，无真实登录／业务读取／样本写入；两份脱敏结果后234项SHA。
+run完成前分支保持触发SHA，之后才收尾推送，截图不改作线上证据。
+T12、Opus／真机／读屏及implementationCommit不变。以下T78是上一轮线上基线。
 
 ### 2026-11-09：七项迭代已普通发布并核验（T78）
 
