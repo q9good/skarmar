@@ -114,6 +114,9 @@ jobs:
         run: |
           cargo test --workspace --locked -j 4
           cargo clippy -p skarma-worker --target wasm32-unknown-unknown --locked -- -D warnings
+          # Build before secrets/private config are introduced so compiler/tool
+          # failures can be diagnosed without publishing Wrangler binding logs.
+          (cd crates/worker && worker-build --release)
       - name: Append reviewed synthetic records before releasing code
         if: inputs.restore_demo || contains(github.event.head_commit.message, '[restore-demo:20261023]')
         env:

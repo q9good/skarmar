@@ -179,6 +179,23 @@ class Cloudflare:
         return {"domains": domains, "subdomain": subdomain, "settings": settings}
 
 
+def wrangler_failure_details(returncode, output):
+    """Only fixed labels and bounded numeric codes may leave private logs."""
+    api_codes = sorted(set(re.findall(r"\[code: (\d{1,8})\]", output)))[:10]
+    rust_codes = sorted(set(re.findall(r"error\[(E\d{4})\]", output)))[:10]
+    signals = {
+        "compiler-failed": r"could not compile|error while running custom build command",
+        "download-failed": r"failed to download|failed to fetch|download.*timed out",
+        "network-failed": r"network error|connection reset|connection refused|fetch failed|ETIMEDOUT",
+        "missing-file": r"No such file or directory|not found in.*PATH",
+        "resource-exhausted": r"out of memory|memory allocation.*failed|No space left on device|signal: 9|SIGKILL",
+        "optimizer-failed": r"wasm-opt.*(?:failed|error)|failed.*wasm-opt",
+    }
+    matched = [key for key, pattern in signals.items() if re.search(pattern, output, re.I)]
+    return (f"exit {int(returncode)}; API codes: {','.join(api_codes) or 'unavailable'}; "
+            f"Rust codes: {','.join(rust_codes) or 'none'}; signals: {','.join(matched) or 'unclassified'}")
+
+
 def wrangler(args, label):
     private = OUTPUT / "private"
     private.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -191,9 +208,8 @@ def wrangler(args, label):
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     # Wrangler prints binding values; never echo or upload its raw output in this public repo.
     (private / (label + ".log")).write_text(result.stdout)
-    codes = sorted(set(re.findall(r"\[code: (\d+)\]", result.stdout)))
     require(result.returncode == 0,
-            f"Wrangler {label} failed (API codes: {','.join(codes) or 'unavailable'}); raw log was not published.")
+            f"Wrangler {label} failed ({wrangler_failure_details(result.returncode, result.stdout)}); raw log was not published.")
     return [json.loads(line) for line in output_file.read_text().splitlines() if line.strip()] if output_file.exists() else []
 
 

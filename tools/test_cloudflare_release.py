@@ -66,6 +66,32 @@ class FakeAPI:
         self.active = version_id
 
 
+class PrivateLogDiagnosticTests(unittest.TestCase):
+    def test_unknown_text_is_never_echoed(self):
+        result = release.wrangler_failure_details(1, "private-secret=do-not-print https://private.example/account")
+        self.assertIn("unclassified", result)
+        self.assertNotIn("private", result)
+        self.assertNotIn("do-not-print", result)
+
+    def test_only_bounded_numeric_api_and_rust_codes_escape(self):
+        result = release.wrangler_failure_details(1, "[code: 10000] error[E0433] private-key [code: token-value]")
+        self.assertIn("API codes: 10000", result)
+        self.assertIn("Rust codes: E0433", result)
+        self.assertNotIn("private-key", result)
+        self.assertNotIn("token-value", result)
+
+    def test_build_and_resource_signals_are_static(self):
+        result = release.wrangler_failure_details(137, "could not compile private-project; memory allocation failed; SIGKILL")
+        self.assertIn("compiler-failed", result)
+        self.assertIn("resource-exhausted", result)
+        self.assertNotIn("private-project", result)
+
+    def test_download_failure_emits_label_not_url(self):
+        result = release.wrangler_failure_details(1, "failed to download https://private.example/secret-file")
+        self.assertIn("download-failed", result)
+        self.assertNotIn("secret-file", result)
+
+
 class ConfigTests(unittest.TestCase):
     def test_valid_existing_config(self):
         release.validate_config(config())

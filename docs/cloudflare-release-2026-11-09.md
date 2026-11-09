@@ -18,3 +18,12 @@
 保留账号、全部正式业务／历史／冻结来源、原SkarmaSpace／SKARMA_DB／default、域名、schema v7、formal-20261101、草稿及离线队列键。优先级共享规则写原prd_settings，新实体／观察字段可选，不清理或自动拆分旧文本。仅使用既有GitHub Secrets与发布通路，不修复或重交T12环境草案。
 
 原激活版本`d4e115b1-8270-42c6-97e7-112ac119d2fd`（T77）。成功前不以dry-run／验证绿色宣称上线；失败先查看真实激活状态再决定补验，禁止盲目重发或关闭访问防护。
+
+
+## 首次尝试与构建诊断
+
+首次触发71bc58f，[run42582451059](https://github.com/q9good/skarmar/actions/runs/42582451059)的validate、类型／Web、185Rust及Wasm Clippy通过；原生产认证／配置核对通过，回执停在preflight_passed，Wrangler dry-run失败且没有可用API错误码，**没有确认上传或激活**，原d4e115b1仍在。私密日志按保护策略删除，不尝试取回凭据或生产内容。
+
+为定位明确构建错误，将同一个worker-build --release前移到无凭据／无私密配置的Rust测试步骤；发布脚本保留私密原日志不输出，只额外提供退出码、限定Rust／API数字码和固定错误分类标签，四项脱敏测试防止私人URL／任意内容输出。新增诊断后须再次受控运行，不能把首轮失败称为已发布。
+
+本机相同Wrangler构建演练通过；41项发布保护（原37加4项脱敏）、9项示例保护通过。[首次未上传回执](artifacts/deployment/cloudflare-release-20261109-first-attempt.json)已登记，219项产物SHA。将从新诊断提交受控重试，应用业务代码仍为2eed906。

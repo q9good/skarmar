@@ -1,0 +1,10 @@
+{
+  "worker": "skarma-web",
+  "origin": "https://skarma.vip",
+  "source_sha": "71bc58f38d8082c3470d29ad2743f529b00077b9",
+  "state": "preflight_passed",
+  "operation": "deploy",
+  "model": "prd_v1",
+  "previous_version": "d4e115b1-8270-42c6-97e7-112ac119d2fd",
+  "error": "Wrangler dry-run failed (API codes: unavailable); raw log was not published."
+}

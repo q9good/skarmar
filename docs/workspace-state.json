@@ -548,7 +548,7 @@
       "title": "七项交互关系、课堂事项与草稿、数字优先级和今天关注迭代并发布",
       "status": "in_progress",
       "evidence": "docs/iteration-2026-11-09.md",
-      "verification": "2026-11-09先登记U01–U07／D01并更新PRD0.17。七项实际浏览器保存／刷新／跨页验收通过，9图逐张检查仅合成，结构化课堂观察、可关闭服务端请求和单项本地丢弃分开；延迟落盘期间旧输入不复活，另一课草稿保留。数字基础范围和方法唯一在用目标加分共享版本化，规则丢回执重放及确认后刷新失败保护；今天混合目标方法、创建时间排序和14天临时优先，计划关系浏览只读。185Rust、94客户端、类型／Web、双Clippy、Worker构建、双运行环境完整合约／重启及12组相关浏览器当前通过，扩展旧客户端携带items改文本的3项专项再通过；37发布保护、9示例保护通过。9图及checks登记后218项SHA。普通部署尚未执行；保持原Worker／DO／default／域名、账号和全部正式业务／历史／冻结引用、schema v7、formal-20261101与旧草稿队列键。T12、Opus／真机／读屏与implementationCommit不变。"
+      "verification": "2026-11-09先登记U01–U07／D01并更新PRD0.17。七项实际浏览器保存／刷新／跨页验收通过，9图逐张检查仅合成，结构化课堂观察、可关闭服务端请求和单项本地丢弃分开；延迟落盘期间旧输入不复活，另一课草稿保留。数字基础范围和方法唯一在用目标加分共享版本化，规则丢回执重放及确认后刷新失败保护；今天混合目标方法、创建时间排序和14天临时优先，计划关系浏览只读。185Rust、94客户端、类型／Web、双Clippy、Worker构建、双运行环境完整合约／重启及12组相关浏览器当前通过，扩展旧客户端携带items改文本的3项专项再通过；37发布保护、9示例保护通过。9图及checks登记后218项SHA。普通部署尚未执行；保持原Worker／DO／default／域名、账号和全部正式业务／历史／冻结引用、schema v7、formal-20261101与旧草稿队列键。T12、Opus／真机／读屏与implementationCommit不变。 首次触发71bc58f/run42582451059：认证与原配置通过，回执preflight_passed；Wrangler dry-run失败，无上传／激活确认，仍未部署。已添加无凭据的release构建步骤和固定标签脱敏诊断，等待验证和受控重试。 本机相同Wrangler开发配置dry-run通过；41发布保护（含4项新脱敏）、9示例保护通过，首次脱敏回执登记后219项SHA。"
     }
   ],
   "artifacts": [
@@ -1824,6 +1824,12 @@
       "title": "合成：七项迭代逐项复核／checks.json",
       "sha256": "6a893305ceaaa65229cf9df0b378e78ba73053aa4ec3b26e6dce521ba5fbb02d",
       "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261109-first-attempt.json",
+      "title": "七项迭代首次发布构建演练失败、未上传的脱敏回执",
+      "sha256": "d863df0f0ea145c02bcbbb46a50c1ac009e9fb5e095068701532f35f08269b7c",
+      "synthetic": false
     }
   ]
 }
