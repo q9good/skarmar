@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-08",
+  "updatedAt": "2026-11-09",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -542,6 +542,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-11-08.md",
       "verification": "2026-11-08按用户明确要求部署a11913b，D01–D04全部实际核验完成。普通发布触发f852dc8df0b19245bb402d8796cf5ab090af5560，run42483621978的validate／release均success；原7df61582，上传与实际激活d4e115b1-8270-42c6-97e7-112ac119d2fd，回执deployed_and_verified。runner类型／Web、182Rust及Wasm Clippy通过；比较原绑定／变量／runtime／路由不变后激活100%，清理／初始化／示例恢复／旧目标删除／合成课程补关联及相关演练均skipped。独立公开检查确认首页仅去严格匹配单个CF Analytics后与本次构建相同，JS逐字节匹配、health200／ok、匿名401／未知404、合法来源200／非法或缺标记403；随机未签发会话验证PRD启动，发布前后formal-20261101完成标记保持。账号、全部正式业务／历史／冻结来源、原Worker／DO／default／域名／精确来源、v7与草稿／离线队列键保持；未登录或读取生产业务、未写样本／清库／重建资源。37发布保护、9示例保护及206项SHA先通过，两份脱敏结果登记后208项SHA。分支在run结束前保持触发SHA；Cloud原生T12、Opus／真机／读屏及implementationCommit不变。"
+    },
+    {
+      "id": "T78",
+      "title": "七项交互关系、课堂事项与草稿、数字优先级和今天关注迭代并发布",
+      "status": "in_progress",
+      "evidence": "docs/iteration-2026-11-09.md",
+      "verification": "2026-11-09先登记U01–U07／D01并更新PRD0.17。七项实际浏览器保存／刷新／跨页验收通过，9图逐张检查仅合成，结构化课堂观察、可关闭服务端请求和单项本地丢弃分开；延迟落盘期间旧输入不复活，另一课草稿保留。数字基础范围和方法唯一在用目标加分共享版本化，规则丢回执重放及确认后刷新失败保护；今天混合目标方法、创建时间排序和14天临时优先，计划关系浏览只读。185Rust、94客户端、类型／Web、双Clippy、Worker构建、双运行环境完整合约／重启及12组相关浏览器当前通过，扩展旧客户端携带items改文本的3项专项再通过；37发布保护、9示例保护通过。9图及checks登记后218项SHA。普通部署尚未执行；保持原Worker／DO／default／域名、账号和全部正式业务／历史／冻结引用、schema v7、formal-20261101与旧草稿队列键。T12、Opus／真机／读屏与implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1757,6 +1764,66 @@
       "title": "六项整改版本独立公共检查与正式代际保持",
       "sha256": "5145c1cd295877c166316bef4014c61432b932e00fe4cd56e893c564b3d4aba5",
       "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/01-interactive-mobile.png",
+      "title": "合成：七项迭代逐项复核／01-interactive-mobile.png",
+      "sha256": "b0fcd5c6e1148c76a8c45487acddfaa1ec58740e07fd32c7d1f58170c64bf1ee",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/02-interactive-320.png",
+      "title": "合成：七项迭代逐项复核／02-interactive-320.png",
+      "sha256": "b90a4cba5e2d335e16933f50e425796903d4cc6e6232100b60c9f1cea0de9b3a",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/03-numeric-association-priority.png",
+      "title": "合成：七项迭代逐项复核／03-numeric-association-priority.png",
+      "sha256": "1d22e0c6915f32d40f59574caf59d23c13d4f0b2286bab8ed7cacbee4e9f4a30",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/04-independent-observation-items.png",
+      "title": "合成：七项迭代逐项复核／04-independent-observation-items.png",
+      "sha256": "51eff01b64df51ee463b9f94ce1213865130602a4dd036942c61c58e58517c57",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/05-second-class.png",
+      "title": "合成：七项迭代逐项复核／05-second-class.png",
+      "sha256": "395061605733129400c4d85e22e98b2034386b72a0a213f3b3fb1cc01afe795c",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/06-four-output-entrypoints.png",
+      "title": "合成：七项迭代逐项复核／06-four-output-entrypoints.png",
+      "sha256": "0c051df5768815457eae90544b1256dcdbcee0f4e90b8e15e48dd94fe502050e",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/07-one-continue-picker.png",
+      "title": "合成：七项迭代逐项复核／07-one-continue-picker.png",
+      "sha256": "5d93b41cf493935dcb2b397b8700816edddd6c3a33ce0d6f89533240e6d881ff",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/08-close-request-not-record.png",
+      "title": "合成：七项迭代逐项复核／08-close-request-not-record.png",
+      "sha256": "5828a9d28ae618277183f8695a919cfc66b09643e2630e3b8b7509f8d4f3cd82",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/09-combined-today-focus.png",
+      "title": "合成：七项迭代逐项复核／09-combined-today-focus.png",
+      "sha256": "fbfc7e21297cfaecae84fa5ccdb47db4c1c4f361b6d35ba224d38489e1565b2b",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/iteration-2026-11-09/checks.json",
+      "title": "合成：七项迭代逐项复核／checks.json",
+      "sha256": "6a893305ceaaa65229cf9df0b378e78ba73053aa4ec3b26e6dce521ba5fbb02d",
+      "synthetic": true
     }
   ]
 }

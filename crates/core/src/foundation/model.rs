@@ -29,6 +29,11 @@ pub enum ObservationTemplate {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct GoalInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority_score: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority_until: Option<String>,
+
     /// Family-selected display priority for long-term directions (0 low, 1 normal, 2 high).
     /// Stored with the goal JSON, shared and revisioned like its other fields.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -77,6 +82,11 @@ pub enum MethodState {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct MethodInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority_score: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub priority_until: Option<String>,
+
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub priority: Option<u8>,
     #[serde(default)]
@@ -318,6 +328,10 @@ pub struct Revision {
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Snapshot {
+    #[serde(default)]
+    pub priority_policy: super::priority::Policy,
+    #[serde(default)]
+    pub created_at: std::collections::BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub removed_goal_ids: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

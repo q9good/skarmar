@@ -34,7 +34,7 @@ with sync_playwright() as p:
         value={'title':title,'level':'short','meaning':'','criteria':'','template':'text','parent_id':None,'state':'active','archived':False,'frequency':None,'attention_start':None} if kind=='goal' else {'title':title,'goal_ids':[ids['goal']],'description':'','steps':'','guidance':'','state':'active','pinned':False,'needs_attention':False,'attention_reason':''}
         body={'id':id,'operation_id':str(uuid4()),'expected_version':None,'change_note':'','mutation':{'kind':kind,'value':value}};body.update({'method_create_mode':'quick'} if kind=='method' else {});call('PUT','/prd/records/'+id,body)
     a.reload();expect(button(a,'记录课堂')).to_be_visible()
-    nav(a,'记录课堂');expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_count(0)
+    nav(a,'记录课堂');expect(a.get_by_role('textbox',name='今天课上怎么样？ 1',exact=True)).to_have_count(0)
     nav(a,'课程名称（必填）：请选择课程');reveal_control(a,'textbox','新增课程名称').fill('测试语言课');nav(a,'保存并选用')
     expect(a.get_by_role('dialog')).to_have_count(1);expect(button(a,'授课老师（必填）：请选择老师')).to_be_visible()
     nav(a,'授课老师（必填）：请选择老师');reveal_control(a,'textbox','新增老师名称').fill('测试王老师');nav(a,'保存并选用')
@@ -43,14 +43,14 @@ with sync_playwright() as p:
     assert len(state()['lessons'])==1;l=state()['lessons'][0];lesson_id=l['id'];today=l['observation']['business_date']
     nav(a,'补充课堂观察');field=reveal_control(a,'textbox','今天课上怎么样？');field.fill('测试：玩轮流游戏')
     reveal_control(a,'checkbox','老师交代的练习或建议').click();reveal_control(a,'textbox','老师交代的练习或建议').fill('测试：老师建议先等待，再示范')
-    a.get_by_role('checkbox',name='老师交代的练习或建议',exact=True).click();expect(a.get_by_role('textbox',name='老师交代的练习或建议',exact=True)).to_have_count(0)
-    a.get_by_role('checkbox',name='老师交代的练习或建议',exact=True).click();expect(a.get_by_role('textbox',name='老师交代的练习或建议',exact=True)).to_have_value('测试：老师建议先等待，再示范')
+    a.get_by_role('checkbox',name='老师交代的练习或建议',exact=True).click();expect(a.get_by_role('textbox',name='老师交代的练习或建议 1',exact=True)).to_have_count(0)
+    a.get_by_role('checkbox',name='老师交代的练习或建议',exact=True).click();expect(a.get_by_role('textbox',name='老师交代的练习或建议 1',exact=True)).to_have_value('测试：老师建议先等待，再示范')
     reveal_control(a,'checkbox','请爸爸妈妈看看').click();submit(a)
     assert len(state()['lessons'])==1 and state()['lessons'][0]['observation_version']==2 and not state()['actions']
     print('PASS basic record, shared options created and independently selected; optional observations preserve text and do not add lessons/actions',flush=True)
     # Nested selector Back closes the selector only and preserves the observation draft.
     lesson_detail(a);expect(button(a,'撤销这条课记')).to_be_visible();expect(button(a,'标记记错，请管理员处理')).to_have_count(0);nav(a,'补充／修改课堂观察');nav(a,'课程名称（必填）：测试语言课');a.go_back();expect(a.get_by_role('dialog')).to_have_count(1)
-    expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_value('测试：玩轮流游戏');dismiss(a,'记录课堂')
+    expect(a.get_by_role('textbox',name='今天课上怎么样？ 1',exact=True)).to_have_value('测试：玩轮流游戏');dismiss(a,'记录课堂')
     login(b,'family','s')
     lesson_detail(b);expect(button(b,'撤销这条课记')).to_have_count(0);expect(button(b,'标记记错，请管理员处理')).to_be_visible();nav(b,'整理这条记录');reveal_control(b,'checkbox','选择目标：测试自己穿鞋').click();reveal_control(b,'checkbox','实际方法：测试等待示范').click()
     # Cross-partition update: observation changes while another member is organizing old observation.
@@ -82,8 +82,8 @@ with sync_playwright() as p:
     lesson_detail(b);nav(b,'补充／修改课堂观察');reveal_control(b,'textbox','今天课上怎么样？').fill('测试：家人新观察');submit(b)
     a.evaluate("window.dispatchEvent(new Event('focus'))")
     expect(a.get_by_text('这一部分已有新版本，当前填写仍保留。',exact=True)).to_be_visible();expect(button(a,'提交记录')).to_be_disabled()
-    expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_value('测试：未提交的观察')
-    nav(a,'备份填写并载入最新课记');expect(a.get_by_role('textbox',name='今天课上怎么样？',exact=True)).to_have_value('测试：家人新观察')
+    expect(a.get_by_role('textbox',name='今天课上怎么样？ 1',exact=True)).to_have_value('测试：未提交的观察')
+    nav(a,'备份填写并载入最新课记');expect(a.get_by_role('textbox',name='今天课上怎么样？ 1',exact=True)).to_have_value('测试：家人新观察')
     expect(a.get_by_text('测试：未提交的观察',exact=True)).to_be_visible();submit(a)
     print('PASS same-partition conflict preserves text, presents latest and saves only after explicit reconciliation',flush=True)
     # Commit with lost response; pending op is restored after reload and retried without duplication.

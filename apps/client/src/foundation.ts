@@ -2,17 +2,18 @@ import type {Session} from './prd-sessions';
 import type { Lesson, Knowledge, NextAction } from './prd-lessons';
 import type { Level } from './api';
 export type CatalogSnapshot = { id: string; version: number; kind: 'course' | 'teacher' | 'domain'; name: string };
-export type GoalInput = { long_priority?:number|null;resume_on?:string|null;title: string; level: Level; meaning: string; parent_id: string | null; domain: CatalogSnapshot | null; criteria: string; support: string;
+export type GoalInput = { priority_score?:number|null;priority_until?:string|null;long_priority?:number|null;resume_on?:string|null;title: string; level: Level; meaning: string; parent_id: string | null; domain: CatalogSnapshot | null; criteria: string; support: string;
   template: 'count' | 'duration' | 'steps' | 'text' | null; state: 'not_started' | 'active' | 'maintaining' | 'paused' | 'achieved' | null;
   archived: boolean; frequency: 'weekly' | 'fortnightly' | 'monthly' | 'none' | null; attention_start: string | null; due: string | null };
-export type MethodInput = { priority?:number|null; basis?:{id:string;version:number}[]; resume_on?:string|null;title: string; description: string; steps: string; observe: string; scope: string; goal_ids: string[]; guidance: string;
+export type MethodInput = { priority_score?:number|null;priority_until?:string|null;priority?:number|null; basis?:{id:string;version:number}[]; resume_on?:string|null;title: string; description: string; steps: string; observe: string; scope: string; goal_ids: string[]; guidance: string;
   state: 'active' | 'paused' | 'retired' | null; pinned: boolean; needs_attention: boolean; attention_reason: string };
 export type CatalogInput = { kind: 'course' | 'teacher' | 'domain'; name: string; active: boolean };
 export type RecordOf<T> = { id: string; version: number; input: T };
 export type Goal = RecordOf<GoalInput>;
 export type Method = RecordOf<MethodInput>&{basis_snapshots?:{id:string;version:number;kind:string;content:string;conditions:string}[]};
 export type Catalog = RecordOf<CatalogInput>;
-export type Snapshot = { removed_goal_ids?:string[]; retired_goals?:Goal[]; schema: 'skarmar.prd.v1'; goals: Goal[]; methods: Method[]; catalog: Catalog[]; lessons: Lesson[]; sessions:Session[]; knowledge: Knowledge[]; actions: NextAction[] };
+export type PriorityPolicy={version:number;minimum:number;maximum:number;method_per_goal:number;method_bonus_cap:number};
+export type Snapshot = {priority_policy?:PriorityPolicy;created_at?:Record<string,string>; removed_goal_ids?:string[]; retired_goals?:Goal[]; schema: 'skarmar.prd.v1'; goals: Goal[]; methods: Method[]; catalog: Catalog[]; lessons: Lesson[]; sessions:Session[]; knowledge: Knowledge[]; actions: NextAction[] };
 export type Mutation = { kind: 'goal'; value: GoalInput } | { kind: 'method'; value: MethodInput } | { kind: 'catalog'; value: CatalogInput };
 export type Saved = { kind: 'goal'; value: Goal } | { kind: 'method'; value: Method } | { kind: 'catalog'; value: Catalog };
 export type Write = { method_change?:'adjustment'|'correction';method_create_mode?:'full'|'quick';operation_id: string; id: string; expected_version: number | null; change_note: string; mutation: Mutation };
@@ -27,7 +28,7 @@ function merge<T extends { id: string; version: number }>(old: T[], next: T[]): 
   for (const item of next) if (!map.has(item.id) || map.get(item.id)!.version <= item.version) map.set(item.id, item);
   return [...map.values()];
 }
-export const mergeSnapshot = (old: Snapshot, next: Snapshot): Snapshot => {const removed=[...new Set([...(old.removed_goal_ids??[]),...(next.removed_goal_ids??[])])],retired=merge(old.retired_goals??[],next.retired_goals??[]);return ({ ...(removed.length?{removed_goal_ids:removed}:{}), schema: next.schema,
+export const mergeSnapshot = (old: Snapshot, next: Snapshot): Snapshot => {const removed=[...new Set([...(old.removed_goal_ids??[]),...(next.removed_goal_ids??[])])],retired=merge(old.retired_goals??[],next.retired_goals??[]);return ({ priority_policy:!next.priority_policy?old.priority_policy:!old.priority_policy||next.priority_policy.version>=old.priority_policy.version?next.priority_policy:old.priority_policy,created_at:{...old.created_at,...next.created_at},...(removed.length?{removed_goal_ids:removed}:{}), schema: next.schema,
   ...(retired.length?{retired_goals:retired}:{}),
   goals: merge(old.goals, next.goals).filter(g=>!removed.includes(g.id)), methods: merge(old.methods, next.methods), catalog: merge(old.catalog, next.catalog), lessons: merge(old.lessons ?? [], next.lessons ?? []), sessions:merge(old.sessions??[],next.sessions??[]),
   knowledge: merge((old.knowledge ?? []).map(k => ({...k, id:k.input.id})), (next.knowledge ?? []).map(k => ({...k, id:k.input.id}))),
@@ -59,13 +60,13 @@ export function decodeDrafts(raw: string | null): Record<string, Draft> {
     if (m.kind === 'goal') {
       const legacyKeys=Object.keys(newGoal()).filter(k=>!['domain','due','support'].includes(k));
       const domain=v.domain;
-      return legacyKeys.every(k => k in v) && (v.long_priority===undefined||v.long_priority===null||Number.isInteger(v.long_priority)&&Number(v.long_priority)>=0&&Number(v.long_priority)<=2) && typeof v.title === 'string' && typeof v.meaning === 'string' && typeof v.criteria === 'string' && ['long','medium','short'].includes(String(v.level)) && typeof v.archived === 'boolean' &&
+      return legacyKeys.every(k => k in v) && (v.priority_score===undefined||v.priority_score===null||Number.isInteger(v.priority_score)&&Number(v.priority_score)>=0&&Number(v.priority_score)<=10000)&&(v.priority_until===undefined||v.priority_until===null||typeof v.priority_until==='string') && (v.long_priority===undefined||v.long_priority===null||Number.isInteger(v.long_priority)&&Number(v.long_priority)>=0&&Number(v.long_priority)<=2) && typeof v.title === 'string' && typeof v.meaning === 'string' && typeof v.criteria === 'string' && ['long','medium','short'].includes(String(v.level)) && typeof v.archived === 'boolean' &&
         (v.support===undefined||typeof v.support==='string') && (v.due===undefined||v.due===null||typeof v.due==='string') &&
         (domain===undefined||domain===null||record(domain)&&typeof domain.id==='string'&&Number.isSafeInteger(domain.version)&&Number(domain.version)>0&&domain.kind==='domain'&&typeof domain.name==='string');
     }
     if (m.kind === 'method') {
       const legacyKeys=Object.keys(newMethod()).filter(k=>!['observe','scope'].includes(k));
-      return legacyKeys.every(k => k in v) && (v.priority===undefined||v.priority===null||Number.isInteger(v.priority)&&Number(v.priority)>=0&&Number(v.priority)<=2) && typeof v.title === 'string' && typeof v.description === 'string' && typeof v.steps === 'string' && (v.observe===undefined||typeof v.observe==='string') && (v.scope===undefined||typeof v.scope==='string') && typeof v.guidance === 'string' && Array.isArray(v.goal_ids) && v.goal_ids.every(id => typeof id === 'string') && typeof v.pinned === 'boolean' && typeof v.needs_attention === 'boolean' && typeof v.attention_reason === 'string';
+      return legacyKeys.every(k => k in v) && (v.priority_score===undefined||v.priority_score===null||Number.isInteger(v.priority_score)&&Number(v.priority_score)>=0&&Number(v.priority_score)<=10000)&&(v.priority_until===undefined||v.priority_until===null||typeof v.priority_until==='string') && (v.priority===undefined||v.priority===null||Number.isInteger(v.priority)&&Number(v.priority)>=0&&Number(v.priority)<=2) && typeof v.title === 'string' && typeof v.description === 'string' && typeof v.steps === 'string' && (v.observe===undefined||typeof v.observe==='string') && (v.scope===undefined||typeof v.scope==='string') && typeof v.guidance === 'string' && Array.isArray(v.goal_ids) && v.goal_ids.every(id => typeof id === 'string') && typeof v.pinned === 'boolean' && typeof v.needs_attention === 'boolean' && typeof v.attention_reason === 'string';
     }
     return m.kind === 'catalog' && ['course','teacher','domain'].includes(String(v.kind)) && typeof v.name === 'string' && typeof v.active === 'boolean';
   };

@@ -1,0 +1,29 @@
+{
+  "synthetic": true,
+  "production_accessed": false,
+  "deployed": false,
+  "viewports": [
+    320,
+    390
+  ],
+  "results": {
+    "U01": "PASS: goal→method→another goal→method, Back, direct-only links, mobile 320/390 with no canvas panning",
+    "U05": "PASS: numeric policy 0–200, relation add 5 capped 12, method60→72, saved shared policy, lost response replays once",
+    "U03": "PASS: four peer output actions, real new goal/method saves return to original organization; proposals do not create course coverage",
+    "U07": "PASS: two real UI courses/organization drafts expose only one Continue entry, picker names courses, one discard leaves the other across refresh",
+    "U02": "PASS: discard from Followup removes only chosen local input and ignores a late input during delayed persistence; close-request replays once, preserves lesson/knowledge, later observation reopens",
+    "U04": "PASS: two teacher observations added/edited/removed through UI, stable IDs and independent values survive; later edit keeps frozen old items; two classes stay two records",
+    "U06": "PASS: Today interleaves typed goals/methods by numeric scores, a new long goal has 14-day boost, can cancel without changing 180; date expiry separately unit-tested"
+  },
+  "screenshots": [
+    "01-interactive-mobile.png",
+    "02-interactive-320.png",
+    "03-numeric-association-priority.png",
+    "04-independent-observation-items.png",
+    "05-second-class.png",
+    "06-four-output-entrypoints.png",
+    "07-one-continue-picker.png",
+    "08-close-request-not-record.png",
+    "09-combined-today-focus.png"
+  ]
+}

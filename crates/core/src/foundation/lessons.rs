@@ -296,7 +296,8 @@ fn has_observation(v: &ObservationInput) -> bool {
     .any(|s| !s.trim().is_empty())
 }
 fn material_observation_changed(a: &ObservationInput, b: &ObservationInput) -> bool {
-    a.business_date != b.business_date
+    a.items != b.items
+        || a.business_date != b.business_date
         || a.course_id != b.course_id
         || a.teacher_id != b.teacher_id
         || a.notes != b.notes
@@ -306,6 +307,95 @@ fn material_observation_changed(a: &ObservationInput, b: &ObservationInput) -> b
         || a.progress_notes != b.progress_notes
         || a.interest_notes != b.interest_notes
         || a.cause_guess != b.cause_guess
+}
+const ITEM_KINDS: [&str; 7] = [
+    "notes",
+    "teacher_notes",
+    "helpful_notes",
+    "progress_notes",
+    "interest_notes",
+    "difficulty_notes",
+    "cause_guess",
+];
+fn observation_field(v: &ObservationInput, k: &str) -> String {
+    match k {
+        "notes" => &v.notes,
+        "teacher_notes" => &v.teacher_notes,
+        "helpful_notes" => &v.helpful_notes,
+        "progress_notes" => &v.progress_notes,
+        "interest_notes" => &v.interest_notes,
+        "difficulty_notes" => &v.difficulty_notes,
+        _ => &v.cause_guess,
+    }
+    .clone()
+}
+fn observation_items(input: &mut ObservationInput, old: Option<&ObservationInput>) -> Result<()> {
+    let old_flat_edit = old.is_some_and(|before| {
+        input.items == before.items
+            && ITEM_KINDS
+                .iter()
+                .any(|k| observation_field(input, k) != observation_field(before, k))
+    });
+    if (input.items.is_none() || old_flat_edit)
+        && let Some(prior) = old.and_then(|v| v.items.as_ref())
+    {
+        let mut items = prior.clone();
+        if let Some(before) = old {
+            for k in ITEM_KINDS {
+                if observation_field(input, k) != observation_field(before, k) {
+                    items.retain(|i| i.kind != k);
+                    let content = observation_field(input, k);
+                    if !content.trim().is_empty() {
+                        items.push(ObservationItem {
+                            id: uuid::Uuid::new_v4().to_string(),
+                            kind: k.into(),
+                            content,
+                        });
+                    }
+                }
+            }
+        }
+        input.items = Some(items);
+    }
+    if let Some(items) = &input.items {
+        if items.len() > 100 {
+            return Err(ApiError::invalid("课堂观察最多100条，请分别保留具体事项"));
+        }
+        let mut ids = std::collections::HashSet::new();
+        let mut size = 0;
+        for i in items {
+            valid_id(&i.id)?;
+            size += i.content.chars().count();
+            if !ids.insert(&i.id)
+                || !ITEM_KINDS.contains(&i.kind.as_str())
+                || i.content.trim().is_empty()
+                || i.content.chars().count() > 16000
+            {
+                return Err(ApiError::invalid(
+                    "观察事项须有独立ID、有效分类及非空内容，每条不超过16000字",
+                ));
+            }
+        }
+        if size > 64000 {
+            return Err(ApiError::invalid("课堂观察总内容过长"));
+        }
+        let text = |k: &str| {
+            items
+                .iter()
+                .filter(|i| i.kind == k)
+                .map(|i| i.content.clone())
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        input.notes = text("notes");
+        input.teacher_notes = text("teacher_notes");
+        input.helpful_notes = text("helpful_notes");
+        input.progress_notes = text("progress_notes");
+        input.interest_notes = text("interest_notes");
+        input.difficulty_notes = text("difficulty_notes");
+        input.cause_guess = text("cause_guess");
+    }
+    Ok(())
 }
 pub fn write(db: &dyn Sql, actor: &User, request: LessonWrite) -> Result<Lesson> {
     write_at(db, actor, request, Utc::now())
@@ -359,6 +449,7 @@ pub(crate) fn write_at(
     let mut actions = vec![];
     let (mut lesson, event) = match request.action {
         LessonAction::Observation(mut input) => {
+            observation_items(&mut input, old.as_ref().map(|l| &l.observation))?;
             if input.course_started.is_none() {
                 input.course_started = old.as_ref().and_then(|l| l.observation.course_started);
             }

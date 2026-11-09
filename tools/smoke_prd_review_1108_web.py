@@ -24,7 +24,7 @@ with sync_playwright() as p:
   a.screenshot(path=str(OUT/(name+'.png')));shots.append(name+'.png')
  def ready():expect(a.get_by_role('button',name='记录课堂',exact=True)).to_be_visible()
  a.goto(BASE);field('账号').fill('owner');a.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click('登录');ready()
- long=entity('goal',{'title':'合成共同交往','level':'long','long_priority':0});medium=entity('goal',{'title':'合成轮流活动','level':'medium','parent_id':long['id']});short=entity('goal',{'title':'合成等待一轮','level':'short','parent_id':medium['id']});other=entity('goal',{'title':'合成学习支持','level':'long','long_priority':2})
+ long=entity('goal',{'title':'合成共同交往','level':'long','long_priority':0});medium=entity('goal',{'title':'合成轮流活动','level':'medium','parent_id':long['id']});short=entity('goal',{'title':'合成等待一轮','level':'short','parent_id':medium['id']});other=entity('goal',{'title':'合成学习支持','level':'long','long_priority':1})
  method=entity('method',{'title':'合成示范再等待','steps':'先示范，再等待回应','goal_ids':[short['id'],other['id']],'priority':1})
  for kind,title,goals,methods,details in [('experience','合成方法相关经验',[],[method['id']],{}),('experience','合成其他目标私有经验',[other['id']],[],{}),('difficulty','合成已解决困难',[],[method['id']],{'state':'resolved'})]:
   kid=str(uuid4());call('POST','/prd/process',{'kind':'knowledge','value':{'id':kid,'operation_id':str(uuid4()),'expected_version':None,'action':'create','input':{'id':kid,'kind':kind,'content':title,'goal_ids':goals,'method_ids':methods,'stage':'try' if kind=='experience' else None},'details':{'title':title,**details}}})
@@ -32,7 +32,7 @@ with sync_playwright() as p:
  a.reload();ready();today=a.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date())")
  # R01: real recording, default full example, collapse, edit, server request contains only input.
  widget=a.get_by_role('button',name='查看长期关注',exact=True);expect(widget).to_contain_text('合成共同交往');expect(widget).to_contain_text('合成学习支持');assert widget.inner_text().index('合成学习支持')<widget.inner_text().index('合成共同交往')
- click('记录课堂');click('课程名称（必填）：请选择课程');click('合成认知');click('授课老师（必填）：请选择老师');click('合成唐老师');click('补充观察');reveal_control(a,'checkbox','老师交代的练习或建议').click()
+ click('记录课堂');click('课程名称（必填）：请选择课程');click('合成认知');click('授课老师（必填）：请选择老师');click('合成唐老师');click('补充观察');reveal_control(a,'checkbox','老师交代的练习或建议').click();click('添加一条老师交代的练习或建议')
  example=a.get_by_text(re.compile('合成示例.*目标是.*老师猜测.*逐步增加步骤'))
  expect(example).to_be_visible();expect(field('老师交代的练习或建议')).to_have_value('');snap('01-full-classroom-example',example)
  click('收起填写示例：老师交代的练习或建议');expect(example).to_have_count(0);click('查看填写示例：老师交代的练习或建议');expect(example).to_be_visible()
@@ -61,31 +61,31 @@ with sync_playwright() as p:
  click('整理：合成认知');reveal_control(a,'checkbox','选择目标：合成共同交往').click();reveal_control(a,'checkbox','实际方法：合成示范再等待').click();click('保存整理');expect(a.get_by_role('dialog')).to_have_count(0);assert counts()[short['id']]['lesson']==0 and counts()[long['id']]['lesson']==0
  results['R03']='PASS: Today optional actual goals/methods, inherited parents, persisted lesson/combined counts, family unchanged, repeat no duplicate, unlink clears coverage'
  # R04/R05: actual graph node + priority actions, persistence, one shared method and preserved plan.
- click('目标与方法');graph=a.get_by_test_id('goal-method-map');expect(graph.get_by_test_id('relationship-diagram')).to_be_visible();a.evaluate("()=>{for(const e of document.querySelectorAll('*'))if(['auto','scroll'].includes(getComputedStyle(e).overflowY))e.scrollTop=0}");snap('10-diagram-initial-screen');click('展开全部关系');expect(graph.get_by_test_id('flow-node-method-'+method['id'])).to_have_count(1)
+ click('目标与方法');graph=a.get_by_test_id('goal-method-map');click('全局图');expect(graph.get_by_test_id('relationship-diagram')).to_be_visible();a.evaluate("()=>{for(const e of document.querySelectorAll('*'))if(['auto','scroll'].includes(getComputedStyle(e).overflowY))e.scrollTop=0}");snap('10-diagram-initial-screen');click('展开全部关系');expect(graph.get_by_test_id('flow-node-method-'+method['id'])).to_have_count(1)
  snap('04-mobile-node-arrow-diagram',graph.get_by_test_id('relationship-diagram'))
  reveal_control(a,'checkbox','显示关联经验和困难').click();click('关系方法：合成示范再等待');node=a.get_by_role('dialog',name='关系节点',exact=True);expect(node).to_contain_text('合成方法相关经验');expect(node).not_to_contain_text('合成已解决困难');click('关闭关系节点');click('关系目标：合成等待一轮');node=a.get_by_role('dialog',name='关系节点',exact=True);expect(node).to_contain_text('合成方法相关经验');expect(node).not_to_contain_text('合成其他目标私有经验');click('关闭关系节点')
- click('关系目标：合成共同交往');click('调整优先级：合成共同交往');expect(a.get_by_role('dialog',name='调整优先级',exact=True)).to_be_visible();a.get_by_role('combobox',name='关注优先级',exact=True).select_option('2');snap('05-direct-priority-control');click('保存');expect(a.get_by_role('dialog')).to_have_count(0);assert next(g for g in state()['goals'] if g['id']==long['id'])['input']['long_priority']==2
- click('关系方法：合成示范再等待');click('调整优先级：合成示范再等待');a.get_by_role('combobox',name='关注优先级',exact=True).select_option('0')
+ click('关系目标：合成共同交往');click('调整优先级：合成共同交往');expect(a.get_by_role('dialog',name='调整优先级',exact=True)).to_be_visible();field('目标数字优先级').fill('100');snap('05-direct-priority-control');click('保存');expect(a.get_by_role('dialog')).to_have_count(0);assert next(g for g in state()['goals'] if g['id']==long['id'])['input']['priority_score']==100
+ click('关系方法：合成示范再等待');click('调整优先级：合成示范再等待');field('方法基础优先级').fill('0')
  def lose_priority_response(route):
   route.fetch();route.abort('failed')
  a.route('**/api/prd/records/'+method['id'],lose_priority_response);click('保存');expect(a.get_by_role('button',name='重试同一次保存',exact=True)).to_be_visible();a.unroute('**/api/prd/records/'+method['id'],lose_priority_response);click('重试同一次保存');expect(a.get_by_role('dialog')).to_have_count(0)
  assert next(m for m in state()['methods'] if m['id']==method['id'])['version']==method['version']+1
  call('POST','/auth/users',{'username':'reviewer','display_name':'合成第二位家人','password':'s','role':'member'})
- otherctx=browser.new_context(viewport={'width':390,'height':844});b=otherctx.new_page();b.goto(BASE);field('账号',b).fill('reviewer');b.get_by_label('密码',exact=True).fill('s');click('登录',b);click('目标与方法',b);click('展开全部关系',b);click('关系方法：合成示范再等待',b);expect(b.get_by_role('dialog',name='关系节点',exact=True)).to_contain_text('低关注');click('关闭关系节点',b)
- click('关系方法：合成示范再等待');click('调整优先级：合成示范再等待');a.get_by_role('combobox',name='关注优先级',exact=True).select_option('1')
+ otherctx=browser.new_context(viewport={'width':390,'height':844});b=otherctx.new_page();b.goto(BASE);field('账号',b).fill('reviewer');b.get_by_label('密码',exact=True).fill('s');click('登录',b);click('目标与方法',b);click('全局图',b);click('展开全部关系',b);click('关系方法：合成示范再等待',b);expect(b.get_by_role('dialog',name='关系节点',exact=True)).to_contain_text('基础 0');click('关闭关系节点',b)
+ click('关系方法：合成示范再等待');click('调整优先级：合成示范再等待');field('方法基础优先级').fill('50')
  current=next(m for m in state()['methods'] if m['id']==method['id'])
- call('PUT','/prd/records/'+method['id'],{'id':method['id'],'operation_id':str(uuid4()),'expected_version':current['version'],'method_change':'correction','change_note':'合成并发调整','mutation':{'kind':'method','value':{**current['input'],'priority':2}}},context=otherctx)
- click('保存');expect(a.get_by_text('另一位家人已修改这条记录，你的填写仍保留。',exact=True)).to_be_visible();expect(a.get_by_role('combobox',name='关注优先级',exact=True)).to_have_value('1');assert next(m for m in state()['methods'] if m['id']==method['id'])['input']['priority']==2
+ call('PUT','/prd/records/'+method['id'],{'id':method['id'],'operation_id':str(uuid4()),'expected_version':current['version'],'method_change':'correction','change_note':'合成并发调整','mutation':{'kind':'method','value':{**current['input'],'priority_score':100}}},context=otherctx)
+ click('保存');expect(a.get_by_text('另一位家人已修改这条记录，你的填写仍保留。',exact=True)).to_be_visible();expect(a.get_by_role('textbox',name='方法基础优先级',exact=True)).to_have_value('50');assert next(m for m in state()['methods'] if m['id']==method['id'])['input']['priority_score']==100
  click('放弃这份填写');click('确认放弃这份填写');expect(a.get_by_role('dialog')).to_have_count(0)
- current=next(m for m in state()['methods'] if m['id']==method['id']);call('PUT','/prd/records/'+method['id'],{'id':method['id'],'operation_id':str(uuid4()),'expected_version':current['version'],'method_change':'correction','change_note':'合成恢复低关注','mutation':{'kind':'method','value':{**current['input'],'priority':0}}})
+ current=next(m for m in state()['methods'] if m['id']==method['id']);call('PUT','/prd/records/'+method['id'],{'id':method['id'],'operation_id':str(uuid4()),'expected_version':current['version'],'method_change':'correction','change_note':'合成恢复低关注','mutation':{'kind':'method','value':{**current['input'],'priority_score':0}}})
  otherctx.close()
- assert next(m for m in state()['methods'] if m['id']==method['id'])['input']['priority']==0
- a.reload();ready();widget=a.get_by_role('button',name='查看长期关注',exact=True);expect(widget).to_contain_text('合成共同交往');expect(widget).to_contain_text('合成学习支持');assert widget.inner_text().index('合成共同交往')<widget.inner_text().index('合成学习支持');click('目标与方法');click('展开全部关系');click('关系方法：合成示范再等待');expect(a.get_by_role('dialog',name='关系节点',exact=True)).to_contain_text('低关注');click('关闭关系节点')
- click('方法');expect(a.get_by_role('button',name='调整优先级：合成示范再等待',exact=True)).to_be_visible();click('编辑方法：合成示范再等待');expect(a.get_by_role('combobox',name='方法关注优先级',exact=True)).to_be_visible();click('保留草稿并退出')
- click('今天');click('记录家庭');field('准备做什么').fill('合成一起玩滚球，按孩子状态调整');plan=a.get_by_test_id('plan-goal-method-map');expect(plan.get_by_test_id('relationship-diagram')).to_be_visible();click('展开全部关系');click('关系方法：合成示范再等待');expect(a.get_by_role('button',name='调整优先级：合成示范再等待',exact=True)).to_have_count(0);click('关闭关系节点');expect(field('准备做什么')).to_have_value('合成一起玩滚球，按孩子状态调整');click('保存计划并退出');expect(a.get_by_role('dialog')).to_have_count(0)
+ assert next(m for m in state()['methods'] if m['id']==method['id'])['input']['priority_score']==0
+ a.reload();ready();widget=a.get_by_role('button',name='查看长期关注',exact=True);expect(widget).to_contain_text('合成共同交往');expect(widget).to_contain_text('合成学习支持');assert widget.inner_text().index('合成共同交往')<widget.inner_text().index('合成学习支持');click('目标与方法');click('全局图');click('展开全部关系');click('关系方法：合成示范再等待');expect(a.get_by_role('dialog',name='关系节点',exact=True)).to_contain_text('基础 0');click('关闭关系节点')
+ click('方法');expect(a.get_by_role('button',name='调整优先级：合成示范再等待',exact=True)).to_be_visible();click('编辑方法：合成示范再等待');expect(a.get_by_role('textbox',name='方法基础优先级',exact=True)).to_be_visible();click('保留草稿并退出')
+ click('今天');click('记录家庭');field('准备做什么').fill('合成一起玩滚球，按孩子状态调整');plan=a.get_by_test_id('plan-goal-method-map');click('全局图');expect(plan.get_by_test_id('relationship-diagram')).to_be_visible();click('展开全部关系');click('关系方法：合成示范再等待');expect(a.get_by_role('button',name='调整优先级：合成示范再等待',exact=True)).to_have_count(0);click('关闭关系节点');expect(field('准备做什么')).to_have_value('合成一起玩滚球，按孩子状态调整');click('保存计划并退出');expect(a.get_by_role('dialog')).to_have_count(0)
  assert not state()['sessions'][0]['input']['targets'] and not state()['sessions'][0]['input']['methods']
  for width in [320,390,1440]:
-  a.set_viewport_size({'width':width,'height':900 if width>1000 else 844});click('目标与方法');click('横向' if width>1000 else '纵向');click('展开全部关系');snap('06-diagram-'+str(width),a.get_by_test_id('relationship-diagram'));assert a.get_by_test_id('relationship-diagram').locator('svg path[marker-end]').count()>0
+  a.set_viewport_size({'width':width,'height':900 if width>1000 else 844});click('目标与方法');click('全局图');click('横向' if width>1000 else '纵向');click('展开全部关系');snap('06-diagram-'+str(width),a.get_by_test_id('relationship-diagram'));assert a.get_by_test_id('relationship-diagram').locator('svg path[marker-end]').count()>0
  results['R04']='PASS: direct priority dialog from real goal/method graph nodes and maintenance list; native edit field visible, ranking and second family visible; lost response retries once, concurrent edit blocks overwrite, refresh retains'
  results['R05']='PASS: local SVG node/arrow graph, shared method unique, vertical/horizontal, 320/390/1440 contained panning, plan read-only and actuals unchanged'
  a.set_viewport_size({'width':390,'height':844});click('纵向');snap('08-mobile-shared-method',a.get_by_test_id('flow-node-method-'+method['id']))

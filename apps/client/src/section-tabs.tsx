@@ -26,12 +26,12 @@ export function SectionButton({title,tone,primary=false,disabled=false,press}:{t
 
 /** A single bounded control makes sibling choices explicit. Both choices keep
  * the same surface, typography and size; selection uses one common underline. */
-export function SectionTabs<T extends string>({label,items,value,change,categoryColors=false}:{label:string;items:{value:T;title:string;tone:SectionTone}[];value:T;change:(v:T)=>void;categoryColors?:boolean}) {
+export function SectionTabs<T extends string>({label,items,value,change,categoryColors=false}:{label:string;items:{value:T;title:string;label?:string;tone:SectionTone}[];value:T;change:(v:T)=>void;categoryColors?:boolean}) {
   return <View role="group" accessibilityLabel={label} style={{flexDirection:'row',alignItems:'stretch',padding:4,gap:4,borderWidth:1,borderColor:neutral.border,borderRadius:12,backgroundColor:neutral.canvas}}>
     {items.map(item=>{const selected=item.value===value;return <Pressable key={item.value} accessibilityRole="button" accessibilityLabel={item.title} accessibilityState={{selected}} aria-pressed={selected} onPress={()=>change(item.value)}
       style={{flex:1,minWidth:0,minHeight:48,paddingVertical:10,paddingHorizontal:8,borderRadius:8,borderBottomWidth:3,borderBottomColor:selected?sectionTones[item.tone].ink:'transparent',backgroundColor:categoryColors?sectionTones[item.tone].pale:'#FFFFFF',flexDirection:'row',alignItems:'center',justifyContent:'center',gap:7}}>
       <View aria-hidden style={{width:6,height:6,borderRadius:3,backgroundColor:sectionTones[item.tone].ink}}/>
-      <Text style={{fontSize:17,fontWeight:'600',color:categoryColors?sectionTones[item.tone].ink:neutral.ink,flexShrink:1,textAlign:'center'}}>{item.title}</Text>
+      <Text style={{fontSize:17,fontWeight:'600',color:categoryColors?sectionTones[item.tone].ink:neutral.ink,flexShrink:1,textAlign:'center'}}>{item.label??item.title}</Text>
     </Pressable>;})}
   </View>;
 }

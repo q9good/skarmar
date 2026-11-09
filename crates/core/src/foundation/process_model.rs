@@ -253,6 +253,7 @@ pub enum Command {
     Action(ActionWrite),
     Feedback(FeedbackWrite),
     Settings(SettingsWrite),
+    PrioritySettings(super::priority::Write),
     Review(ReviewWrite),
     Read(Read),
 }

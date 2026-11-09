@@ -12,6 +12,7 @@ pub mod lessons;
 pub mod model;
 pub mod observation_model;
 pub mod observations;
+pub mod priority;
 pub mod process_model;
 mod review_changes;
 pub mod reviews;
@@ -274,6 +275,18 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
     };
     let (kind, name, saved) = match merge_update(&request, previous.as_ref())? {
         Mutation::Goal(mut input) => {
+            priority::validate(
+                db,
+                input.priority_score,
+                &input.priority_until,
+                previous.as_ref().and_then(|v| {
+                    if let Saved::Goal(g) = v {
+                        g.input.priority_score
+                    } else {
+                        None
+                    }
+                }),
+            )?;
             input.title = title(&input.title)?;
             if input.long_priority.is_some_and(|priority| priority > 2) {
                 return Err(ApiError::invalid("长期关注优先级须为低、普通或高"));
@@ -343,6 +356,18 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Saved> {
             )
         }
         Mutation::Method(mut input) => {
+            priority::validate(
+                db,
+                input.priority_score,
+                &input.priority_until,
+                previous.as_ref().and_then(|v| {
+                    if let Saved::Method(m) = v {
+                        m.input.priority_score
+                    } else {
+                        None
+                    }
+                }),
+            )?;
             if input.priority.is_some_and(|v| v > 2) {
                 return Err(ApiError::invalid("方法关注优先级须为高、普通或低"));
             }
@@ -585,6 +610,8 @@ pub fn catalog_snapshot(db: &dyn Sql, id: &str, expected: CatalogKind) -> Result
 pub fn snapshot(db: &dyn Sql) -> Result<Snapshot> {
     let removed_goal_ids = goal_removal::removed_ids(db)?;
     let mut result = Snapshot {
+        priority_policy: priority::read(db)?,
+        created_at: db.query("SELECT entity_id,json_extract(data,'$.recorded_at') FROM prd_revisions WHERE version=1",&[])?.into_iter().map(|r|(r[0].clone(),r[1].clone())).collect(),
         removed_goal_ids: removed_goal_ids.clone(),
         retired_goals: vec![],
         schema: "skarmar.prd.v1".into(),

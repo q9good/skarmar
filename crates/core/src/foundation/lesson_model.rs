@@ -1,9 +1,19 @@
 use super::model::{CatalogSnapshot, Goal, Method};
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ObservationItem {
+    pub id: String,
+    pub kind: String,
+    pub content: String,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ObservationInput {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub items: Option<Vec<ObservationItem>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub course_started: Option<bool>,
     pub business_date: String,

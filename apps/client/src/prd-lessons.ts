@@ -1,5 +1,5 @@
 import type { Catalog, Goal, Method } from './foundation';
-export type Observation = { helpful_notes?:string;course_started?:boolean; business_date: string; course_id: string; teacher_id: string; notes: string; teacher_notes: string; progress_notes: string; interest_notes: string; difficulty_notes: string; cause_guess: string; request_review: boolean; review_message: string };
+export type Observation = {items?:import('./observation-items').ObservationItem[]; helpful_notes?:string;course_started?:boolean; business_date: string; course_id: string; teacher_id: string; notes: string; teacher_notes: string; progress_notes: string; interest_notes: string; difficulty_notes: string; cause_guess: string; request_review: boolean; review_message: string };
 export type CatalogSnapshot = { id: string; version: number; kind: 'course'|'teacher'; name: string };
 export type Target = { goal_id: string; note: string };
 export type Organization = { feedback_ids?:string[]; seen_observation_version: number; targets: { target: Target; goal: Goal; ancestors:Goal[] }[]; methods: Method[]; focus_goals: Goal[]; processed_request_generation: number; state: string; claimed_by: string|null; claimed_name: string|null; outcome: string };
@@ -13,14 +13,14 @@ export type NextAction = { audit:import('./prd-followups').Audit|null;source_del
 export type OrganizationInput = { feedback?:import('./prd-followups').PracticeFeedback[];feedback_knowledge_versions?:Record<string,number>; seen_observation_version: number; targets: Target[]; method_ids: string[]; focus_goal_ids: string[]; processing: 'keep'|'claim'|'take_over'|'complete'|'reopen'; request_generation: number; outcome: string; new_knowledge: NewKnowledge[]; new_actions: NewAction[] };
 export type LessonAction = { kind: 'observation'; value: Observation } | { kind: 'organization'; value: OrganizationInput } | { kind: 'withdraw'|'delete'|'acknowledge' } | { kind: 'mark_error'; value: { marked: boolean } };
 export type LessonWrite = { id: string; operation_id: string; expected_version: number|null; action: LessonAction };
-export type LessonDraft = { request: LessonWrite; phase: 'basic'|'observation'|'organization'|'administration'; source?: Observation; pending?: LessonWrite; backup?: LessonWrite };
+export type LessonDraft = { request: LessonWrite; phase: 'basic'|'observation'|'organization'|'administration'|'dismissal'; source?: Observation; pending?: LessonWrite; backup?: LessonWrite };
 // Validate persisted input before rendering it; never replace an unreadable queue.
 export function decodeLessonDrafts(raw: string|null): Record<string,LessonDraft> {
   if (raw === null) return {};
   const object = (v:unknown):v is Record<string,unknown> => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
   const strings = (v:unknown):v is string[] => Array.isArray(v) && v.every(s=>typeof s==='string');
   const integer = (v:unknown) => Number.isSafeInteger(v) && Number(v)>0;
-  const observation = (v:unknown) => object(v) && (v.helpful_notes===undefined||typeof v.helpful_notes==='string') && (v.course_started===undefined||typeof v.course_started==='boolean') && ['business_date','course_id','teacher_id','notes','teacher_notes','progress_notes','interest_notes','difficulty_notes','cause_guess','review_message'].every(k=>typeof v[k]==='string') && typeof v.request_review==='boolean';
+  const observation = (v:unknown) => object(v) && (v.items===undefined||Array.isArray(v.items)&&v.items.every(i=>object(i)&&typeof i.id==='string'&&['notes','teacher_notes','helpful_notes','progress_notes','interest_notes','difficulty_notes','cause_guess'].includes(String(i.kind))&&typeof i.content==='string')) && (v.helpful_notes===undefined||typeof v.helpful_notes==='string') && (v.course_started===undefined||typeof v.course_started==='boolean') && ['business_date','course_id','teacher_id','notes','teacher_notes','progress_notes','interest_notes','difficulty_notes','cause_guess','review_message'].every(k=>typeof v[k]==='string') && typeof v.request_review==='boolean';
   const bindings = (v:Record<string,unknown>) => typeof v.id==='string' && typeof v.content==='string' && strings(v.goal_ids) && strings(v.method_ids);
   const write = (v:unknown):v is LessonWrite => {
     if (!object(v) || typeof v.id!=='string' || !v.id || typeof v.operation_id!=='string' || !v.operation_id || !(v.expected_version===null || integer(v.expected_version)) || !object(v.action)) return false;
@@ -35,7 +35,7 @@ export function decodeLessonDrafts(raw: string|null): Record<string,LessonDraft>
     if (!object(d) || !write(d.request) || !(d.source===undefined||observation(d.source)) || !(d.backup===undefined||(write(d.backup)&&d.backup.id===d.request.id)) || !(d.pending===undefined||(write(d.pending)&&JSON.stringify(d.pending)===JSON.stringify(d.request)))) return false;
     const kind=d.request.action.kind;
     if(kind==='organization'&&!observation(d.source))return false;
-    const zone=kind==='organization'?'organization':kind==='observation'?'observation':'administration';
+    const zone=d.phase==='dismissal'?'dismissal':kind==='organization'?'organization':kind==='observation'?'observation':'administration';
     return key===`${d.request.id}:${zone}` && (zone==='observation'?['basic','observation'].includes(String(d.phase)):d.phase===zone);
   })) throw new Error('无法读取本机课记草稿，请保留浏览器数据后重试。');
   return value as Record<string,LessonDraft>;

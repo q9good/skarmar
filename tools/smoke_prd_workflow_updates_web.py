@@ -36,11 +36,11 @@ with sync_playwright() as p:
  add_knowledge('experience','合成简短示范经验',[],[m['id']])
  add_knowledge('experience','合成其他原则不应串联',[low['id']])
  a.reload();expect(a.get_by_role('button',name='记录课堂',exact=True)).to_be_visible()
- widget=a.get_by_role('button',name='查看长期关注',exact=True);expect(widget).to_contain_text('合成关注互动');assert widget.inner_text().index('合成关注互动')<widget.inner_text().index('合成其他方向')
+ widget=a.get_by_role('button',name='查看长期关注',exact=True);expect(widget).to_contain_text('合成关注互动');widget.click();focus=a.get_by_role('dialog',name='长期关注',exact=True);expect(focus).to_contain_text('合成其他方向');assert focus.inner_text().index('合成关注互动')<focus.inner_text().index('合成其他方向');click('关闭长期关注')
  def change_priority(g,priority):
   request={'id':g['id'],'operation_id':str(uuid4()),'expected_version':g['version'],'change_note':'','mutation':{'kind':'goal','value':{**g['input'],'long_priority':priority}}};return call('PUT','/prd/records/'+g['id'],request)['value']
  hi=change_priority(hi,0);low=change_priority(low,2);a.evaluate("window.dispatchEvent(new Event('focus'))")
- expect(widget).to_contain_text('合成其他方向');a.wait_for_function("()=>{const e=document.querySelector('[aria-label=\"查看长期关注\"]');return e&&e.innerText.indexOf('合成其他方向')<e.innerText.indexOf('合成关注互动')}")
+ expect(widget).to_contain_text('合成其他方向');widget.click();focus=a.get_by_role('dialog',name='长期关注',exact=True);expect(focus).to_contain_text('合成关注互动');assert focus.inner_text().index('合成其他方向')<focus.inner_text().index('合成关注互动');click('关闭长期关注')
  hi=change_priority(hi,2);low=change_priority(low,0);a.reload();expect(a.get_by_role('button',name='记录课堂',exact=True)).to_be_visible()
  click('目标与方法');graph=a.get_by_test_id('goal-method-map');graph.get_by_role('button',name='层级列表',exact=True).click();expect(graph).to_be_visible();expect(a.get_by_role('button',name='新建目标',exact=True)).to_have_count(0)
  reveal_control(a,'checkbox','显示关联经验和困难').click();click('展开全部关系')
@@ -66,10 +66,10 @@ with sync_playwright() as p:
  teacher_field.fill(teacher_note);click('提交记录',b);expect(b.get_by_role('dialog')).to_have_count(0);expect(b.get_by_role('button',name='检查连接并继续上传',exact=True)).to_have_count(0,timeout=20000)
  a.evaluate("window.dispatchEvent(new Event('focus'))");expect(a.get_by_text('待回看课堂观察：'+today+' · 合成课堂',exact=True)).to_be_visible(timeout=10000)
  click('整理：合成课堂');expect(a.get_by_role('dialog',name='整理课堂记录',exact=True)).to_be_visible();snap('04-parent-review-and-convert-390')
- click('根据观察新建目标');field('本领名称').fill('合成由观察提出的目标');reveal_control(a,'combobox','目标关注优先级').select_option('2');click('保存');expect(a.get_by_role('dialog',name='整理课堂记录',exact=True)).to_be_visible()
- new_goal=next(g for g in call('GET','/prd/state')['goals'] if g['input']['title']=='合成由观察提出的目标');assert new_goal['input']['long_priority']==2
+ click('根据观察新建目标');field('本领名称').fill('合成由观察提出的目标');reveal_control(a,'textbox','目标数字优先级').fill('100');click('保存');expect(a.get_by_role('dialog',name='整理课堂记录',exact=True)).to_be_visible()
+ new_goal=next(g for g in call('GET','/prd/state')['goals'] if g['input']['title']=='合成由观察提出的目标');assert new_goal['input']['priority_score']==100
  click('根据观察新建方法');field('方法名称').fill('合成由观察提出的方法');field('具体做法／必填').fill('合成等待准备好，再用短指令逐步尝试')
- click('选择方法适用目标（已选0）');reveal_control(a,'checkbox','合成由观察提出的目标').click();click('关闭选择方法适用目标');reveal_control(a,'combobox','方法关注优先级').select_option('2');click('保存');expect(a.get_by_role('dialog',name='整理课堂记录',exact=True)).to_be_visible()
+ click('选择方法适用目标（已选0）');reveal_control(a,'checkbox','合成由观察提出的目标').click();click('关闭选择方法适用目标');reveal_control(a,'textbox','方法基础优先级').fill('100');click('保存');expect(a.get_by_role('dialog',name='整理课堂记录',exact=True)).to_be_visible()
  click('核对并刷新候选项');click('记一条经验');field('经验内容 1').fill('合成先获得准备信号再给短指令，作为待验证做法');reveal_control(a,'combobox','经验阶段 1').select_option('idea');click('调整关联 1');reveal_control(a,'checkbox','合成由观察提出的目标').click();reveal_control(a,'checkbox','合成由观察提出的方法').click();click('关闭调整经验或困难的关联')
  reveal_control(a,'combobox','这条记录如何处理').select_option('complete');click('保存整理');expect(a.get_by_role('dialog')).to_have_count(0)
  after=call('GET','/prd/state');lesson=next(l for l in after['lessons'] if l['id']==lid);assert lesson['organization']['state']=='done' and not lesson['organization']['targets'] and not lesson['organization']['methods']

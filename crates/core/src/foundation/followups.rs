@@ -58,6 +58,7 @@ pub fn command(db: &dyn Sql, actor: &User, request: Command) -> Result<Value> {
         Command::Action(r) => &r.operation_id,
         Command::Feedback(r) => &r.operation_id,
         Command::Settings(r) => &r.operation_id,
+        Command::PrioritySettings(r) => &r.operation_id,
         Command::Review(r) => &r.operation_id,
         _ => unreachable!(),
     };
@@ -80,6 +81,7 @@ pub fn command(db: &dyn Sql, actor: &User, request: Command) -> Result<Value> {
         Command::Knowledge(r) => serde_json::to_value(write_knowledge(db, actor, r.clone())?)?,
         Command::Feedback(r) => write_feedback(db, actor, r.clone())?,
         Command::Settings(r) => super::reviews::write_settings(db, actor, r.clone())?,
+        Command::PrioritySettings(r) => super::priority::write(db, actor, r.clone())?,
         Command::Review(r) => super::reviews::write_review(db, actor, r.clone())?,
         _ => unreachable!(),
     };
@@ -673,6 +675,7 @@ pub fn read_view(db: &dyn Sql, r: Read) -> Result<Value> {
     }
     let offset = u64::from(r.page) * 30;
     match r.view.as_str() {
+        "priority_settings" => Ok(serde_json::to_value(super::priority::read(db)?)?),
         "entity_history" | "lesson_history" | "session_history" => {
             valid_id(&r.id)?;
             let (table, column) = match r.view.as_str() {
