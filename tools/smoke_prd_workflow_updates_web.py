@@ -50,9 +50,8 @@ with sync_playwright() as p:
  a.set_viewport_size({'width':320,'height':844});snap('02-hierarchy-and-method-320',graph.get_by_test_id('map-goal-'+short['id']));a.set_viewport_size({'width':390,'height':844})
  click('目标');expect(a.get_by_role('button',name='新建目标',exact=True)).to_be_visible();click('方法');expect(a.get_by_role('button',name='新建方法',exact=True)).to_be_visible();click('今天')
  click('记录家庭');field('准备做什么').fill('合成活动：和孩子玩滚球，准备好时再试一步')
- plan=a.get_by_test_id('plan-goal-method-map');plan.get_by_role('button',name='层级列表',exact=True).click();expect(plan).to_be_visible();expect(a.get_by_role('checkbox',name=re.compile('^选择目标：'))).to_have_count(0)
- plan.get_by_role('checkbox',name='显示关联经验和困难',exact=True).click();reveal_control(plan,'button','展开全部关系').click();snap('03-readonly-plan-map-390',a.get_by_label('准备做什么',exact=True))
- plan.get_by_test_id('map-method-'+short['id']+'-'+m['id']).get_by_role('button',name='查看方法：'+m['input']['title'],exact=True).click();expect(a.get_by_role('dialog',name='查看详情与修改记录',exact=True)).to_be_visible();click('关闭查看详情与修改记录');expect(field('准备做什么')).to_have_value('合成活动：和孩子玩滚球，准备好时再试一步')
+ plan=a.get_by_test_id('plan-reminders');expect(plan).to_be_visible();expect(a.get_by_role('checkbox',name=re.compile('^选择目标：'))).to_have_count(0);snap('03-readonly-plan-reminders-390',a.get_by_label('准备做什么',exact=True))
+ click('最近新增方法：'+m['input']['title']);expect(a.get_by_role('dialog',name='方法参考',exact=True)).to_be_visible();click('关闭方法参考');expect(field('准备做什么')).to_have_value('合成活动：和孩子玩滚球，准备好时再试一步')
  click('保存计划并退出');expect(a.get_by_role('dialog')).to_have_count(0)
  saved=call('GET','/prd/state')['sessions'][0];assert saved['status']=='planned' and not saved['actual_targets'] and not saved['input']['targets'] and not saved['input']['methods']
  call('POST','/auth/users',{'username':'grandparent','display_name':'合成记录者','password':'s','role':'member'})

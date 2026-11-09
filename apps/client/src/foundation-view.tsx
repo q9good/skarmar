@@ -1,3 +1,4 @@
+import {missingSummaryKnowledge} from './summary-knowledge';
 import {PriorityFields} from './priority-fields';
 import {PriorityPolicyPanel} from './priority-policy-panel';
 import {GoalMethodMap} from './goal-method-map';
@@ -225,13 +226,22 @@ export function FoundationWorkspace() {
   const scroll = useRef<ScrollView>(null);
   useEffect(() => { scroll.current?.scrollTo({ y: 0, animated: false }); }, [tab, account]);
   const draftsRef = useRef(drafts), persistence = useRef(Promise.resolve()), alive = useRef(true), submitting = useRef(false);
-  const refresh = useCallback(async () => {
-    const next = await request<Snapshot>('/prd/state');
-    if (next.schema !== 'skarmar.prd.v1') throw new Error('页面与服务版本不匹配，请保留填写后刷新。');
-    if (alive.current) { setData(current => mergeSnapshot(current, next)); setSyncError(''); }
+  const pendingSessionVerification=useRef<Record<string,import('./prd-sessions').Session>>({});
+  const refresh = useCallback(async (expected?:import('./prd-sessions').Session) => {
+    if(expected?.status==='completed')pendingSessionVerification.current[expected.id]=expected;
+    try {
+      const next = await request<Snapshot>('/prd/state');
+      if (next.schema !== 'skarmar.prd.v1') throw new Error('页面与服务版本不匹配，请保留填写后刷新。');
+      if (alive.current) setData(current => mergeSnapshot(current, next));
+      const awaiting=Object.values(pendingSessionVerification.current),missing=awaiting.flatMap(s=>missingSummaryKnowledge(s,next));
+      for(const s of awaiting)if(!missingSummaryKnowledge(s,next).length)delete pendingSessionVerification.current[s.id];
+      if(missing.length)throw new Error(`总结已保存，但${missing.length}条经验或困难尚未在知识库核对到。请重试同步，并从原总结核对，避免重复新建。`);
+      if (alive.current) {setSyncError('');if(!expected&&awaiting.length)setNotice('关联经验和困难已核对并同步，无需重复提交总结。');}
+    } catch(e) { if(alive.current)setSyncError('共享列表尚未刷新：'+messageOf(e)); throw e; }
   }, []);
   useEffect(() => {
     alive.current = true;
+    pendingSessionVerification.current={};
     void refresh().catch(e => setSyncError(messageOf(e)));
     void AsyncStorage.getItem(key).then(raw => {
       const parsed = decodeDrafts(raw);

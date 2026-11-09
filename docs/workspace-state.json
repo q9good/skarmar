@@ -549,6 +549,13 @@
       "status": "done",
       "evidence": "docs/iteration-2026-11-09.md",
       "verification": "2026-11-09先登记U01–U07／D01，PRD0.17，七项实际保存／刷新／跨页验收通过。默认交互关系逐节点往返，家庭计划只读；分类观察逐条稳定ID及旧客户端写入协调、冻结来源；整理同级创建目标／方法／经验／困难，想法不虚增课程覆盖；关闭服务端请求保留课记，新观察重开。跟进丢弃草稿经延迟本机写入及迟到输入事件验证不复活，另一课草稿保留；两课只一个继续入口。共享数字范围、方法按唯一在用目标加分／封顶，规则丢回执重放及确认后刷新失败保护；今天混合目标方法、真实创建时间和14日临时优先。185Rust、94客户端、类型／Web、双Clippy、Worker构建、双运行环境完整合约／重启及12组相关浏览器通过；扩展旧客户端携带items改文本的3项专项再次通过，9图逐张仅合成。首次71bc58f/run42582451059在dry-run失败、回执preflight_passed，未上传／激活；本机构建演练通过后，增加无凭据release构建及固定标签诊断，41发布保护（含4脱敏）和9示例保护通过。实际普通发布触发ac9a3de698db76cecf8979155db29ee7cb252a9e，run42583812805的validate／release均success；原d4e115b1，上传及实际激活64921193-38e0-4d50-98d7-f223a44d0eb1，deployed_and_verified。runner类型／Web、185Rust、Wasm Clippy与独立release构建通过，原绑定／变量／runtime／路由保持，清理／初始化／示例恢复／旧目标删除／补关联及维护演练均skipped。独立公开首页／JS字节、健康／匿名／来源、随机未签发会话PRD启动检查及发布前后formal-20261101标记保持通过；无真实登录／业务读取／样本写入。原Worker／DO／default／域名、账号和全部正式业务／历史／冻结来源、v7与草稿队列键保留；截图和三份脱敏结果登记后221项SHA通过，run完成前分支不变。T12、Opus／真机／读屏及implementationCommit不变。"
+    },
+    {
+      "id": "T79",
+      "title": "修复家庭总结知识沉淀并整理关联提示、计划提醒与课堂收件箱后普通发布",
+      "status": "in_progress",
+      "evidence": "docs/summary-and-reminders-2026-11-09.md",
+      "verification": "2026-11-09先登记B01–B04／D01，PRD0.18。基线复现经验未选阶段422、错误y=-358px滚出手机视野；选阶段后同基线可正常入库，不声称复现生产数据丢失。修复提交前内容／阶段／关联校验及固定错误提示；当前草稿按ID更新，快速内容与阶段均保留；正式完成读取共享知识ID和来源，网络失败或200但缺项时持续核验，不再提交总结；暂存明确不沉淀。实际验证两类知识直接总结／计划后总结／已完成编辑、丢回执刷新重试、目标／方法／跟进展示、多人接手、来源冻结；标题关联、今天同序前6及四类最近新增、只读参考与活动保存、日期课堂收件箱／同日同课老师多节／关闭和新观察重开均通过。99客户端、类型／Web、SQLite与真实Rust DO完整合约及重启、12组相关浏览器通过；最终同步保护后针对6组复验。后端／schema未改，未冒用旧185Rust为本轮本机测试。41发布保护、9示例保护通过；9图（1前8后）逐张仅合成，加2摘要后232项SHA。用户授权直接普通部署，当前尚未部署；保持原账号、所有正式业务／历史／冻结来源、Worker／DO／default／域名／精确来源、v7／formal-20261101及草稿队列键；T12、Opus／真机／读屏与implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1842,6 +1849,72 @@
       "title": "七项迭代独立公共检查与正式代际保持",
       "sha256": "ce4498c11f1d733233140c78d0e64f3b4b4cbdd3da7aece058c1e617f4b616a5",
       "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/baseline-stage-error.png",
+      "title": "合成：家庭总结与计划提醒／baseline-stage-error.png",
+      "sha256": "79ee407e315bbeb09fdfa195b6f1e742410ad163dafca1c03ffe73f14b511b9a",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/baseline.json",
+      "title": "合成：家庭总结与计划提醒／baseline.json",
+      "sha256": "711a8c9e7445f4a40ed4b63b6e72b2e1891045ea6d360a0b8d514faac29870ad",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/01-visible-stage-error.png",
+      "title": "合成：家庭总结与计划提醒／01-visible-stage-error.png",
+      "sha256": "44a471c30d8e34540d331124b6d22d609d8f7777bc7df0dcc61eeecf803fad3f",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/02-titles-and-association.png",
+      "title": "合成：家庭总结与计划提醒／02-titles-and-association.png",
+      "sha256": "bd2f2ab734c4ab147cdf78094728d7177fa3f2a3d01482b13555f88ae47a9d96",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/03-saved-goal-links.png",
+      "title": "合成：家庭总结与计划提醒／03-saved-goal-links.png",
+      "sha256": "8c3aac0a8b627c3ff45a257e6af85df4b7fc27b909f996620c748a687c907642",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/04-plan-reminders-first.png",
+      "title": "合成：家庭总结与计划提醒／04-plan-reminders-first.png",
+      "sha256": "5c3588847cf5742306ff496a7c4dae1e9584c846cff429cfe66524cc1b66b97c",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/05-recent-reminders.png",
+      "title": "合成：家庭总结与计划提醒／05-recent-reminders.png",
+      "sha256": "631c0683840fff2d3592ea573d67e5e512c16407743b81a84daa21259e4c8d50",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/06-activity-after-reminders.png",
+      "title": "合成：家庭总结与计划提醒／06-activity-after-reminders.png",
+      "sha256": "ff991d6dd038eef688070f0cfa4e8939ba4eeb7906edceb1d351be8a98a6cf97",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/07-dated-classroom-inbox.png",
+      "title": "合成：家庭总结与计划提醒／07-dated-classroom-inbox.png",
+      "sha256": "e339dd6301cf49ea8e067015413c7bc5eb1f55bf3e28af4a5282315c0ad2c40c",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/08-observations-before-actions.png",
+      "title": "合成：家庭总结与计划提醒／08-observations-before-actions.png",
+      "sha256": "9d62ac7e4ad7ee3a2e83de0ed539c4f15cf43c7a44d27df4ab161222025662f3",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/summary-repair-2026-11-09/checks.json",
+      "title": "合成：家庭总结与计划提醒／checks.json",
+      "sha256": "a1c2740884d48bd02bfef976e0b5dae5708006bcc03dd16f9522d15180a2f55f",
+      "synthetic": true
     }
   ]
 }

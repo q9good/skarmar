@@ -1,0 +1,12 @@
+{
+  "baseline": "required experience stage omitted: no knowledge saved, form retained",
+  "status": 422,
+  "stage_label_required": false,
+  "error_visible_in_viewport": false,
+  "alert_box": {
+    "x": 29,
+    "y": -358.203125,
+    "width": 332,
+    "height": 24
+  }
+}

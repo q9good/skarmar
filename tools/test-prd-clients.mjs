@@ -7,3 +7,5 @@ import './test-actual-goal-relations.mjs';
 import './test-object-priority.mjs';
 import './test-goal-method-diagram.mjs';
 import './test-iteration-1109.mjs';
+
+import './test-summary-repair.mjs';

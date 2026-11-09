@@ -1,3 +1,4 @@
+import {summaryRepairContract} from './prd-summary-repair-contract.mjs';
 import {iteration1109Contract} from './prd-iteration-1109-contract.mjs';
 import {workflowUpdatesContract} from './prd-workflow-updates-contract.mjs';
 import {reviewFeedbackContract} from './prd-review-feedback-contract.mjs';
@@ -95,6 +96,7 @@ export async function prdContract(label, send) {
   await reviewFeedbackContract(label,send,admin);
   await workflowUpdatesContract(label,send,admin);
   await iteration1109Contract(label,send,admin);
+  await summaryRepairContract(label,send,admin);
   const completion=await completionContract(label,send,admin);
   await exportContract(label,send,admin);
   const finalSnapshot=(await call('GET','/prd/state',undefined,admin)).data;

@@ -1,0 +1,21 @@
+{
+  "synthetic": true,
+  "production_accessed": false,
+  "deployed": false,
+  "results": {
+    "B02": "PASS: references visible after actual associations, type and explicit goal/method links, titles only until read-only detail, input retained",
+    "B03": "PASS: first six exactly match Today order, recent four categories, reminders before required activity, 320px, read-only detail/back and no false plan coverage",
+    "B01": "PASS: omitted stage and blank difficulty blocked visibly with retained input; direct summary, lost response/reload/exact retry, cross-page goal/method/library visibility, completed edit adds both kinds, read failure shown without resubmitting, fast final input and stage both retained; shared draft does not produce knowledge and is explicitly labelled, second family completes shared plan; source snapshot retained",
+    "B04": "PASS: dates descending, duplicate same-day/course/teacher remain separate, only unprocessed classrooms, actions hidden until detail expanded and after observations, organize and close work, close retains lesson, update reopens after reload"
+  },
+  "screenshots": [
+    "01-visible-stage-error.png",
+    "02-titles-and-association.png",
+    "03-saved-goal-links.png",
+    "04-plan-reminders-first.png",
+    "05-recent-reminders.png",
+    "06-activity-after-reminders.png",
+    "07-dated-classroom-inbox.png",
+    "08-observations-before-actions.png"
+  ]
+}

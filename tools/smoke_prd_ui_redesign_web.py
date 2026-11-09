@@ -48,12 +48,11 @@ with sync_playwright() as p:
  click('记录家庭');plan=page.get_by_role('dialog',name='填写干预计划',exact=True);expect(plan).to_be_visible()
  activity=plan.get_by_role('textbox',name='准备做什么',exact=True);expect(activity).to_be_visible();assert activity.get_attribute('aria-required')=='true'
  expect(button('保存计划并退出')).to_be_disabled();assert not page.get_by_role('button',name='选择计划方法',exact=True).count()
- assert activity.bounding_box()['y']<page.get_by_test_id('plan-reference-goals').bounding_box()['y']
+ assert activity.bounding_box()['y']>page.get_by_test_id('plan-reminders').bounding_box()['y']
  shot('02-plan-first');activity.fill('一起玩轮流滚球，尝试等待和主动求助。')
  # All applicable methods are references now; none is preselected as planned or actual.
- graph=page.get_by_test_id('plan-goal-method-map');graph.get_by_role('button',name='层级列表',exact=True).click();graph.get_by_role('checkbox',name='显示关联经验和困难',exact=True).click();click('展开全部关系');refs=graph.get_by_test_id('map-goal-'+goal['id']);expect(refs).to_contain_text('先跟随兴趣，再加入互动（合成）')
- expect(refs.get_by_text(re.compile('示范后留出回应时间（合成）')).first).to_be_visible()
- click('查看关系图知识：示范后留出回应时间（合成） · '+goal['id']);expect(page.get_by_role('dialog',name='关系图关联知识',exact=True)).to_be_visible();click('关闭关系图关联知识')
+ refs=page.get_by_test_id('plan-recent-reminders');expect(refs).to_contain_text('先跟随兴趣，再加入互动（合成）');expect(refs).to_contain_text('示范后留出回应时间（合成）')
+ click('最近新增经验：示范后留出回应时间（合成）');expect(page.get_by_role('dialog',name='参考知识',exact=True)).to_be_visible();click('关闭参考知识')
  shot('04-plan-knowledge',refs)
  expect(plan).to_be_visible();expect(activity).to_have_value('一起玩轮流滚球，尝试等待和主动求助。')
  page.reload();expect(button('记录家庭')).to_be_enabled();page.get_by_role('button',name=re.compile('^继续干预填写：')).click()
