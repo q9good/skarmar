@@ -53,4 +53,3 @@
 ![合成：08-close-request-not-record](artifacts/validation/iteration-2026-11-09/08-close-request-not-record.png)
 
 ![合成：09-combined-today-focus](artifacts/validation/iteration-2026-11-09/09-combined-today-focus.png)
-
