@@ -546,9 +546,9 @@
     {
       "id": "T78",
       "title": "七项交互关系、课堂事项与草稿、数字优先级和今天关注迭代并发布",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/iteration-2026-11-09.md",
-      "verification": "2026-11-09先登记U01–U07／D01并更新PRD0.17。七项实际浏览器保存／刷新／跨页验收通过，9图逐张检查仅合成，结构化课堂观察、可关闭服务端请求和单项本地丢弃分开；延迟落盘期间旧输入不复活，另一课草稿保留。数字基础范围和方法唯一在用目标加分共享版本化，规则丢回执重放及确认后刷新失败保护；今天混合目标方法、创建时间排序和14天临时优先，计划关系浏览只读。185Rust、94客户端、类型／Web、双Clippy、Worker构建、双运行环境完整合约／重启及12组相关浏览器当前通过，扩展旧客户端携带items改文本的3项专项再通过；37发布保护、9示例保护通过。9图及checks登记后218项SHA。普通部署尚未执行；保持原Worker／DO／default／域名、账号和全部正式业务／历史／冻结引用、schema v7、formal-20261101与旧草稿队列键。T12、Opus／真机／读屏与implementationCommit不变。 首次触发71bc58f/run42582451059：认证与原配置通过，回执preflight_passed；Wrangler dry-run失败，无上传／激活确认，仍未部署。已添加无凭据的release构建步骤和固定标签脱敏诊断，等待验证和受控重试。 本机相同Wrangler开发配置dry-run通过；41发布保护（含4项新脱敏）、9示例保护通过，首次脱敏回执登记后219项SHA。"
+      "verification": "2026-11-09先登记U01–U07／D01，PRD0.17，七项实际保存／刷新／跨页验收通过。默认交互关系逐节点往返，家庭计划只读；分类观察逐条稳定ID及旧客户端写入协调、冻结来源；整理同级创建目标／方法／经验／困难，想法不虚增课程覆盖；关闭服务端请求保留课记，新观察重开。跟进丢弃草稿经延迟本机写入及迟到输入事件验证不复活，另一课草稿保留；两课只一个继续入口。共享数字范围、方法按唯一在用目标加分／封顶，规则丢回执重放及确认后刷新失败保护；今天混合目标方法、真实创建时间和14日临时优先。185Rust、94客户端、类型／Web、双Clippy、Worker构建、双运行环境完整合约／重启及12组相关浏览器通过；扩展旧客户端携带items改文本的3项专项再次通过，9图逐张仅合成。首次71bc58f/run42582451059在dry-run失败、回执preflight_passed，未上传／激活；本机构建演练通过后，增加无凭据release构建及固定标签诊断，41发布保护（含4脱敏）和9示例保护通过。实际普通发布触发ac9a3de698db76cecf8979155db29ee7cb252a9e，run42583812805的validate／release均success；原d4e115b1，上传及实际激活64921193-38e0-4d50-98d7-f223a44d0eb1，deployed_and_verified。runner类型／Web、185Rust、Wasm Clippy与独立release构建通过，原绑定／变量／runtime／路由保持，清理／初始化／示例恢复／旧目标删除／补关联及维护演练均skipped。独立公开首页／JS字节、健康／匿名／来源、随机未签发会话PRD启动检查及发布前后formal-20261101标记保持通过；无真实登录／业务读取／样本写入。原Worker／DO／default／域名、账号和全部正式业务／历史／冻结来源、v7与草稿队列键保留；截图和三份脱敏结果登记后221项SHA通过，run完成前分支不变。T12、Opus／真机／读屏及implementationCommit不变。"
     }
   ],
   "artifacts": [
@@ -1829,6 +1829,18 @@
       "path": "docs/artifacts/deployment/cloudflare-release-20261109-first-attempt.json",
       "title": "七项迭代首次发布构建演练失败、未上传的脱敏回执",
       "sha256": "d863df0f0ea145c02bcbbb46a50c1ac009e9fb5e095068701532f35f08269b7c",
+      "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261109-receipt.json",
+      "title": "七项交互与课堂优先级迭代普通发布脱敏回执",
+      "sha256": "81a3abb10734b8fb634b048fcdf66bfed9749bfc22dcab328d037d88807e5296",
+      "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-release-20261109-independent-checks.json",
+      "title": "七项迭代独立公共检查与正式代际保持",
+      "sha256": "ce4498c11f1d733233140c78d0e64f3b4b4cbdd3da7aece058c1e617f4b616a5",
       "synthetic": false
     }
   ]
