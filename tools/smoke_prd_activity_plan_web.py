@@ -59,18 +59,18 @@ with sync_playwright() as p:
  def lose(route):
   body=route.request.post_data_json;assert body['input']['targets']==[] and body['input']['methods']==[] and body['input']['summary'] is None
   r=route.fetch();assert r.ok;r.body();route.abort('failed')
- page.route('**/api/prd/sessions/*',lose,times=1);click('保存计划并退出');expect(btn('重试同一次干预保存')).to_be_visible();assert len(call('GET','/prd/state')['sessions'])==1
- page.reload();page.get_by_role('button',name=re.compile('^继续干预填写：')).click();click('重试同一次干预保存');expect(page.get_by_role('dialog')).to_have_count(0)
+ page.route('**/api/prd/sessions/*',lose,times=1);click('保存计划并退出');expect(page.get_by_role('dialog')).to_have_count(0);assert len(call('GET','/prd/state')['sessions'])==1
+ page.reload();expect(btn('记录家庭：填写今天的总结')).to_be_visible()
  saved=call('GET','/prd/state')['sessions'][0];sid=saved['id'];assert saved['status']=='planned' and saved['planned_targets']==[] and saved['planned_methods']==[] and saved['input']['targets']==[]
  assert call('GET','/prd/coverage?days=30&source=family')['records']['selected']==0
  print('PASS one activity field, read-only direct/method/ancestor references, excluded unrelated/solved knowledge and exact plan retry without selected goals',flush=True)
  ctx2=browser.new_context(viewport={'width':390,'height':844});pg=ctx2.new_page();pg.on('pageerror',lambda e:errors.append(str(e)));login(pg,'family');click('记录家庭：填写今天的总结',pg)
- expect(pg.get_by_role('textbox',name=re.compile('^实际表现：'))).to_have_count(0);expect(pg.get_by_role('combobox',name='实际方法确认',exact=True)).to_have_value('unconfirmed');shot('04-summary-before-selection',pg)
- click('选择本次目标',pg);expect(pg.get_by_role('checkbox',name='选择目标：'+long['input']['title'],exact=True)).to_be_visible();reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('完成目标选择',pg)
+ expect(pg.get_by_role('textbox',name=re.compile('^实际表现：'))).to_have_count(0);expect(pg.get_by_test_id('family-method-options')).to_be_hidden();shot('04-summary-before-selection',pg)
+ click('选择本次目标',pg);expect(pg.get_by_role('checkbox',name='选择目标：'+long['input']['title'],exact=True)).to_be_visible();reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('选择本次目标',pg)
  field('实际表现：'+actual['input']['title'],pg).fill('合成实际：没有玩球，换活动时主动用手势求助')
- click('选择本次目标',pg);reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('完成目标选择',pg);expect(pg.get_by_role('textbox',name='实际表现：'+actual['input']['title'],exact=True)).to_have_count(0)
- click('选择本次目标',pg);reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('完成目标选择',pg);expect(field('实际表现：'+actual['input']['title'],pg)).to_have_value('合成实际：没有玩球，换活动时主动用手势求助')
- pg.get_by_role('combobox',name='实际方法确认',exact=True).select_option('used');reveal_control(pg,'checkbox','实际方法：'+used['input']['title']).click();shot('05-actual-goals-and-methods',pg)
+ click('选择本次目标',pg);reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('选择本次目标',pg);expect(pg.get_by_role('textbox',name='实际表现：'+actual['input']['title'],exact=True)).to_have_count(0)
+ click('选择本次目标',pg);reveal_control(pg,'checkbox','选择目标：'+actual['input']['title']).click();click('选择本次目标',pg);expect(field('实际表现：'+actual['input']['title'],pg)).to_have_value('合成实际：没有玩球，换活动时主动用手势求助')
+ reveal_control(pg,'button','实际方法').click();reveal_control(pg,'checkbox','实际方法：'+used['input']['title']).click();shot('05-actual-goals-and-methods',pg)
  click('暂存总结并退出',pg);expect(pg.get_by_role('dialog')).to_have_count(0);state=call('GET','/prd/state');pending=next(s for s in state['sessions'] if s['id']==sid);assert pending['status']=='summary_draft' and pending['planned_targets']==[] and pending['actual_targets']==[]
  click('记录家庭：填写今天的总结',pg);expect(field('实际表现：'+actual['input']['title'],pg)).to_have_value('合成实际：没有玩球，换活动时主动用手势求助');click('正式提交干预总结',pg);expect(pg.get_by_role('dialog')).to_have_count(0)
  state=call('GET','/prd/state');completed=next(s for s in state['sessions'] if s['id']==sid);assert completed['planned_targets']==[] and completed['planned_methods']==[] and [t['goal']['id'] for t in completed['actual_targets']]==[actual['id']] and [m['id'] for m in completed['actual_methods']]==[used['id']]

@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from uuid import uuid4
 from playwright.sync_api import expect,sync_playwright
+from prd_ui_helpers import reveal_control
 
 BASE=os.environ['SKARMA_TEST_URL'].rstrip('/')
 assert urlparse(BASE).hostname in {'localhost','127.0.0.1','::1'}
@@ -12,7 +13,7 @@ with sync_playwright() as p:
  browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE'),headless=True,args=['--no-sandbox'])
  setup=browser.new_context();admin=setup.new_page();errors=[]
  def btn(page,name):return page.get_by_role('button',name=name,exact=True)
- def click(page,name):btn(page,name).click()
+ def click(page,name):reveal_control(page,'button',name).click()
  def field(page,name):return page.get_by_role('textbox',name=name,exact=True)
  def login(page,user='owner'):
   page.goto(BASE);field(page,'账号').fill(user);page.get_by_label('密码',exact=True).fill('synthetic-prd-ui-password');click(page,'登录');expect(btn(page,'记录课堂')).to_be_enabled()
@@ -57,20 +58,20 @@ with sync_playwright() as p:
  print('PASS compact goal first screens, retained filters and explicit method association/optional input',flush=True)
 
  click(page,'今天');click(page,'记录家庭')
- expect(page.get_by_test_id('plan-reference-knowledge')).to_contain_text('合成换材料时需要支持');expect(page.get_by_test_id('plan-reference-knowledge')).to_contain_text('合成先示范并留出等待时间')
+ expect(page.get_by_test_id('plan-recent-reminders')).to_contain_text('合成换材料时需要支持');expect(page.get_by_test_id('plan-recent-reminders')).to_contain_text('合成先示范并留出等待时间')
  expect(page.get_by_role('button',name='选择本次目标',exact=True)).to_have_count(0)
  field(page,'准备做什么').fill('合成计划：一起尝试生活小步骤')
  click(page,'参考排序与均衡情况');expect(page.get_by_test_id('plan-coverage-'+goals[1]['id'])).to_be_visible();expect(btn(page,'查看全部方向的近况')).to_be_visible();expect(btn(page,'使用说明与手机桌面入口')).to_have_count(0)
  shot('plan');click(page,'保存计划并退出');expect(page.get_by_role('dialog')).to_have_count(0)
  saved=call(ctx,'GET','/prd/state')['sessions'][0];assert saved['status']=='planned' and not saved['input']['targets']
- click(page,'记录家庭：填写今天的总结');click(page,'选择本次目标');page.get_by_role('checkbox',name='选择目标：'+goals[1]['input']['title'],exact=True).click();click(page,'完成目标选择')
+ click(page,'记录家庭：填写今天的总结');click(page,'选择本次目标');page.get_by_role('checkbox',name='选择目标：'+goals[1]['input']['title'],exact=True).click();click(page,'选择本次目标')
  for width,height in [(390,844),(360,640)]:
   page.set_viewport_size({'width':width,'height':height});expect(field(page,'实际表现：'+goals[1]['input']['title'])).to_be_in_viewport(ratio=.95)
  page.set_viewport_size({'width':390,'height':844});shot('summary')
  expect(page.get_by_role('combobox',name='目标角色：'+goals[1]['input']['title'],exact=True)).to_have_count(0)
- expect(page.get_by_role('combobox',name='实际方法确认',exact=True)).to_have_value('unconfirmed')
+ expect(page.get_by_test_id('family-method-options')).to_be_hidden()
  field(page,'实际表现：'+goals[1]['input']['title']).fill('合成表现：示范后主动再试了一次')
- page.get_by_role('combobox',name='实际方法确认',exact=True).select_option('unknown')
+ reveal_control(page,'button','实际方法').click();reveal_control(page,'checkbox','记不清实际用了什么方法').click()
  click(page,'正式提交干预总结');expect(page.get_by_role('dialog')).to_have_count(0)
  saved=call(ctx,'GET','/prd/state')['sessions'][0]
  assert saved['status']=='completed' and saved['input']['summary']['confirmation']=='unknown' and not saved['actual_methods']

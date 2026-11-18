@@ -4,10 +4,10 @@ import {Pressable,Text} from './readability';
 import {useUiPalette} from './ui-theme';
 
 /** Keep children mounted so collapsing never clears input or a nested picker. */
-export function Disclosure({title,label,children,summary,defaultOpen=false,color}:{title:string;label?:string;children:React.ReactNode;summary?:string;defaultOpen?:boolean;color?:string}){
+export function Disclosure({title,label,children,summary,defaultOpen=false,color,onExpand}:{title:string;label?:string;children:React.ReactNode;summary?:string;defaultOpen?:boolean;color?:string;onExpand?:()=>void}){
  const [open,setOpen]=useState(defaultOpen),id=useId(),theme=useUiPalette();
  return <View style={{gap:8}}>
-  <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{expanded:open}} aria-controls={id} onPress={()=>setOpen(v=>!v)} style={{minHeight:44,paddingVertical:8,flexDirection:'row',alignItems:'center',gap:8}}>
+  <Pressable accessibilityRole="button" accessibilityLabel={title} accessibilityState={{expanded:open}} aria-controls={id} onPress={()=>{if(!open)onExpand?.();setOpen(!open);}} style={{minHeight:44,paddingVertical:8,flexDirection:'row',alignItems:'center',gap:8}}>
    <Text style={{flex:1,color:color??theme.ink}}>{label??title}{summary?` · ${summary}`:''}</Text><Text>{open?'▴':'▾'}</Text>
   </Pressable>
   <View nativeID={id} style={{display:open?'flex':'none',gap:12}}>{children}</View>

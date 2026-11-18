@@ -170,6 +170,22 @@ fn change_action(db: &dyn Sql, a: &mut NextAction, actor: &User, note: &str) -> 
     save_action(db, a)?;
     revision_output(db, "action", &a.input.id, a.version, a)
 }
+/// Read only a receipt belonging to this actor, with no replay or business write.
+pub(super) fn save_receipt(
+    db: &dyn Sql,
+    actor: &User,
+    operation_id: &str,
+) -> Result<Option<Session>> {
+    valid_id(operation_id)?;
+    db.query(
+        "SELECT response FROM prd_operations WHERE id=?1 AND actor_id=?2 AND substr(request,1,8)='session:'",
+        params![operation_id, actor.id],
+    )?
+    .first()
+    .map(|row| serde_json::from_str(&row[0]).map_err(ApiError::from))
+    .transpose()
+}
+
 pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
     valid_id(&request.id)?;
     valid_id(&request.operation_id)?;

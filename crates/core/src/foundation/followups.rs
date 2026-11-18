@@ -51,6 +51,11 @@ pub fn command(db: &dyn Sql, actor: &User, request: Command) -> Result<Value> {
         return super::observations::command(db, actor, write);
     }
     if let Command::Read(read) = request {
+        if read.view == "session_save_receipt" {
+            return Ok(serde_json::to_value(super::sessions::save_receipt(
+                db, actor, &read.id,
+            )?)?);
+        }
         return read_view(db, read);
     }
     let operation = match &request {

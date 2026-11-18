@@ -22,7 +22,7 @@ with sync_playwright() as p:
  def save(page,title):click(page,title);expect(page.get_by_role('dialog')).to_have_count(0)
  def select_target(page,title):
   if page.get_by_role('dialog',name='填写干预总结',exact=True).count() and page.get_by_role('button',name='选择本次目标',exact=True).count()==0:click(page,'调整总结目标与原计划')
-  click(page,'选择本次目标');page.get_by_role('checkbox',name='选择目标：'+title,exact=True).click();click(page,'完成目标选择')
+  click(page,'选择本次目标');page.get_by_role('checkbox',name='选择目标：'+title,exact=True).click();click(page,'选择本次目标')
  def open_finished(page,observation):click(page,re.compile('.*'+re.escape(observation)+'.*'));expect(page.get_by_role('dialog')).to_have_count(1)
  login(a,'owner','synthetic-prd-ui-password');assert not state()['sessions']
  for title in ['记录课堂','记录家庭']:expect(button(a,title)).to_be_in_viewport(ratio=1)
@@ -41,11 +41,11 @@ with sync_playwright() as p:
  login(b,'family','s')
  click(b,'记录家庭：填写今天的总结');field(b,'实际表现：测试轮流').fill('测试：等待了两次，主动把球给我');reveal_control(b,'checkbox','这次做了：测试求助').click()
  click(b,'正式提交干预总结');expect(b.get_by_role('alert')).to_contain_text('请确认实际使用的方法')
- reveal_control(b,'combobox','实际方法确认').select_option('unknown')
+ reveal_control(b,'button','实际方法').click();reveal_control(b,'checkbox','记不清实际用了什么方法').click()
  click(b,'新增本次困难');field(b,'实际情况／必填 1').fill('测试：等待时离开了座位');field(b,'成人回应／可选 1').fill('测试：我先暂停并陪他休息');field(b,'原因猜测／可选 1').fill('测试：可能有些累了');field(b,'本次条件／可选 1').fill('测试：换了新材料')
  click(b,'查看填写示例：实际情况／必填 1');expect(b.get_by_text('大人怎样回应，后来呢？',exact=True)).to_be_visible();click(b,'查看填写示例：原因猜测／可选 1');expect(b.get_by_text('有什么尚未确定的猜测？',exact=True)).to_be_visible();expect(b.get_by_text('合成示例 · 例如：可能有些累了',exact=True)).to_be_visible();expect(field(b,'原因猜测／可选 1')).to_have_value('测试：可能有些累了')
  click(b,'新增本次经验');field(b,'经验内容 2').fill('测试：轮流前先示范有帮助');reveal_control(b,'combobox','经验阶段 2').select_option('try')
- click(b,'补充参与信号、情境和下一步');reveal_control(b,'checkbox','参与信号：主动开始').click();click(b,'信号范围：主动开始 · 整次背景');expect(b.get_by_role('dialog').get_by_role('checkbox')).to_have_count(1);reveal_control(b,'checkbox','测试轮流').click();click(b,'关闭参与信号关联范围')
+ click(b,'补充参与信号、情境和下一步');reveal_control(b,'checkbox','参与信号：主动开始').click();click(b,'信号范围：主动开始 · 整次背景');reveal_control(b,'checkbox','测试轮流').click();expect(b.get_by_role('dialog')).to_have_count(1)
  click(b,'新增本次下一步');field(b,'本次下一步 1').fill('测试：下次请老师示范等待')
  save(b,'正式提交干预总结');s=state();completed=s['sessions'][0];sid=completed['id'];assert completed['status']=='completed' and len(completed['actual_targets'])==1 and not completed['actual_methods'];assert len(s['knowledge'])==2 and len(s['actions'])==1
  assert completed['input']['summary']['signals'][0]['goal_ids']==[gids[0]];assert all(k['input']['goal_ids']==[gids[0]] for k in s['knowledge'])
@@ -64,11 +64,11 @@ with sync_playwright() as p:
  def lose_method(route):
   assert route.request.post_data_json['method_create_mode']=='quick'
   response=route.fetch();assert response.ok;route.abort('failed')
- a.route('**/api/prd/records/*',lose_method,times=1);click(a,'保存方法并选入本次');expect(a.get_by_role('alert')).to_be_visible();assert len(state()['methods'])==2;click(a,'关闭快捷新增方法');click(a,'关闭填写干预总结');a.reload();click(a,re.compile(r'^继续干预填写：'));click(a,'继续确认快捷新增');click(a,'保存方法并选入本次');expect(a.get_by_role('dialog')).to_have_count(1);assert len(state()['methods'])==2;expect(a.get_by_role('combobox',name='实际方法确认',exact=True)).to_have_value('used')
+ a.route('**/api/prd/records/*',lose_method,times=1);click(a,'保存方法并选入本次');expect(a.get_by_role('alert')).to_be_visible();assert len(state()['methods'])==2;click(a,'关闭快捷新增方法');click(a,'关闭填写干预总结');a.reload();click(a,re.compile(r'^继续干预填写：'));click(a,'继续确认快捷新增');click(a,'保存方法并选入本次');expect(a.get_by_role('dialog')).to_have_count(1);assert len(state()['methods'])==2;expect(a.get_by_text('实际版本：测试等待手势 第 1 版',exact=True)).to_be_visible()
  def lose_response(route):
   response=route.fetch();assert response.ok,response.text();route.abort('failed')
- a.route('**/api/prd/sessions/*',lose_response,times=1);click(a,'正式提交干预总结');expect(button(a,'重试同一次干预保存')).to_be_visible();assert len(state()['sessions'])==2
- a.reload();click(a,re.compile(r'^继续干预填写：'));save(a,'重试同一次干预保存');s=state();other=next(s for s in s['sessions'] if s['id']!=sid);assert len(s['sessions'])==2 and len(call('GET','/prd/sessions/'+other['id']+'/history'))==1;assert len(other['actual_methods'])==1 and other['input']['plan']=='';quick_method=next(m for m in s['methods'] if m['input']['title']=='测试等待手势');assert quick_method['input']['goal_ids']==[gids[1]] and quick_method['input']['steps']==''
+ a.route('**/api/prd/sessions/*',lose_response,times=1);click(a,'正式提交干预总结');expect(a.get_by_role('dialog')).to_have_count(0);assert len(state()['sessions'])==2
+ a.reload();expect(button(a,re.compile(r'^查看家庭干预：.*用手势求助两次'))).to_be_visible();s=state();other=next(s for s in s['sessions'] if s['id']!=sid);assert len(s['sessions'])==2 and len(call('GET','/prd/sessions/'+other['id']+'/history'))==1;assert len(other['actual_methods'])==1 and other['input']['plan']=='';quick_method=next(m for m in s['methods'] if m['input']['title']=='测试等待手势');assert quick_method['input']['goal_ids']==[gids[1]] and quick_method['input']['steps']==''
  print('PASS direct summary, inline actual method, and lost response across reload retries exactly once',flush=True)
  click(a,'记录');click(a,'家庭干预');expect(a.get_by_text('家庭干预记录',exact=True)).to_be_visible();expect(a.get_by_role('button',name=re.compile(r'^\d{4}-\d{2}-\d{2} · 家庭干预\d+次$'))).not_to_have_count(0)
  click(a,'查看目标覆盖与实际方法');expect(a.get_by_text(re.compile(r'.*家庭 2 次，机构 0 节$'))).to_be_visible();reveal_control(a,'combobox','统计来源').select_option('combined');expect(a.get_by_text(re.compile(r'^测试轮流 · 1 次'))).to_be_visible();reveal_control(a,'combobox','统计窗口').select_option('7');expect(a.get_by_text(re.compile(r'^近7天固定色阶：'))).to_be_visible();a.screenshot(path=str(OUT/'coverage-360.png'));click(a,'关闭全部方向的近况')

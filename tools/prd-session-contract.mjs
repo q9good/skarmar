@@ -7,16 +7,19 @@ export async function sessionContract(label,send,admin){
  const id=randomUUID(),cmd=(id,version,action,input=null)=>({id,operation_id:randomUUID(),expected_version:version,action,input,change_note:'测试修订'});
  const plan=cmd(id,null,'save_draft',input);
  const beforeBlank=await call('GET','/prd/state');
+ const receipt=operation=>call('GET','/prd/process?view=session_save_receipt&id='+operation.operation_id);
+ assert.equal(await receipt(plan),null);
  await call('PUT','/prd/sessions/'+id,{...plan,input:{...input,plan:' \t\n'}},422);
  assert.deepEqual(await call('GET','/prd/state'),beforeBlank,'blank plan rejection must not reserve an action or create a record');
  // The failed operation is not reserved: corrected content can use its identity.
- await call('PUT','/prd/sessions/'+id,plan);await call('PUT','/prd/sessions/'+id,plan);
+ const planned=await call('PUT','/prd/sessions/'+id,plan);assert.deepEqual(await receipt(plan),planned);await call('PUT','/prd/sessions/'+id,plan);
  assert.equal((await call('GET','/prd/coverage?days=30&source=family')).records.selected,0);
  const competing=randomUUID();await call('PUT','/prd/sessions/'+competing,cmd(competing,null,'save_draft',input),409);
  const summary={targets:[{goal_id:g.id,performed:true,observation:'测试：实际进行了练习'}],confirmation:'unconfirmed',methods:[],tags:['游戏','游戏'],context:'',signals:[{kind:'主动开始',goal_ids:[]}],new_knowledge:[],new_actions:[],action_outcomes:[{action_id:action.input.id,decision:'continue'}]};
  await call('PUT','/prd/sessions/'+id,cmd(id,1,'complete',{...input,summary}),422);
  const kid=randomUUID();summary.confirmation='unknown';summary.new_knowledge=[{id:kid,kind:'difficulty',content:'测试干预困难',goal_ids:[g.id],method_ids:[],stage:null,next_review_date:null}];
  const complete=cmd(id,1,'complete',{...input,summary});let saved=await call('PUT','/prd/sessions/'+id,complete);await call('PUT','/prd/sessions/'+id,complete);assert.equal(saved.status,'completed');assert.equal(saved.actual_methods.length,0);assert.equal(saved.planned_methods.length,1);assert.deepEqual(saved.input.summary.tags,['游戏']);
+ assert.deepEqual(await receipt(complete),saved);assert.deepEqual(await receipt(plan),planned);
  state=await call('GET','/prd/state');assert.equal(state.knowledge.filter(k=>k.source_session_id===id).length,1);assert.equal(state.actions.find(a=>a.input.id===action.input.id).status,'pending');
  const next={...saved.input,summary:{...saved.input.summary,knowledge_versions:{[kid]:1},new_knowledge:[{...saved.input.summary.new_knowledge[0],content:'测试干预困难修订'}]}};
  saved=await call('PUT','/prd/sessions/'+id,cmd(id,2,'complete',next));state=await call('GET','/prd/state');assert.equal(state.knowledge.find(k=>k.input.id===kid).version,2);
