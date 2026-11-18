@@ -161,6 +161,29 @@ class PromotionTests(unittest.TestCase):
         self.assertEqual(self.receipt["deployed_version"], NEW)
         self.assertEqual(self.receipt["state"], "deployed_and_verified")
 
+    def test_newly_uploaded_version_can_take_time_to_appear(self):
+        not_visible = release.CloudflareHTTPError("GET candidate", 404)
+        with patch.object(self.api, "get", side_effect=[not_visible, not_visible, self.api.candidate]) as get:
+            self.run_release()
+        self.assertEqual(get.call_count, 3)
+        self.assertEqual({call.args for call in get.call_args_list}, {(f"/scripts/{release.WORKER}/versions/{NEW}",)})
+        self.assertEqual(self.commands, ["dry-run", "upload", "promote"])
+
+    def test_candidate_404_stays_inactive_when_retry_budget_ends(self):
+        with patch.object(self.api, "get", side_effect=release.CloudflareHTTPError("GET candidate", 404)) as get:
+            with self.assertRaises(release.CloudflareHTTPError):
+                self.run_release()
+        self.assertEqual(get.call_count, 7)
+        self.assertEqual(self.commands, ["dry-run", "upload"])
+        self.assertEqual(self.receipt["state"], "uploaded_not_promoted")
+
+    def test_candidate_permission_error_is_not_retried(self):
+        with patch.object(self.api, "get", side_effect=release.CloudflareHTTPError("GET candidate", 403)) as get:
+            with self.assertRaises(release.CloudflareHTTPError):
+                self.run_release()
+        get.assert_called_once()
+        self.assertEqual(self.commands, ["dry-run", "upload"])
+
     def test_dry_run_is_not_deployment(self):
         with patch.object(release, "wrangler", side_effect=release.ReleaseError("synthetic build failure")):
             with self.assertRaises(release.ReleaseError):

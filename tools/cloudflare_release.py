@@ -40,6 +40,12 @@ class ReleaseError(Exception):
     """A deliberately non-sensitive error that may be printed in public logs."""
 
 
+class CloudflareHTTPError(ReleaseError):
+    def __init__(self, operation, status):
+        super().__init__(f"Cloudflare {operation} failed (HTTP {status}); check token scope and API permissions.")
+        self.status = status
+
+
 def require(condition, message):
     if not condition:
         raise ReleaseError(message)
@@ -140,7 +146,7 @@ class Cloudflare:
             with urllib.request.urlopen(request, timeout=45) as response:
                 body = json.load(response)
         except urllib.error.HTTPError as error:
-            raise ReleaseError(f"Cloudflare {operation} failed (HTTP {error.code}); check token scope and API permissions.") from None
+            raise CloudflareHTTPError(operation, error.code) from None
         except (urllib.error.URLError, TimeoutError, ValueError):
             raise ReleaseError("Cloudflare API request failed; no deployment is assumed successful.") from None
         require(body.get("success") is True, "Cloudflare did not confirm the API request.")
@@ -306,6 +312,21 @@ def goal_removal_check():
     return "reviewed_two_completed"
 
 
+def read_uploaded_version(api, version_id):
+    path = f"/scripts/{WORKER}/versions/{version_id}"
+    # Upload can acknowledge a version before its metadata is visible. Retry
+    # reads of this exact candidate only. The later deployment/route check still
+    # rejects concurrent changes before any activation.
+    for delay in (1, 2, 4, 8, 16, 20):
+        try:
+            return api.get(path)
+        except CloudflareHTTPError as error:
+            if error.status != 404:
+                raise
+            time.sleep(delay)
+    return api.get(path)
+
+
 def run_release(config, source_sha, api, receipt, activate_prd_empty=False, formal_launch=False, remove_goals=False):
     require(os.environ.get("SKARMA_FORMAL_LAUNCH") == FORMAL_ACK if formal_launch
             else "SKARMA_FORMAL_LAUNCH" not in os.environ,
@@ -347,7 +368,7 @@ def run_release(config, source_sha, api, receipt, activate_prd_empty=False, form
             "Upload version ID was not confirmed; no traffic switch attempted.")
     new_id = uploads[0]["version_id"]
     receipt.update(uploaded_version=new_id, state="uploaded_not_promoted")
-    candidate = api.get(f"/scripts/{WORKER}/versions/{new_id}")
+    candidate = read_uploaded_version(api, new_id)
     require(invariant(candidate) == expected,
             "Uploaded version changes storage, variables or runtime settings; no traffic switch attempted.")
     require(api.current()[0] == deployment_id and api.routing() == routing,

@@ -18,3 +18,5 @@
 手机专项使用 Chromium 390px 与合成数据。家庭总结、知识写入、目标树、旧目标历史、活动计划、账号切换、草稿跨窗口、示例可读性和表单补缺等浏览器回归共10组通过。历史简化界面及评审反馈的整套脚本遇到旧界面断言，未计入通过。185 项 Rust、99 项客户端、类型检查、Web 与 Worker 构建、41 项发布保护和 9 项恢复保护通过。SQLite 和 Cloudflare Durable Object 共享合约通过，包含保存前空回执、同操作原回执、旧版回执、幂等、历史和重启。
 
 [关联在表单内展开](artifacts/validation/family-record-2026-11-18/01-inline-association.png) · [完成条目和独立草稿](artifacts/validation/family-record-2026-11-18/02-completed-card.png)
+
+第一次尝试完成上传，紧接着按编号查询新版本的元数据返回 404，流水线在切换流量前停止。发布工具增加对新上传版本的限时查询重试。元数据仍无法读取时停止，读取成功后仍核对候选配置、生产版本和路由再切换。44 项发布保护通过。[首次运行](https://github.com/q9good/skarmar/actions/runs/44224015824) · [脱敏回执](artifacts/deployment/cloudflare-family-record-20261118-first-attempt.json)

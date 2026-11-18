@@ -1,0 +1,11 @@
+{
+  "worker": "skarma-web",
+  "origin": "https://skarma.vip",
+  "source_sha": "3aa9266a6beb8b198651556b8015f4386da4dc1f",
+  "state": "uploaded_not_promoted",
+  "operation": "deploy",
+  "model": "prd_v1",
+  "previous_version": "bda6d08a-5f09-4b22-80b5-02a07633829c",
+  "uploaded_version": "b8ad4aad-a492-4574-8a9d-a17cfe6d2b9b",
+  "error": "Cloudflare GET /scripts/skarma-web/versions/<version> failed (HTTP 404); check token scope and API permissions."
+}
