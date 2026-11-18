@@ -5,7 +5,7 @@
 | F01 | 家庭总结正式提交后自动退出，今日生成一条可查看及修订的记录。确认写入后不等待草稿清理或列表刷新才退出。 | 通过 |
 | F02 | 回复中断后核对同一次操作是否已提交。已确认的旧草稿刷新后恢复为原记录，未确认的提交继续保留原填写和操作编号。按记录 ID 合并入口，保留独立的计划和修改。 | 通过 |
 | F03 | 本次目标、实际方法及经验、困难等补充关联直接在表单展开勾选。保留目标层级、实际方法确认和旧关联，长列表仍可在表单内选择。 | 通过 |
-| D01 | 用合成数据逐项验收后普通发布，核对真实激活及公开检查，保留现有资料与草稿。 | 待发布 |
+| D01 | 用合成数据逐项验收后普通发布，核对真实激活及公开检查，保留现有资料与草稿。 | 已激活并通过公开检查 |
 
 用户截图中的计划、总结和提醒错误不能单独证明同一个记录被重复保存。验收用独立测试数据覆盖保存、刷新延迟、回复中断、多窗口和再次编辑。
 
@@ -20,3 +20,9 @@
 [关联在表单内展开](artifacts/validation/family-record-2026-11-18/01-inline-association.png) · [完成条目和独立草稿](artifacts/validation/family-record-2026-11-18/02-completed-card.png)
 
 第一次尝试完成上传，紧接着按编号查询新版本的元数据返回 404，流水线在切换流量前停止。发布工具增加对新上传版本的限时查询重试。元数据仍无法读取时停止，读取成功后仍核对候选配置、生产版本和路由再切换。44 项发布保护通过。[首次运行](https://github.com/q9good/skarmar/actions/runs/44224015824) · [脱敏回执](artifacts/deployment/cloudflare-family-record-20261118-first-attempt.json)
+
+## 发布结果
+
+2026-11-18 普通发布源码 `c4d13c491d17a663cf35c11e09f18efee49b3a28`。构建及发布任务均通过，Cloudflare 上传与实际激活版本均为 `66124514-25b8-4e36-a2f0-e04dc938f779`。[Actions 运行](https://github.com/q9good/skarmar/actions/runs/44225102461)
+
+独立确认公开页面和 JavaScript 与本次构建匹配，健康、匿名保护、精确来源及数据库启动检查通过，`formal-20261101` 的正式数据标记一致。沿用现有 Worker、Durable Object、默认空间与账号。清理、初始化、示例恢复、删除目标和补关联均跳过。业务验收使用合成数据，线上验证使用公开接口。[脱敏回执](artifacts/deployment/cloudflare-family-record-20261118-receipt.json) · [独立检查](artifacts/deployment/cloudflare-family-record-20261118-checks.json)

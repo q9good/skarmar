@@ -560,9 +560,9 @@
     {
       "id": "T80",
       "title": "家庭记录提交后关闭、恢复回执、就地勾选并部署",
-      "status": "in_progress",
+      "status": "done",
       "evidence": "docs/family-record-submission-2026-11-18.md",
-      "verification": "F01–F03已用合成数据验收。已复现旧版成功写入后丢回复导致弹窗及继续入口保留。新版本从原操作查询回执，清理／刷新失败不影响显示记录，未确认请求可原样重试；一条正式记录有独立可编辑入口，其他计划保留，关联在表单内展开。185 Rust、99 客户端、10组浏览器、双运行环境合约及重启通过。历史两套整组脚本的旧断言不算通过。代码待普通发布。 首轮44224015824已上传，元数据查询返回404，未切换；后续在同候选只读查询上增加有界404重试，44发布与9恢复保护通过。"
+      "verification": "F01–F03已用合成数据验收。已复现旧版成功写入后丢回复导致弹窗及继续入口保留。新版本从原操作查询回执，清理／刷新失败不影响显示记录，未确认请求可原样重试；一条正式记录有独立可编辑入口，其他计划保留，关联在表单内展开。185 Rust、99 客户端、10组浏览器、双运行环境合约及重启通过。历史两套整组脚本的旧断言不算通过。源码c4d13c491d17a663cf35c11e09f18efee49b3a28，run44225102461成功，实际激活66124514-25b8-4e36-a2f0-e04dc938f779。已核对原存储与正式代际、全部维护跳过、公开构建与接口、脱敏回执及239项产物。 首轮44224015824已上传，元数据查询返回404，未切换；后续在同候选只读查询上增加有界404重试，44发布与9恢复保护通过。"
     }
   ],
   "artifacts": [
@@ -1951,6 +1951,18 @@
       "path": "docs/artifacts/deployment/cloudflare-family-record-20261118-first-attempt.json",
       "title": "家庭记录发布首次尝试回执",
       "sha256": "7e465f20066aa41a04ec8f5b1cd8f4fde99640fa68860765f9a25c97c5e04cda",
+      "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-family-record-20261118-receipt.json",
+      "title": "家庭记录普通发布回执",
+      "sha256": "ae621410928a48bc73bdaa458656a65d63ceeb69c8aa706a13883c3d86cff8b9",
+      "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-family-record-20261118-checks.json",
+      "title": "家庭记录独立公开检查",
+      "sha256": "65f13ae3df9787a4b5615dc252177897b44e13c6c58a7d9b7c6ac6c7356450d8",
       "synthetic": false
     }
   ]
