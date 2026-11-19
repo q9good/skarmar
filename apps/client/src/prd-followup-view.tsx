@@ -90,6 +90,22 @@ export function FollowupHub({data,mode,refresh,requested,onRequested,adjustMetho
  const openDetail=(id:string)=>{setHistoryPages(old=>({...old,['knowledge'+id]:{page:0,more:false}}));detailRef.current=id;setDetail(id);setKnowledgeDetail(null);setEvents([]);setAnnotations([]);setError('');void Promise.all([loadDetail(id),loadEvents(id)]).catch(e=>setError(errorText(e)))};
  useEffect(()=>{if(!requested||!ready)return;if(requested.kind==='new_experience'){const id=uuid();open({kind:'knowledge',value:{id,operation_id:uuid(),expected_version:null,action:'create',input:{id,kind:'experience',content:'',goal_ids:requested.object_kind==='goal'?[requested.id]:[],method_ids:requested.object_kind==='method'?[requested.id]:[],stage:null,next_review_date:null},details:emptyDetails(),derived_from:[],note:''}});}else if(requested.kind==='knowledge')openDetail(requested.id);else if(requested.kind==='action'){const a=data.actions.find(a=>a.input.id===requested.id);if(a)open({kind:'action',value:{id:a.input.id,operation_id:uuid(),expected_version:a.version,input:structuredClone(a.input),state:a.status,note:''}});}else void openReview(requested.object_kind??'knowledge',requested.id);onRequested?.()},[requested,ready]);
  const persist=(next:Record<string,Draft>)=>{refs.current=next;setDrafts(next);const task=draftStore.current!.save(next);queues.set(scope,task);trackLocalSave(scope,task);void task.catch(e=>{if(alive.current)setError(errorText(e))});return task};
+ // Reloading after the server deletes a knowledge item can interrupt local cleanup.
+ // Only discard a submitted deletion when the shared item confirms its final state.
+ useEffect(()=>{
+  if(!ready||busy||inFlight.current)return;
+  const next={...refs.current};
+  const finished=Object.entries(next).filter(([,draft])=>{
+   const sent=draft.pending;
+   if(draft.backup||sent?.kind!=='knowledge'||sent.value.action!=='delete'||sent.value.expected_version===null)return false;
+   const version=sent.value.expected_version;
+   return data.knowledge.some(item=>item.input.id===sent.value.id&&item.deleted&&item.version>version);
+  });
+  if(!finished.length)return;
+  for(const [key] of finished)delete next[key];
+  void persist(next).catch(()=>undefined);
+  setEditor(current=>current&&finished.some(([key])=>key===current)?null:current);
+ },[ready,busy,drafts,data.knowledge]);
  const draftRecovery=()=> <DraftRecovery store={draftStore.current} scope={scope} label="跟进" adopted={rows=>{refs.current=rows;setDrafts(rows);setError('');setContexts({});setRecoveryNonce(n=>n+1);}} restored={(entry,value)=>{const rows={...refs.current,[entry]:value};refs.current=rows;setDrafts(rows);setEditor(entry);setError('');setContexts({});setRecoveryNonce(n=>n+1);}}/>;
  const open=(command:ProcessCommand)=>{if(!ready)return;const key=draftKey(command);if(!refs.current[key])void persist({...refs.current,[key]:{command}});setEditor(key);setError('');setNotice('');setMore(false)};
  const cmd=editor?drafts[editor]?.command:undefined,draft=editor?drafts[editor]:undefined,kb=cmd?.kind==='knowledge'?cmd.value:undefined,event=cmd?.kind==='feedback'?cmd.value:undefined,review=cmd?.kind==='review'?cmd.value:undefined,setting=cmd?.kind==='settings'?cmd.value:undefined,actionEdit=cmd?.kind==='action'?cmd.value:undefined,disabled=busy||Boolean(draft?.pending);
@@ -163,7 +179,7 @@ export function FollowupHub({data,mode,refresh,requested,onRequested,adjustMetho
  {!due.length&&!board.inbox?.requests.length&&!board.inbox?.actions.length&&<Text>暂时没有需要处理的事项。</Text>}
  </View>}
 
- {draftRecovery()}{Object.entries(drafts).map(([key,d])=><Button key={key} title={`继续跟进填写：${d.command.kind==='knowledge'?`经验或困难 · ${(d.command.value.details.title||d.command.value.input?.content||'尚未命名').slice(0,40)}`:d.command.kind==='action'?`下一步 · ${d.command.value.input.content.slice(0,40)}`:d.command.kind==='feedback'?`实践反馈 · ${(d.command.value.input?.observation||d.command.value.note||'待核对').slice(0,40)}`:d.command.kind==='review'?`复盘 · ${titleFor(d.command.value)}`:'家庭日程'}`} press={()=>{setEditor(key);setError('')}}/>)}
+ {mode!=='hidden'&&draftRecovery()}{mode!=='hidden'&&Object.entries(drafts).map(([key,d])=><Button key={key} title={`继续跟进填写：${d.command.kind==='knowledge'?`经验或困难 · ${(d.command.value.details.title||d.command.value.input?.content||'尚未命名').slice(0,40)}`:d.command.kind==='action'?`下一步 · ${d.command.value.input.content.slice(0,40)}`:d.command.kind==='feedback'?`实践反馈 · ${(d.command.value.input?.observation||d.command.value.note||'待核对').slice(0,40)}`:d.command.kind==='review'?`复盘 · ${titleFor(d.command.value)}`:'家庭日程'}`} press={()=>{setEditor(key);setError('')}}/>)}
  {notice&&<Text role="status">{notice}</Text>}{error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}
  {mode==='full'&&<>
  <SectionTabs label="跟进内容" value={section} change={setSection} items={[{value:'tasks',title:'要处理的',tone:'tasks'},{value:'library',title:'经验库与困难',tone:'experience'}]}/>

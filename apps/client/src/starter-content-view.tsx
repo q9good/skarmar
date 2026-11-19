@@ -64,12 +64,13 @@ export function StarterSetupButton({refresh}:{refresh:()=>Promise<void>}) {
           {(input.goal_ids??[]).length>0&&<Text>关联目标：{input.goal_ids?.map(id=>names.get(id)??'已有目标（保留原关联）').join('、')}</Text>}
         </View>;})}
         <Button title={busy?'正在处理初始内容…':'确认按预览创建'} disabled={busy||!plan.rows.some(r=>!r.skipped)} press={()=>void act(async()=>{
-          const result=await request<Receipt>('/data-transfer','POST',{kind:'commit',value:{preview_id:plan.preview_id,digest:plan.digest}});setReceipt(result);
+          const result=await request<Receipt>('/data-transfer','POST',{kind:'commit',value:{preview_id:plan.preview_id,digest:plan.digest}});setReceipt(result);setPlan(null);
           try{await refresh();}catch{setNotice('初始内容已保存，页面更新失败，请稍后刷新。');}
         })}/>
         {!busy&&<Button title="重新核对初始内容预览" press={preview}/>}
       </View>}
-      {receipt&&<Text role="status">已确认：新增 {receipt.saved} 项，使用已有 {receipt.reused} 项，跳过 {receipt.skipped} 项。</Text>}
+      {receipt&&<><Text role="status">已确认：新增 {receipt.saved} 项，使用已有 {receipt.reused} 项，跳过 {receipt.skipped} 项。</Text>
+        <Button title="重新核对初始内容预览" disabled={busy} press={preview}/></>}
       {notice&&<Text role="status">{notice}</Text>}
     </DetailOverlay>}
   </>;

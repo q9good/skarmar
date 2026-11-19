@@ -21,7 +21,6 @@ with sync_playwright() as p:
  def state():return call('GET','/prd/state')
  def save(page,title):click(page,title);expect(page.get_by_role('dialog')).to_have_count(0)
  def select_target(page,title):
-  if page.get_by_role('dialog',name='填写干预总结',exact=True).count() and page.get_by_role('button',name='选择本次目标',exact=True).count()==0:click(page,'调整总结目标与原计划')
   click(page,'选择本次目标');page.get_by_role('checkbox',name='选择目标：'+title,exact=True).click();click(page,'选择本次目标')
  def open_finished(page,observation):click(page,re.compile('.*'+re.escape(observation)+'.*'));expect(page.get_by_role('dialog')).to_have_count(1)
  login(a,'owner','synthetic-prd-ui-password');assert not state()['sessions']

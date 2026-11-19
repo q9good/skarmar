@@ -163,7 +163,6 @@ with sync_playwright() as playwright:
     expect(page.get_by_role('dialog')).to_have_count(0)
     previous_id = writes[-1]['id']
     tap('填写这份计划的总结')
-    tap('调整总结目标与原计划')
     expect(page.get_by_text('原计划：合成补录前一天', exact=True)).to_be_visible()
     tap('暂存总结并退出')
     assert writes[-1]['id'] == previous_id and previous_id != saved_id
