@@ -127,10 +127,11 @@ fn save_schedule(db: &dyn Sql, s: &Schedule) -> Result<()> {
 }
 pub fn seed(db: &dyn Sql) -> Result<()> {
     settings(db)?;
+    let removed = super::goal_removal::removed_ids(db)?;
     for row in db.query("SELECT data FROM prd_entities ORDER BY id", &[])? {
         let s: Saved = serde_json::from_str(&row[0])?;
         match s {
-            Saved::Goal(g) => sync(db, "goal", &g.id)?,
+            Saved::Goal(g) if !removed.contains(&g.id) => sync(db, "goal", &g.id)?,
             Saved::Method(m) => sync(db, "method", &m.id)?,
             _ => {}
         }

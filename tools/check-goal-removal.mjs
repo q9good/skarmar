@@ -36,6 +36,11 @@ try{
  assert.equal((await call('GET','/prd/records/'+a.saved.id+'/history')).data.length,1);
  await call('GET','/release/goal-removal',undefined,200,null);assert.deepEqual(await state(),after);
  await mf.dispose();mf=null;mf=new Miniflare(options(resolve(normal,'index.js')));assert.deepEqual(await state(),after);assert.deepEqual((await call('GET','/auth/me')).data,identity);
+ const board=(await call('GET','/prd/process?view=board')).data;
+ const goalSchedules=board.schedules.filter(s=>s.object_kind==='goal').map(s=>s.object_id);
+ assert.deepEqual(goalSchedules,[keep.saved.id],'today reminders must skip tombstones and retain the live goal');
+ const queue=(await call('GET','/prd/process?view=review_queue')).data;
+ assert.deepEqual(queue.board.schedules,board.schedules);
  const revised=(await call('PUT','/prd/sessions/'+retiredSessionId,{id:retiredSessionId,operation_id:randomUUID(),expected_version:1,action:'complete',change_note:'合成修订旧观察',input:{...retiredInput,summary:{...retiredInput.summary,targets:[{...retiredInput.summary.targets[0],observation:'合成修订旧目标观察'}]}}})).data;
  assert.deepEqual(revised.actual_targets[0].goal,retiredBefore.actual_targets[0].goal);assert.equal(revised.actual_targets[0].input.note,'合成修订旧目标观察');
  const forbiddenId=randomUUID();await call('PUT','/prd/sessions/'+forbiddenId,{id:forbiddenId,operation_id:randomUUID(),expected_version:null,action:'complete',change_note:'',input:retiredInput},422);

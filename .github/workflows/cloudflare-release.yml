@@ -117,6 +117,19 @@ jobs:
           # Build before secrets/private config are introduced so compiler/tool
           # failures can be diagnosed without publishing Wrangler binding logs.
           (cd crates/worker && worker-build --release)
+      - name: Check mobile family records and follow-up before promotion
+        if: inputs.verify_version == '' && !contains(github.event.head_commit.message, '[verify-cloudflare:')
+        run: |
+          cargo build -p skarma-api --locked
+          python3 -m venv "$RUNNER_TEMP/skarmar-browser"
+          export PYTHON3="$RUNNER_TEMP/skarmar-browser/bin/python"
+          "$PYTHON3" -m pip install -r tools/browser-test-requirements.txt
+          if command -v google-chrome >/dev/null; then
+            export CHROMIUM_EXECUTABLE="$(command -v google-chrome)"
+          else
+            "$PYTHON3" -m playwright install --with-deps chromium
+          fi
+          npm run test:prd-web -- smoke_prd_family_journey_web.py smoke_prd_family_submit_web.py smoke_prd_summary_repair_web.py
       - name: Append reviewed synthetic records before releasing code
         if: inputs.restore_demo || contains(github.event.head_commit.message, '[restore-demo:20261023]')
         env:

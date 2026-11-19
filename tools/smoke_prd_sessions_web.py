@@ -40,7 +40,7 @@ with sync_playwright() as p:
  print('PASS legacy notes and role changes survive summary draft; original plan snapshots retained and draft excluded from counts',flush=True)
  login(b,'family','s')
  click(b,'记录家庭：填写今天的总结');field(b,'实际表现：测试轮流').fill('测试：等待了两次，主动把球给我');reveal_control(b,'checkbox','这次做了：测试求助').click()
- click(b,'正式提交干预总结');expect(b.get_by_role('alert')).to_contain_text('请确认实际使用的方法')
+ click(b,'正式提交干预总结');expect(b.get_by_role('alert')).to_contain_text('请展开「实际方法」')
  reveal_control(b,'button','实际方法').click();reveal_control(b,'checkbox','记不清实际用了什么方法').click()
  click(b,'新增本次困难');field(b,'实际情况／必填 1').fill('测试：等待时离开了座位');field(b,'成人回应／可选 1').fill('测试：我先暂停并陪他休息');field(b,'原因猜测／可选 1').fill('测试：可能有些累了');field(b,'本次条件／可选 1').fill('测试：换了新材料')
  click(b,'查看填写示例：实际情况／必填 1');expect(b.get_by_text('大人怎样回应，后来呢？',exact=True)).to_be_visible();click(b,'查看填写示例：原因猜测／可选 1');expect(b.get_by_text('有什么尚未确定的猜测？',exact=True)).to_be_visible();expect(b.get_by_text('合成示例 · 例如：可能有些累了',exact=True)).to_be_visible();expect(field(b,'原因猜测／可选 1')).to_have_value('测试：可能有些累了')
@@ -77,8 +77,8 @@ with sync_playwright() as p:
  action_id=state()['actions'][0]['input']['id'];pending=str(uuid4());call('PUT','/prd/sessions/'+pending,{'id':pending,'operation_id':str(uuid4()),'expected_version':None,'action':'save_draft','change_note':'','input':{'business_date':completed['input']['business_date'],'time_slot':'晚上','plan':'合成：原有行动来源计划','targets':[],'action_ids':[action_id]}});a.reload();expect(button(a,'记录课堂')).to_be_enabled();assert state()['actions'][0]['status']=='in_plan'
  click(a,'记录');click(a,'家庭干预');click(a,re.compile(r'.*待总结计划.*'));click(a,'取消未执行计划');save(a,'确认干预操作');assert state()['actions'][0]['status']=='pending'
  print('PASS monthly history, 7/30 day source-separated coverage, admin delete, and cancelled plan releases the next action',flush=True)
- # One global draft survives navigation/refresh and is not visible to another account.
- click(a,'今天');click(a,'记录家庭');expect(a.get_by_role('dialog',name='填写干预计划',exact=True)).to_be_visible();field(a,'准备做什么').fill('测试：本机保留安排');expect(a.get_by_role('button',name='选择本次目标',exact=True)).to_have_count(0);click(a,'关闭填写干预计划');click(a,'目标');expect(button(a,re.compile(r'^继续干预填写：'))).to_be_visible();a.reload();click(a,re.compile(r'^继续干预填写：'));expect(field(a,'准备做什么')).to_have_value('测试：本机保留安排');click(a,'关闭填写干预计划')
+ # Drafts survive navigation, but their resume entry belongs to Today.
+ click(a,'今天');click(a,'记录家庭');expect(a.get_by_role('dialog',name='填写干预计划',exact=True)).to_be_visible();field(a,'准备做什么').fill('测试：本机保留安排');expect(a.get_by_role('button',name='选择本次目标',exact=True)).to_have_count(0);click(a,'关闭填写干预计划');click(a,'目标');expect(button(a,re.compile(r'^继续干预填写：'))).to_have_count(0);click(a,'今天');a.reload();click(a,re.compile(r'^继续干预填写：'));expect(field(a,'准备做什么')).to_have_value('测试：本机保留安排');click(a,'关闭填写干预计划')
  for page in [a,b]:
   page.set_viewport_size({'width':320,'height':740});assert not page.evaluate('document.documentElement.scrollWidth > innerWidth')
- assert not errors,errors;print('PASS global draft recovery and 320px layout without browser errors',flush=True);browser.close()
+ assert not errors,errors;print('PASS Today-only draft recovery and 320px layout without browser errors',flush=True);browser.close()

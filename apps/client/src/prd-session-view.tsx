@@ -1,4 +1,4 @@
-import {summaryKnowledgeIssue} from './summary-knowledge';
+import {resolveSummaryLinks,summaryKnowledgeIssue} from './summary-knowledge';
 import {SummaryRelatedKnowledge} from './summary-related-knowledge';
 import type {Schedule} from './prd-followups';
 import {existingGoalOptions} from './foundation';
@@ -60,9 +60,10 @@ const toggle=(ids:string[],id:string)=>ids.includes(id)?ids.filter(v=>v!==id):[.
 const refOf=(m:{id:string;version:number}):MethodRef=>({id:m.id,version:m.version});
 function Bindings({data,goals,methods,change,disabled}:{data:Snapshot;goals:string[];methods:string[];change:(g:string[],m:string[])=>void;disabled:boolean}){return <><Text>关联目标</Text><RelationPicker inline label="关联目标" prefix="关联目标：" options={existingGoalOptions(data,goals).map(g=>({id:g.id,label:g.input.title}))} selected={goals} disabled={disabled} toggle={id=>change(goals.includes(id)?goals.filter(v=>v!==id):[...goals,id],methods)}/><Text>关联方法</Text><RelationPicker inline label="关联方法" prefix="关联方法：" options={data.methods.map(m=>({id:m.id,label:m.input.title}))} selected={methods} disabled={disabled} toggle={id=>change(goals,methods.includes(id)?methods.filter(v=>v!==id):[...methods,id])}/></>;}
 
-export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead,openGoal,openAction,requested,onRequested,requestedActions,onRequestedActions,afterPrimary,schedules,openMethod}:{schedules?:Schedule[];openMethod?:(id:string)=>void;data:Snapshot;mode:'today'|'records'|'drafts';refresh:(expected?:Session)=>Promise<void>;accepted:(s:Session)=>void;acceptMethod:(s:Saved)=>void;snapshotRead?:(s:Snapshot)=>void;openGoal:(id:string)=>void;openAction?:(id:string)=>void;requested?:{id:string;nonce:string}|null;onRequested?:()=>void;requestedActions?:{ids:string[];nonce:string}|null;onRequestedActions?:()=>void;afterPrimary?:React.ReactNode}){
+export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead,openGoal,openAction,requested,onRequested,requestedActions,onRequestedActions,afterPrimary,schedules,openMethod}:{schedules?:Schedule[];openMethod?:(id:string)=>void;data:Snapshot;mode:'today'|'records'|'detail';refresh:(expected?:Session)=>Promise<void>;accepted:(s:Session)=>void;acceptMethod:(s:Saved)=>void;snapshotRead?:(s:Snapshot)=>void;openGoal:(id:string)=>void;openAction?:(id:string)=>void;requested?:{id:string;nonce:string}|null;onRequested?:()=>void;requestedActions?:{ids:string[];nonce:string}|null;onRequestedActions?:()=>void;afterPrimary?:React.ReactNode}){
  const draftStore=useRef<DraftStore<SessionDraft>|null>(null);
  const auth=useAuth(),actor=auth.identity.user,key=dataKey(`skarmar:${auth.identity.space}:${actor.id}:session-drafts:v1`);
+ const [savedEntryId,setSavedEntryId]=useState<string|null>(null);
  const [distribution,setDistribution]=useState(false),[whenOpen,setWhenOpen]=useState(false);
  const [goalLoadBusy,setGoalLoadBusy]=useState(false),[goalLoadError,setGoalLoadError]=useState(''),goalLoadSequence=useRef(0);
  const [drafts,setDrafts]=useState<Record<string,SessionDraft>>({}),[ready,setReady]=useState(false),[editor,setEditor]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[choice,setChoice]=useState(false),[detail,setDetail]=useState<string|null>(null),[coverage,setCoverage]=useState(false),[search,setSearch]=useState(''),[more,setMore]=useState(false),[goalQuick,setGoalQuick]=useState(false),[methodName,setMethodName]=useState<string|null>(null),[methodBusy,setMethodBusy]=useState(false),[suggestions,setSuggestions]=useState<Coverage|null>(null),[feedbackLatest,setFeedbackLatest]=useState<Record<string,Feedback>>({}),[history,setHistory]=useState<{session:Session;actor_name:string;change_note:string;event:string}[]|null>(null),[day,setDay]=useState<string|null>(null),[month,setMonth]=useState(()=>localDate().slice(0,7));
@@ -76,30 +77,64 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
  const persist=(next:Record<string,SessionDraft>,reportError=true)=>{refs.current=next;setDrafts(next);const task=draftStore.current!.save(next);queues.set(key,task);trackLocalSave(key,task);void task.catch(e=>{if(alive.current&&reportError)setError(errorText(e))});return task};
 
  useEffect(()=>{if(!ready||!requestedActions)return;void(async()=>{try{const actions=requestedActions.ids.map(id=>data.actions.find(a=>a.input.id===id&&a.status==='pending')).filter((a):a is Snapshot['actions'][number]=>Boolean(a));if(!actions.length)throw new Error('这些下一步已处理或被其他计划使用，请刷新后核对。');const input={...emptySession(localDate()),plan:actions.map(a=>a.input.content).join('；'),action_ids:actions.map(a=>a.input.id),action_versions:Object.fromEntries(actions.map(a=>[a.input.id,a.version]))};const id=uuid();await persist({...refs.current,[id]:{stage:'plan',request:{id,operation_id:uuid(),expected_version:null,action:'save_draft',input,change_note:''}}});setEditor(id);setChoice(false);setMore(false);setNotice('已放入本机计划，正式保存后才占用这些下一步。');onRequestedActions?.();}catch(e){setError(errorText(e));}})();},[requestedActions?.nonce,ready]);
- const draft=editor?drafts[editor]:undefined,input=draft?.request.input,summary=input?.summary,remote=draft?data.sessions.find(s=>s.id===draft.request.id):undefined;
+ const draft=editor?drafts[editor]:undefined,rawInput=draft?.request.input,input=rawInput&&!draft?.pending?resolveSummaryLinks(rawInput,draft?.defaultKnowledgeLinks,data.goals):rawInput,summary=input?.summary,remote=draft?data.sessions.find(s=>s.id===draft.request.id):undefined;
  const conflict=Boolean(summary?.feedback?.some(f=>feedbackLatest[f.id]&&feedbackLatest[f.id].version!==f.expected_version))||Boolean(draft&&remote&&draft.request.expected_version!==remote.version)||Boolean(summary?.new_knowledge.some(k=>{const current=data.knowledge.find(v=>v.input.id===k.id),details=summary.knowledge_details?.[k.id];return current&&!current.deleted&&(JSON.stringify(current.input)!==JSON.stringify(k)||Boolean(details&&JSON.stringify(current.details)!==JSON.stringify(details)))&&summary.knowledge_versions?.[k.id]!==current.version})),disabled=busy||methodBusy||Boolean(draft?.pending)||Boolean(draft?.quick);
  const candidate=useStableOptions(data,editor,[...(input?.targets.map(t=>t.goal_id)??[]),...(input?.methods.map(m=>m.id)??[]),...(input?.focus_goal_ids??[]),...(summary?.methods.map(m=>m.id)??[])]),options=candidate.options;
  useEffect(()=>{let cancelled=false;setSuggestions(null);if(editor)void request<Coverage>('/prd/coverage?days=30&source=family').then(r=>{if(!cancelled)setSuggestions(r)}).catch(()=>undefined);return()=>{cancelled=true}},[editor,candidate.revision]);
  const [allDifficulties,setAllDifficulties]=useState(false);
 
  const draftRecovery=()=> <DraftRecovery store={draftStore.current} scope={key} label="干预" adopted={rows=>{refs.current=rows;setDrafts(rows);setError('');}} restored={(entry,value)=>{const rows={...refs.current,[entry]:value};refs.current=rows;setDrafts(rows);setEditor(entry);setError('');}}/>;
- const patch=(patch:Partial<SessionInput>|((v:SessionInput)=>Partial<SessionInput>))=>{const live=editor?refs.current[editor]:undefined;if(!live?.request.input||disabled||inFlight.current||live.pending||live.quick||!editor)return;const current=live.request.input;setError('');void persist({...refs.current,[editor]:{...live,request:{...live.request,operation_id:uuid(),input:{...current,...(typeof patch==='function'?patch(current):patch)}}}})};
- const patchSummary=(value:Partial<Summary>|((v:Summary)=>Partial<Summary>))=>patch(current=>current.summary?{summary:{...current.summary,...(typeof value==='function'?value(current.summary):value)}}:{});
- const patchKnowledge=(id:string,value:Partial<Summary['new_knowledge'][number]>)=>patchSummary(current=>({new_knowledge:current.new_knowledge.map(k=>k.id===id?{...k,...value}:k)}));
+ const patch=(update:Partial<SessionInput>|((v:SessionInput)=>Partial<SessionInput>),links?:{id:string;follow:boolean})=>{
+  const live=editor?refs.current[editor]:undefined;
+  if(!live?.request.input||disabled||inFlight.current||live.pending||live.quick||!editor)return;
+  const current=resolveSummaryLinks(live.request.input,live.defaultKnowledgeLinks,data.goals);
+  let defaultKnowledgeLinks=live.defaultKnowledgeLinks;
+  if(links){
+   defaultKnowledgeLinks=(defaultKnowledgeLinks??[]).filter(id=>id!==links.id);
+   if(links.follow)defaultKnowledgeLinks.push(links.id);
+  }
+  const input={...current,...(typeof update==='function'?update(current):update)};
+  setError('');
+  void persist({...refs.current,[editor]:{...live,defaultKnowledgeLinks,request:{...live.request,operation_id:uuid(),input}}});
+ };
+ const patchSummary=(value:Partial<Summary>|((v:Summary)=>Partial<Summary>),links?:{id:string;follow:boolean})=>
+  patch(current=>current.summary?{summary:{...current.summary,...(typeof value==='function'?value(current.summary):value)}}:{},links);
+ const patchKnowledge=(id:string,value:Partial<Summary['new_knowledge'][number]>)=>{
+  const manualLinks='goal_ids' in value||'method_ids' in value;
+  patchSummary(current=>({new_knowledge:current.new_knowledge.map(k=>k.id===id?{...k,...value}:k)}),manualLinks?{id,follow:false}:undefined);
+ };
  const detailsOf=(id:string):Details=>({...emptyDetails(),...(summary?.knowledge_details?.[id]??{})});
  const patchKnowledgeDetails=(id:string,value:Partial<Details>)=>patchSummary(current=>({knowledge_details:{...(current.knowledge_details??{}),[id]:{...emptyDetails(),...(current.knowledge_details?.[id]??{}),...value}}}));
- const hydrate=async(value:SessionInput,sessionId?:string)=>{const v=structuredClone(value);if(v.summary){const priorDetails=v.summary.knowledge_details??{};v.summary.new_knowledge=v.summary.new_knowledge.filter(k=>!data.knowledge.find(x=>x.input.id===k.id)?.deleted).map(k=>structuredClone(data.knowledge.find(x=>x.input.id===k.id)?.input??k));v.summary.knowledge_details=Object.fromEntries(v.summary.new_knowledge.map(k=>[k.id,structuredClone(data.knowledge.find(x=>x.input.id===k.id)?.details??priorDetails[k.id]??emptyDetails())]));if(sessionId){const events=await sessionRequest<Feedback[]>(`/prd/process?view=session_feedback&id=${sessionId}`);setFeedbackLatest(old=>({...old,...Object.fromEntries(events.map(e=>[e.id,e]))}));v.summary.feedback=events.filter(e=>!e.deleted).map(practiceOf);}v.summary.knowledge_versions=Object.fromEntries(v.summary.new_knowledge.map(k=>[k.id,data.knowledge.find(x=>x.input.id===k.id)?.version??0]));}return v;};
- const open=async(s?:Session,stage:'plan'|'summary'='plan')=>{try{if(!ready)return;const id=s?.id??uuid();let d=refs.current[id];if(!d){const v=s?await hydrate(s.input,s.id):emptySession(localDate());if(stage==='summary'&&!v.summary)v.summary=startSummary(v);d={stage,request:{id,operation_id:uuid(),expected_version:s?.version??null,action:'save_draft',input:v,change_note:''}};void persist({...refs.current,[id]:d})}setEditor(id);setDetail(null);setChoice(false);setError('');setNotice('');setMore(false);setAllDifficulties(false);setWhenOpen(false)}catch(e){setError(errorText(e))}};
+ const hydrate=async(session:Session)=>{const v=structuredClone(session.input);if(v.summary){const priorDetails=v.summary.knowledge_details??{};v.summary.new_knowledge=v.summary.new_knowledge.filter(k=>!data.knowledge.find(x=>x.input.id===k.id)?.deleted).map(k=>structuredClone(data.knowledge.find(x=>x.input.id===k.id)?.input??k));v.summary.knowledge_details=Object.fromEntries(v.summary.new_knowledge.map(k=>[k.id,structuredClone(data.knowledge.find(x=>x.input.id===k.id)?.details??priorDetails[k.id]??emptyDetails())]));if(session.status==='completed'){const events=await sessionRequest<Feedback[]>(`/prd/process?view=session_feedback&id=${session.id}`);setFeedbackLatest(old=>({...old,...Object.fromEntries(events.map(e=>[e.id,e]))}));v.summary.feedback=events.filter(e=>!e.deleted).map(practiceOf);}v.summary.knowledge_versions=Object.fromEntries(v.summary.new_knowledge.map(k=>[k.id,data.knowledge.find(x=>x.input.id===k.id)?.version??0]));}return v;};
+ const open=async(session?:Session,stage:'plan'|'summary'='plan')=>{
+  if(!ready)return;
+  try{
+   const id=session?.id??uuid(),local=refs.current[id];
+   if(!local){
+    const input=session?await hydrate(session):emptySession(localDate());
+    if(stage==='summary'&&!input.summary)input.summary=startSummary(input);
+    const request:SessionWrite={id,operation_id:uuid(),expected_version:session?.version??null,action:'save_draft',input,change_note:''};
+    void persist({...refs.current,[id]:{stage,request}});
+   }else if(session&&stage==='summary'&&local.stage==='plan'&&!local.pending&&!local.quick&&local.request.input){
+    const input=local.request.input;
+    const request={...local.request,operation_id:uuid(),input:{...input,summary:input.summary??startSummary(input)}};
+    void persist({...refs.current,[id]:{...local,stage:'summary',request}});
+   }
+   setSavedEntryId(null);setEditor(id);setDetail(null);setChoice(false);setError('');setNotice('');
+   setMore(false);setAllDifficulties(false);setWhenOpen(false);
+  }catch(e){setError(errorText(e));}
+ };
  const toSummary=()=>{if(!draft||!input||!editor||disabled)return;void persist({...refs.current,[editor]:{...draft,stage:'summary',request:{...draft.request,operation_id:uuid(),input:{...input,summary:input.summary??startSummary(input)}}}})};
  const administrative=(s:Session,action:'cancel'|'delete')=>{if(!ready)return;if(refs.current[s.id]){setEditor(s.id);setDetail(null);setError('先核对已有的本机填写，再进行取消或删除。');return;}void persist({...refs.current,[s.id]:{stage:'administration',request:{id:s.id,operation_id:uuid(),expected_version:s.version,action,input:null,change_note:''}}});setEditor(s.id);setDetail(null);setError('')};
  const finishSave=(saved:Session)=>{
   accepted(saved);
+  setSavedEntryId(saved.id);
   const next={...refs.current};delete next[saved.id];
   setEditor(current=>current===saved.id?null:current);
   setError('');
   const message=saved.status==='completed'?'已保存家庭记录，可打开这条记录继续编辑。':
    saved.status==='summary_draft'?'已暂存总结；其中经验和困难仍是草稿，正式提交后才进入跟进。':
-   saved.status==='planned'?'已保存家庭计划，可打开这条记录填写总结。':
+   saved.status==='planned'?'家庭计划已保存。':
    saved.status==='cancelled'?'计划已取消，下一步已解除占用。':'干预已删除，已沉淀内容保留。';
   setNotice(message);
   // Neither local cleanup nor the second shared-data read can hold the form open.
@@ -131,9 +166,15 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
  const submit=async(action:SessionWrite['action'])=>{
   const live=editor?refs.current[editor]:undefined;
   if(!live||!editor||inFlight.current||live.quick||(conflict&&!live.pending))return;
-  const id=editor,payload=live.pending??{...live.request,action};
+  const id=editor,payload=live.pending??{...live.request,action,input:live.request.input?resolveSummaryLinks(live.request.input,live.defaultKnowledgeLinks,data.goals):null};
   if(!live.pending&&action==='complete'){
-   const issue=summaryKnowledgeIssue(payload.input?.summary);
+   const summary=payload.input?.summary;
+   const actual=summary?.targets.filter(target=>target.performed)??[];
+   const missing=actual.find(target=>!target.observation.trim());
+   const issue=!actual.length?'请在「选择本次目标」勾选至少一个实际目标。':
+    missing?`请填写「${summaryGoal(missing.goal_id)?.input.title??'已选目标'}」的实际表现。`:
+    summary?.confirmation==='unconfirmed'?'请展开「实际方法」，选择用过的方法，也可明确选「本次没有使用库中方法」或「记不清」。':
+    summaryKnowledgeIssue(summary);
    if(issue){setError(issue);return;}
   }
   inFlight.current=true;
@@ -187,12 +228,16 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
   if(ids.length&&!next.some(t=>t.role==='main'&&ids.includes(t.goal_id))){const i=next.findIndex(t=>ids.includes(t.goal_id)&&t.role!=='review');if(i>=0){for(let j=0;j<next.length;j++)if(next[j].role==='main')next[j]={...next[j],role:'secondary'};next[i]={...next[i],role:'main'};}}
   patch({targets:next,...(focusIds?{focus_goal_ids:focusIds}:{}),summary:summary?{...summary,targets:all.map(id=>({...previous.find(t=>t.goal_id===id)??{goal_id:id,observation:''},performed:ids.includes(id)}))}:null});
  };
+ const savedEntry=data.sessions.find(s=>s.id===savedEntryId);
  const beginButton=()=>pending.length===1?open(pending[0],'summary'):pending.length?setChoice(true):open();
  return <View style={{gap:12}}>
  {mode==='today'&&<SectionButton title={pending.length?'记录家庭：填写今天的总结':'记录家庭'} tone="family" primary disabled={!ready} press={beginButton}/>}
  {mode==='today'&&afterPrimary}
- {draftRecovery()}{Object.entries(drafts).filter(([id])=>mode!=='today'||!data.sessions.some(session=>session.id===id&&session.input.business_date===today&&!['deleted','cancelled'].includes(session.status))).map(([id,d])=><Button key={id} title={`继续干预填写：${d.request.input?.business_date??'核对操作'} · ${d.stage==='plan'?'计划':d.stage==='summary'?'总结':'操作'}`} onPress={()=>{setEditor(id);setError('')}}/>)}
- {notice&&<Text role="status">{notice}</Text>}{error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}
+ {mode==='today'&&draftRecovery()}{mode==='today'&&Object.entries(drafts).filter(([id])=>!data.sessions.some(session=>session.id===id&&session.input.business_date===today&&!['deleted','cancelled'].includes(session.status))).map(([id,d])=><Button key={id} title={`继续干预填写：${d.request.input?.business_date??'核对操作'} · ${d.stage==='plan'?'计划':d.stage==='summary'?'总结':'操作'}`} onPress={()=>{setEditor(id);setError('')}}/>)}
+ {notice&&<View style={{gap:6}}><Text role="status">{notice}</Text>
+ {mode==='today'&&savedEntry&&['planned','summary_draft'].includes(savedEntry.status)&&<Button title="填写这份计划的总结" primary disabled={!ready||busy} onPress={()=>void open(savedEntry,'summary')}/>}
+ {mode==='today'&&savedEntry?.status==='completed'&&<Button title="查看刚保存的家庭记录" onPress={()=>{setDetail(savedEntry.id);setHistory(null)}}/>}
+ </View>}{error&&!editor&&<Text accessibilityRole="alert">{error}</Text>}
  {mode==='today'&&pending.length>0&&<Button title="另建一次干预" onPress={()=>setChoice(true)}/>}
  {mode==='records'&&<>
  <Text style={{fontSize:20,fontWeight:'600'}}>家庭干预记录</Text><Text>{month===today.slice(0,7)?'本月':month}已记录{data.sessions.filter(s=>s.status==='completed'&&s.input.business_date.startsWith(month)&&s.input.business_date<=today).length}次家庭干预</Text><Button title="按目标查看时间分布" onPress={()=>setDistribution(true)}/><View style={{flexDirection:'row',gap:8,flexWrap:'wrap'}}><Button title="上个月" onPress={()=>{setMonth(shift(month,-1));setSearch('')}}/><Text>{month}</Text><Button title="下个月" onPress={()=>{setMonth(shift(month,1));setSearch('')}}/></View><Text>仅正式完成计次数，草稿另列。下列日期可直接打开当天记录。</Text>
@@ -210,7 +255,7 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
  <Button title={busy?'正在保存…':remote?.status==='completed'?'保存总结修订':'正式提交干预总结'} primary disabled={disabled||conflict||Boolean(draft.quick)} onPress={()=>void submit('complete')}/>}
  </>}>
  {draftRecovery()}<OptionsUpdate changed={candidate.changed} refresh={candidate.refresh}/>
- {conflict&&remote&&!draft.pending&&<View style={{gap:8}}><Text>这条干预已有新版本，你的填写仍保留。</Text><Text>最新安排：{remote.input.plan}</Text><Text>最新观察：{remote.input.summary?.targets.filter(t=>t.performed).map(t=>t.observation).join('；')||'尚未总结'}</Text><Button title="备份填写并载入最新干预" disabled={disabled} onPress={()=>void(async()=>{try{await AsyncStorage.setItem(`${key}:backup:${Date.now()}`,JSON.stringify(draft));const fresh=await hydrate(remote.input,remote.id);if(draft.stage==='summary'&&!fresh.summary)fresh.summary=startSummary(fresh);await persist({...refs.current,[editor!]:{...draft,backup:input??undefined,request:{...draft.request,operation_id:uuid(),expected_version:remote.version,input:draft.stage==='administration'?null:fresh}}});setError('')}catch(e){setError(errorText(e))}})()}/></View>}
+ {conflict&&remote&&!draft.pending&&<View style={{gap:8}}><Text>这条干预已有新版本，你的填写仍保留。</Text><Text>最新安排：{remote.input.plan}</Text><Text>最新观察：{remote.input.summary?.targets.filter(t=>t.performed).map(t=>t.observation).join('；')||'尚未总结'}</Text><Button title="备份填写并载入最新干预" disabled={disabled} onPress={()=>void(async()=>{try{await AsyncStorage.setItem(`${key}:backup:${Date.now()}`,JSON.stringify(draft));const fresh=await hydrate(remote);if(draft.stage==='summary'&&!fresh.summary)fresh.summary=startSummary(fresh);await persist({...refs.current,[editor!]:{...draft,defaultKnowledgeLinks:undefined,backup:input??undefined,request:{...draft.request,operation_id:uuid(),expected_version:remote.version,input:draft.stage==='administration'?null:fresh}}});setError('')}catch(e){setError(errorText(e))}})()}/></View>}
  {draft.backup&&<View style={{gap:6}}><Text>此前填写的备份，可长按复制</Text><Text selectable>{draft.backup.plan}</Text>{draft.backup.summary?.new_knowledge.map(k=><Text selectable key={k.id}>{k.content}</Text>)}{draft.backup.summary?.targets.map(t=><Text selectable key={t.goal_id}>{t.observation}</Text>)}</View>}
  {input&&<>
  {draft.stage==='plan'?<FamilyPlanEditor schedules={schedules} openGoal={openGoal} openMethod={openMethod} key={draft.request.id} input={input} data={options} report={suggestions} disabled={disabled} patch={patch} openCoverage={()=>setCoverage(true)}
@@ -218,12 +263,12 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
  />:<> <Button title={`${input.business_date===today?'今天':input.business_date} · ${input.time_slot} · 修改日期时段`} onPress={()=>setWhenOpen(v=>!v)}/>
  {whenOpen&&<> <DateField label="干预日期" value={input.business_date} onChange={business_date=>patch({business_date})} disabled={disabled}/>{input.business_date!==today&&<Text>这是其他日期，请核对下方时段。</Text>}<Select label="干预时段" value={input.time_slot} disabled={disabled} onChange={time_slot=>patch({time_slot})} options={['夜间','上午','下午','晚上'].map(s=>({value:s,label:s}))}/><Button title="收起日期与时段" onPress={()=>setWhenOpen(false)}/></>}<Text style={{fontSize:18,fontWeight:'600'}}>这次实际涉及哪些目标</Text></>}
  {summary&&draft.stage==='summary'&&<>
- <Disclosure key={editor+':goals'} title="选择本次目标" onExpand={()=>{candidate.refresh();void loadActualGoals();}} summary={selectedGoalIds.length?`已选${selectedGoalIds.length}项`:undefined}><View testID="family-goal-options" style={{gap:10}}>{goalLoadBusy&&<Text role="status">正在读取与目标页相同的最新目录…</Text>}{goalLoadError&&<Text accessibilityRole="alert">{goalLoadError}</Text>}<ActualGoalPicker inspect={openGoal} refreshControl={<UiButton title="刷新目标目录" label="刷新目录" variant="link" disabled={goalLoadBusy||disabled} press={()=>void loadActualGoals()}/>} data={options} selected={selectedGoalIds} disabled={disabled} toggle={id=>{const hasActual=actualIds.includes(id);if(input.focus_goal_ids.includes(id)){const focus_goal_ids=input.focus_goal_ids.filter(v=>v!==id);if(!hasActual){patch({focus_goal_ids});return;}const keep=actualIds.filter(v=>v!==id);changeTargets(keep,focus_goal_ids);return;}changeTargets(toggle(actualIds,id));}}/><Button title="就地新建近期本领" disabled={disabled} onPress={()=>{setGoalQuick(true);setMethodName('');methodPending.current=null}}/></View></Disclosure>
+ <Disclosure key={editor+':goals'} title="选择本次目标" onExpand={()=>{candidate.refresh();void loadActualGoals();}} summary={selectedGoalIds.length?`已选${selectedGoalIds.length}项`:'必选'}><View testID="family-goal-options" style={{gap:10}}>{goalLoadBusy&&<Text role="status">正在读取与目标页相同的最新目录…</Text>}{goalLoadError&&<Text accessibilityRole="alert">{goalLoadError}</Text>}<ActualGoalPicker inspect={openGoal} refreshControl={<UiButton title="刷新目标目录" label="刷新目录" variant="link" disabled={goalLoadBusy||disabled} press={()=>void loadActualGoals()}/>} data={options} selected={selectedGoalIds} disabled={disabled} toggle={id=>{const hasActual=actualIds.includes(id);if(input.focus_goal_ids.includes(id)){const focus_goal_ids=input.focus_goal_ids.filter(v=>v!==id);if(!hasActual){patch({focus_goal_ids});return;}const keep=actualIds.filter(v=>v!==id);changeTargets(keep,focus_goal_ids);return;}changeTargets(toggle(actualIds,id));}}/><Button title="就地新建近期本领" disabled={disabled} onPress={()=>{setGoalQuick(true);setMethodName('');methodPending.current=null}}/></View></Disclosure>
  {automaticGoalIds.length>0&&<Text>由下级同时关联上级：{automaticGoalIds.map(id=>options.goals.find(g=>g.id===id)?.input.title).join('、')}。不需重复填写表现。</Text>}
  {summary.targets.filter(t=>Boolean(summaryGoal(t.goal_id))).map(t=><View key={t.goal_id} style={{gap:8}}>{retainedActualGoal(t.goal_id)&&<Text>此目标已从目录删除；这里保留原记录目标，可更正当时的表现。</Text>}<Check title={`这次做了：${summaryGoal(t.goal_id)?.input.title}`} checked={t.performed} disabled={disabled} onPress={()=>patchSummary({targets:summary.targets.map(v=>v.goal_id===t.goal_id?{...v,performed:!v.performed}:v)})}/>{t.performed&&<Field label={`实际表现：${summaryGoal(t.goal_id)?.input.title}`} value={t.observation} disabled={disabled} onChange={observation=>patchSummary({targets:summary.targets.map(v=>v.goal_id===t.goal_id?{...v,observation}:v)})} placeholder={observationExamples[summaryGoal(t.goal_id)?.input.template??'text']}/>}</View>)}
 
  {summary.targets.filter(t=>!summaryGoal(t.goal_id)).map((t,i)=><View key={t.goal_id} style={{gap:8}}><Text>{options.removed_goal_ids?.includes(t.goal_id)?'原选目标已删除；原观察仍保留。':'原选目标暂未读到，可从目标选择器刷新目录。'}</Text>{!!t.observation&&<Text selectable>原观察：{t.observation}</Text>}{t.performed?<Button title={`解除未读到目标的关联 ${i+1}`} disabled={disabled} onPress={()=>changeTargets(actualIds.filter(id=>id!==t.goal_id))}/>:<Text>未计入本次实际覆盖。</Text>}</View>)}
- <Disclosure key={editor+':methods'} title="实际方法" summary={summary.methods.length?`已选${summary.methods.length}项`:summary.confirmation==='none'?'未使用库中方法':summary.confirmation==='unknown'?'记不清':undefined}>
+ <Disclosure key={editor+':methods'} title="实际方法" summary={summary.methods.length?`已选${summary.methods.length}项`:summary.confirmation==='none'?'未使用库中方法':summary.confirmation==='unknown'?'记不清':'必选，可选未使用或记不清'}>
   <View testID="family-method-options" style={{gap:8}}><RelationPicker inline label="实际方法" prefix="实际方法：" options={[
    ...options.methods.map(m=>({id:m.id,label:m.input.title,related:m.input.goal_ids.some(id=>linkedGoalIds.includes(id))})),
    ...summary.methods.filter(ref=>!options.methods.some(m=>m.id===ref.id)).map(ref=>({id:ref.id,label:remote?.actual_methods.find(m=>m.id===ref.id)?.input.title??'原选方法'})),
@@ -253,8 +298,8 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
  <Field label={`原因猜测／可选 ${i+1}`} value={details.guess} disabled={disabled} onChange={guess=>patchKnowledgeDetails(k.id,{guess})}/>
  <Field label={`本次条件／可选 ${i+1}`} value={details.conditions} disabled={disabled} onChange={conditions=>patchKnowledgeDetails(k.id,{conditions})}/>
  </>:<><Field label={`经验内容 ${i+1}`} value={k.content} disabled={disabled} placeholder="什么做法，在什么条件下有帮助？" onChange={content=>patchKnowledge(k.id,{content})}/><Text>经验阶段必填，请明确选择；不会自动判断做法是否有效。</Text><Select label={`经验阶段 ${i+1}`} value={k.stage??''} disabled={disabled} options={[{value:'',label:'请选择阶段'},{value:'idea',label:'想法'},{value:'try',label:'可尝试'},{value:'helpful',label:'多次观察到有帮助'}]} onChange={v=>patchKnowledge(k.id,{stage:v?v as 'idea'|'try'|'helpful':null})}/></>}
- <Text>关联：{k.goal_ids.map(id=>options.goals.find(g=>g.id===id)?.input.title).concat(k.method_ids.map(id=>options.methods.find(m=>m.id===id)?.input.title)).join('、')||'尚未选择'}</Text><Disclosure title={`调整知识关联 ${i+1}`}><Bindings data={options} goals={k.goal_ids} methods={k.method_ids} disabled={disabled} change={(goal_ids,method_ids)=>patchKnowledge(k.id,{goal_ids,method_ids})}/></Disclosure>{!options.knowledge.some(v=>v.input.id===k.id)&&<Button title={`取消新增知识 ${i+1}`} disabled={disabled} onPress={()=>{patchSummary(current=>{const knowledge_details={...(current.knowledge_details??{})};delete knowledge_details[k.id];return {new_knowledge:current.new_knowledge.filter(v=>v.id!==k.id),knowledge_details}})}}/>}</ContentGroup>})}
- {(['difficulty','experience'] as const).map(kind=><Button key={kind} title={kind==='difficulty'?'新增本次困难':'新增本次经验'} disabled={disabled} onPress={()=>{const id=uuid(),entry={id,kind,content:'',goal_ids:bindingGoals,method_ids:bindingMethods,stage:null,next_review_date:null};patchSummary(current=>({new_knowledge:[...current.new_knowledge,entry],...(kind==='difficulty'?{knowledge_details:{...(current.knowledge_details??{}),[id]:emptyDetails()}}:{})}))}}/>)}
+ <Text>关联：{k.goal_ids.map(id=>options.goals.find(g=>g.id===id)?.input.title).concat(k.method_ids.map(id=>options.methods.find(m=>m.id===id)?.input.title)).join('、')||(draft.defaultKnowledgeLinks?.includes(k.id)?'随本次实际目标和方法更新':'尚未选择')}</Text>{!k.goal_ids.length&&!k.method_ids.length&&(bindingGoals.length>0||bindingMethods.length>0)&&<Button title={`关联本次目标和方法 ${i+1}`} disabled={disabled} onPress={()=>patchKnowledge(k.id,{goal_ids:bindingGoals,method_ids:bindingMethods})}/>}<Disclosure title={`调整知识关联 ${i+1}`}><Bindings data={options} goals={k.goal_ids} methods={k.method_ids} disabled={disabled} change={(goal_ids,method_ids)=>patchKnowledge(k.id,{goal_ids,method_ids})}/></Disclosure>{!options.knowledge.some(v=>v.input.id===k.id)&&<Button title={`取消新增知识 ${i+1}`} disabled={disabled} onPress={()=>{patchSummary(current=>{const knowledge_details={...(current.knowledge_details??{})};delete knowledge_details[k.id];return {new_knowledge:current.new_knowledge.filter(v=>v.id!==k.id),knowledge_details}},{id:k.id,follow:false})}}/>}</ContentGroup>})}
+ {(['difficulty','experience'] as const).map(kind=><Button key={kind} title={kind==='difficulty'?'新增本次困难':'新增本次经验'} disabled={disabled} onPress={()=>{const id=uuid(),entry={id,kind,content:'',goal_ids:bindingGoals,method_ids:bindingMethods,stage:null,next_review_date:null};patchSummary(current=>({new_knowledge:[...current.new_knowledge,entry],...(kind==='difficulty'?{knowledge_details:{...(current.knowledge_details??{}),[id]:emptyDetails()}}:{})}),{id,follow:true})}}/>)}
  </OptionalSection>
  <Button title={more?'收起总结补充':'补充参与信号、情境和下一步'} onPress={()=>setMore(v=>!v)}/>
  {more&&<>

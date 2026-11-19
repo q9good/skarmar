@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {emptySnapshot,newGoal,newMethod} from '../apps/client/src/foundation.ts';
 import {emptySession,startSummary} from '../apps/client/src/prd-sessions.ts';
 import {emptyDetails} from '../apps/client/src/prd-followups.ts';
-import {summaryKnowledgeIssue,knowledgeTitle,missingSummaryKnowledge} from '../apps/client/src/summary-knowledge.ts';
+import {summaryKnowledgeIssue,knowledgeTitle,missingSummaryKnowledge,resolveSummaryLinks} from '../apps/client/src/summary-knowledge.ts';
 import {planFocus,recentReminders} from '../apps/client/src/plan-reminders.ts';
 import {todayFocus} from '../apps/client/src/object-priority.ts';
 const entry=(kind,stage=null)=>({id:kind,kind,stage,content:'a concrete observation',goal_ids:['g'],method_ids:[],next_review_date:null});
@@ -27,4 +27,19 @@ test('recent reminders use original creation and family timezone window, retain 
 
 test('completed-session echo alone is not proof of saved knowledge; require shared rows with matching source, skip draft outputs',()=>{
  const summary=startSummary(emptySession('2026-11-09'));summary.new_knowledge=[entry('experience','idea'),entry('difficulty')];const session={id:'s',status:'completed',input:{summary}},data={knowledge:[{input:entry('experience','idea'),source_session_id:'another'},{input:entry('difficulty'),source_session_id:'s'}]};assert.deepEqual(missingSummaryKnowledge(session,data).map(k=>k.id),['experience']);assert.deepEqual(missingSummaryKnowledge({...session,status:'summary_draft'},data),[]);data.knowledge[0].source_session_id='s';assert.deepEqual(missingSummaryKnowledge(session,data),[]);
+});
+
+test('new knowledge follows actual selections in either order, preserving manual links and older drafts',()=>{
+ const input=emptySession('2026-11-19');
+ input.targets=[{goal_id:'second',role:'secondary'},{goal_id:'main',role:'main'}];
+ input.summary={...startSummary(input),targets:input.targets.map(t=>({...t,performed:true})),
+  methods:[{id:'m',version:1}],new_knowledge:[entry('difficulty'),entry('experience','idea')]};
+ const goals=[{id:'main'},{id:'second'}];
+ const resolved=resolveSummaryLinks(input,['difficulty'],goals);
+ assert.deepEqual(resolved.summary.new_knowledge[0].goal_ids,['main']);
+ assert.deepEqual(resolved.summary.new_knowledge[0].method_ids,['m']);
+ assert.deepEqual(resolved.summary.new_knowledge[1],input.summary.new_knowledge[1]);
+ assert.equal(resolveSummaryLinks(input,undefined,goals),input);
+ assert.deepEqual(input.summary.new_knowledge[0].goal_ids,['g']);
+ assert.deepEqual(resolveSummaryLinks(input,['difficulty'],[goals[1]]).summary.new_knowledge[0].goal_ids,['second']);
 });

@@ -14,7 +14,7 @@ fn id() -> String {
 fn setup() -> (Connection, User) {
     let db = Connection::open_in_memory().unwrap();
     store::initialize_foundation(&db).unwrap();
-    db.execute_batch("CREATE TABLE auth_users(id TEXT PRIMARY KEY, active INTEGER,role TEXT); INSERT INTO auth_users VALUES('synthetic-admin',1,'admin')").unwrap();
+    db.execute_batch("CREATE TABLE auth_users(id TEXT PRIMARY KEY, active INTEGER,role TEXT,display_name TEXT); INSERT INTO auth_users VALUES('synthetic-admin',1,'admin','合成家人')").unwrap();
     let u = User {
         id: id(),
         username: "synthetic".into(),
@@ -95,6 +95,22 @@ fn removes_only_reviewed_catalogue_members_keeps_entities_history_accounts_and_r
     assert_eq!(store::foundation_history(&mut db, b.id()).unwrap().len(), 1);
     store::remove_selected_goals(&mut db, removal::TEST_ACK).unwrap();
     assert_eq!(state(&mut db), after);
+    for view in ["board", "review_queue"] {
+        let result = store::foundation_process(
+            &mut db,
+            &u,
+            serde_json::from_value(json!({"kind":"read","value":{"view":view}})).unwrap(),
+        )
+        .unwrap();
+        let board = if view == "board" {
+            &result
+        } else {
+            &result["board"]
+        };
+        let schedules = board["schedules"].as_array().unwrap();
+        assert_eq!(schedules.len(), 1);
+        assert_eq!(schedules[0]["object_id"], c.id());
+    }
     let Saved::Goal(g) = a else { panic!() };
     assert!(
         store::write_foundation(
