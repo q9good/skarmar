@@ -1,0 +1,12 @@
+{
+  "worker": "skarma-web",
+  "origin": "https://skarma.vip",
+  "source_sha": "1739fcecf8f08bfb40f4987b683bc6e53ee4350a",
+  "state": "deployed_public_checks_pending",
+  "operation": "deploy",
+  "model": "prd_v1",
+  "previous_version": "66124514-25b8-4e36-a2f0-e04dc938f779",
+  "uploaded_version": "f0416444-6ef3-4231-b4ac-bdb7c3f4c7aa",
+  "deployed_version": "f0416444-6ef3-4231-b4ac-bdb7c3f4c7aa",
+  "error": "Public JavaScript does not match this run's assets."
+}

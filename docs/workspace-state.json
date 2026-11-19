@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-19",
+  "updatedAt": "2026-11-20",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "491c5bf52ec0ce4746adab4345a4d46f90e6e6ac",
+  "implementationCommit": "8be01fadde890b1a1bf98569aec5034e248ec6e7",
   "tasks": [
     {
       "id": "T01",
@@ -569,7 +569,14 @@
       "title": "家庭计划回执按钮、总结双向关联、今天专属草稿与发布前手机回归",
       "status": "in_progress",
       "evidence": "docs/family-followup-2026-11-19.md",
-      "verification": "原版实际复现先写两类知识再选目标时未发出提交、跟进显示今天草稿、删除标记库读取提醒404。已验证修复、旧草稿恢复、共享草稿反馈、跨页查找及回到今天，四组手机浏览器、185项Rust、100项客户端通过。待普通发布确认。"
+      "verification": "原版实际复现先写两类知识再选目标时未发出提交、跟进显示今天草稿、删除标记库读取提醒404。已验证修复、旧草稿恢复、共享草稿反馈、跨页查找及回到今天，四组手机浏览器、185项Rust、100项客户端通过。运行44536163630已激活f0416444。公开脚本字节比对未通过；另用匿名Chromium打开了登录页，首页和脚本均200。回执为deployed_public_checks_pending。"
+    },
+    {
+      "id": "T82",
+      "title": "手机日常操作、跨页关联与删除审查",
+      "status": "done",
+      "evidence": "docs/mobile-operation-review-2026-11-20.md",
+      "verification": "独立审查库实走课堂、两份家庭计划、总结与修订、关联、草稿、优先级、管理员删除及刷新。发现并修复四处问题，六类37张图，审查库已销毁。当前修复待用户审查，未部署。"
     }
   ],
   "artifacts": [
@@ -1982,6 +1989,36 @@
       "path": "docs/artifacts/validation/family-followup-2026-11-19/02-followup-difficulty.png",
       "title": "合成验收 · 02-followup-difficulty",
       "sha256": "8af6951d49a1d82ca4f219c00bb70a13e6aa9b23c451e82b96e4dc967fda4757",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/12-goal-map.png",
+      "title": "手机操作审查 12-goal-map.png",
+      "sha256": "5c50a0809d6b93bfbaf31dbcf940e823638765235746409d6bb1d0f94fbfec11",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/19-deleted-difficulty-after.png",
+      "title": "手机操作审查 19-deleted-difficulty-after.png",
+      "sha256": "6743c74ad00295f8008bf9c6a325dfd8392d77360c625b31eb02b6fe8cca217a",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/21-plan-receipt.png",
+      "title": "手机操作审查 21-plan-receipt.png",
+      "sha256": "5c3e4b881cd5988f6e25c684ebf658c04d4026b7b7d0facf0baa2376f47f0818",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/32-followup-clean.png",
+      "title": "手机操作审查 32-followup-clean.png",
+      "sha256": "168f11c001446cbe6cca2ccbeb4eb54f88a5e777f521a364f8bfbc25cb3ecffa",
+      "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/review.html",
+      "title": "手机操作审查 review.html",
+      "sha256": "3f055e17fcba332f3109ea704a1b7f7b118d00a648f046f3939cd824e62a5719",
       "synthetic": true
     }
   ]

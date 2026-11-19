@@ -30,3 +30,7 @@ npm run test:prd-web -- smoke_prd_family_journey_web.py smoke_prd_family_submit_
 浏览器测试依赖见 `tools/browser-test-requirements.txt`，可通过 `CHROMIUM_EXECUTABLE` 指定 Chromium。当前本机 185 项 Rust、100 项客户端、TypeScript、Web 及 Wasm 构建通过。公开站点不运行合成写入。
 
 [保存后可直接填写总结](artifacts/validation/family-followup-2026-11-19/01-saved-plan-action.png) · [跟进页可查到新增困难](artifacts/validation/family-followup-2026-11-19/02-followup-difficulty.png)
+
+## 线上状态
+
+普通发布已将 `1739fce` 激活为 Worker 版本 `f0416444-6ef3-4231-b4ac-bdb7c3f4c7aa`。该次流水线的公开 JavaScript 字节比对未通过，回执状态为 `deployed_public_checks_pending`。11 月 20 日另用匿名 Chromium 实际打开登录页，入口和 `index-70023ea5efad7e9274efa3b5f0d68411.js` 均返回 200，登录按钮正常显示。匿名访问不能确认 CDN 文件的逐字节一致性，本轮没有重新发布。[Actions 运行](https://github.com/q9good/skarmar/actions/runs/44536163630) · [脱敏回执](artifacts/deployment/family-followup-20261119-receipt.json)
