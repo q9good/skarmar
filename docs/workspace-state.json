@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-20",
+  "updatedAt": "2026-11-21",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "8be01fadde890b1a1bf98569aec5034e248ec6e7",
+  "implementationCommit": "68f38d983e671538756cda7c5de3b13295ed8a45",
   "tasks": [
     {
       "id": "T01",
@@ -569,7 +569,7 @@
       "title": "家庭计划回执按钮、总结双向关联、今天专属草稿与发布前手机回归",
       "status": "in_progress",
       "evidence": "docs/family-followup-2026-11-19.md",
-      "verification": "原版实际复现先写两类知识再选目标时未发出提交、跟进显示今天草稿、删除标记库读取提醒404。已验证修复、旧草稿恢复、共享草稿反馈、跨页查找及回到今天，四组手机浏览器、185项Rust、100项客户端通过。运行44536163630已激活f0416444。公开脚本字节比对未通过；另用匿名Chromium打开了登录页，首页和脚本均200。回执为deployed_public_checks_pending。"
+      "verification": "原版实际复现先写两类知识再选目标时未发出提交、跟进显示今天草稿、删除标记库读取提醒404。已验证修复、旧草稿恢复、共享草稿反馈、跨页查找及回到今天，四组手机浏览器、185项Rust、100项客户端通过。运行44536163630已激活f0416444。公开脚本字节比对未通过；另用匿名Chromium打开了登录页，首页和脚本均200。回执为deployed_public_checks_pending。 T83补核公开首页和脚本全部字节与原发布源码重建一致。原流水线未记失败响应内容，完整发布验收未重跑。"
     },
     {
       "id": "T82",
@@ -577,6 +577,13 @@
       "status": "done",
       "evidence": "docs/mobile-operation-review-2026-11-20.md",
       "verification": "独立审查库实走课堂、两份家庭计划、总结与修订、关联、草稿、优先级、管理员删除及刷新。发现并修复四处问题，六类37张图，审查库已销毁。当前修复待用户审查，未部署。"
+    },
+    {
+      "id": "T83",
+      "title": "双账号课堂整理、关联显示和删除后的跨页同步",
+      "status": "done",
+      "evidence": "docs/mobile-operation-review-2026-11-20.md",
+      "verification": "两独立账号手机视窗实操；课堂观察四处修复、跟进重新认领、删除后两端清空、旧与新批注导出核对；原HTML现七类53图。未部署。"
     }
   ],
   "artifacts": [
@@ -2018,8 +2025,26 @@
     {
       "path": "docs/artifacts/validation/mobile-walk-2026-11-20/review.html",
       "title": "手机操作审查 review.html",
-      "sha256": "3f055e17fcba332f3109ea704a1b7f7b118d00a648f046f3939cd824e62a5719",
+      "sha256": "8c59ee7b7f77727b6f4ad688d5487c89f96a1268f421106edfefff6490687ca9",
       "synthetic": true
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/48-class-list-after.png",
+      "title": "双账号课堂走查 48-class-list-after.png",
+      "synthetic": true,
+      "sha256": "4ab9d3b6085c979aba7c3d714450bb40a629f2afdf0d2e746be4ae20cb87109a"
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/49-elder-detail-after.png",
+      "title": "双账号课堂走查 49-elder-detail-after.png",
+      "synthetic": true,
+      "sha256": "ea6dad7192fad00f37a6f10cbd2187c4068d1a2c1d69e7a07adffce374aede56"
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/54-updated-inbox.png",
+      "title": "双账号课堂走查 54-updated-inbox.png",
+      "synthetic": true,
+      "sha256": "5e5fc51fb816085c43d10412d2324efbaa4687bab8270b9bc63577273a63ce2d"
     }
   ]
 }

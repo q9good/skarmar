@@ -34,3 +34,5 @@ npm run test:prd-web -- smoke_prd_family_journey_web.py smoke_prd_family_submit_
 ## 线上状态
 
 普通发布已将 `1739fce` 激活为 Worker 版本 `f0416444-6ef3-4231-b4ac-bdb7c3f4c7aa`。该次流水线的公开 JavaScript 字节比对未通过，回执状态为 `deployed_public_checks_pending`。11 月 20 日另用匿名 Chromium 实际打开登录页，入口和 `index-70023ea5efad7e9274efa3b5f0d68411.js` 均返回 200，登录按钮正常显示。匿名访问不能确认 CDN 文件的逐字节一致性，本轮没有重新发布。[Actions 运行](https://github.com/q9good/skarmar/actions/runs/44536163630) · [脱敏回执](artifacts/deployment/family-followup-20261119-receipt.json)
+
+11 月 20–21 日补核了 11 月 20 日匿名下载的原始响应。重建时取 `1739fce` 的客户端、种子资源、Web 构建工具及锁定依赖。公开首页与构建首页逐字节一致，引用同名脚本。公开及重建的脚本均为 1,193,861 字节，SHA-256 均为 `befd194fc52ce219e002cd219e4156f463d4a02e87c67d24aab32d8e4617d0a6`。这次独立静态核对通过。原 Actions 运行没有保存失败时的响应摘要或状态，历史原因未能确定，亦未重跑完整发布验收。详见 [T83 的操作、证据与范围](mobile-operation-review-2026-11-20.md)。
