@@ -42,6 +42,8 @@ export function decodeLessonDrafts(raw: string|null): Record<string,LessonDraft>
 }
 export const emptyObservation = (today: string): Observation => ({ business_date: today,course_started:false, course_id: '', teacher_id: '', notes: '', teacher_notes: '', progress_notes: '', interest_notes: '', difficulty_notes: '', cause_guess: '', request_review: false, review_message: '' });
 export const organizationOf = (l: Lesson): OrganizationInput => ({ seen_observation_version: l.observation_version, targets: l.organization.targets.map(t => t.target), method_ids: l.organization.methods.map(m => m.id), focus_goal_ids: l.organization.focus_goals.map(g => g.id), processing: 'keep', request_generation: l.request_generation, outcome: l.organization.outcome, new_knowledge: [], new_actions: [] });
+export const currentlyClaimed = (l:Lesson) => Boolean(l.organization.claimed_by)
+  && l.organization.state==='claimed' && l.organization.processed_request_generation===l.request_generation;
 export const needsReview = (l: Lesson) => l.status === 'recorded' && l.request_generation > 0 && (l.organization.processed_request_generation < l.request_generation || l.organization.state !== 'done');
 export const countable = (l: Lesson) => l.status === 'recorded';
 export const observationText = (v: Observation) => [v.notes,v.teacher_notes,v.helpful_notes,v.progress_notes,v.interest_notes,v.difficulty_notes,v.cause_guess].filter(Boolean).join('\n');

@@ -6,6 +6,7 @@ are supplied by environment bindings; private config/logs stay in ignored paths.
 
 import argparse
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -270,8 +271,14 @@ def smoke(initialize_prd=False):
         require(path.startswith("/") and not path.startswith("//") and ".." not in path,
                 "Unexpected external JavaScript entrypoint.")
         status, body = public_request(path)
-        require(status == 200 and body == (ROOT / "apps/client/dist" / path.lstrip("/")).read_bytes(),
-                "Public JavaScript does not match this run's assets.")
+        expected = (ROOT / "apps/client/dist" / path.lstrip("/")).read_bytes()
+        if status != 200 or body != expected:
+            # Retain safe diagnostics in the public receipt. Never include the response body.
+            raise ReleaseError(
+                f"Public JavaScript mismatch for {path}: HTTP {status}, "
+                f"expected {len(expected)} bytes sha256={hashlib.sha256(expected).hexdigest()}, "
+                f"received {len(body)} bytes sha256={hashlib.sha256(body).hexdigest()}."
+            )
     status, body = public_request("/api/health")
     require(status == 200 and json.loads(body).get("status") == "ok", "Health verification failed.")
     for path, expected in [("/api/auth/me", 401), ("/api/state", 401), ("/api/nonexistent-release-check", 404)]:

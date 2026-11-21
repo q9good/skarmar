@@ -35,7 +35,9 @@ with sync_playwright() as p:
  click('今天')
  def record(course,kind,contents):
   click('记录课堂');click('课程名称（必填）：请选择课程');click(course);click('授课老师（必填）：请选择老师');click('合成唐老师');click('补充观察');reveal_control(a,'checkbox',kind).click()
-  for index,text in enumerate(contents,1):click('添加一条'+kind);field(kind+' '+str(index)).fill(text)
+  for index,text in enumerate(contents,1):
+   if index>1:click('添加一条'+kind)
+   field(kind+' '+str(index)).fill(text)
   shot('04-independent-observation-items' if course=='合成认知' else '05-second-class',field(kind+' 1'));click('提交记录');expect(a.get_by_role('dialog')).to_have_count(0);expect(a.get_by_role('button',name='补充课堂观察',exact=True)).to_be_visible(timeout=15000);click('完成')
  record('合成认知','老师交代的练习或建议',['合成第一件事：先等待准备信号','合成第二件事：调整材料后再试']);record('合成社交','我看到的好方法',['合成第三件事：轮流时先让他选材料'])
  lessons=state()['lessons'];l1=next(l for l in lessons if l['course']['id']==c1['id']);l2=next(l for l in lessons if l['course']['id']==c2['id']);original_items=l1['observation']['items'];assert len(original_items)==2 and len({i['id'] for i in original_items})==2

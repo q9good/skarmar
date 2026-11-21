@@ -29,7 +29,7 @@ import { useAuth } from './auth';
 import { DetailOverlay } from './overlay';
 import { Pressable, Text, TextInput } from './readability';
 import type { Catalog, Saved, Snapshot } from './foundation';
-import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, monthRange, shiftMonth, lessonTotals, rankedCatalogChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
+import { decodeLessonDrafts, emptyObservation, organizationOf, observationText, lessonSearchSources, needsReview, currentlyClaimed, monthRange, shiftMonth, lessonTotals, rankedCatalogChoices, type Lesson, type LessonDraft, type LessonWrite, type Observation, type OrganizationInput, type NewKnowledge, type WithdrawalCapability } from './prd-lessons';
 const queues = new Map<string, Promise<void>>();
 const labelsForFeedback=(v:string)=>({helpful:'有帮助',uncertain:'不确定',unhelpful:'没帮上'} as Record<string,string>)[v]??v;
 const note = (e: unknown) => e instanceof Error ? e.message : '操作未完成，请保留填写后重试';
@@ -78,7 +78,10 @@ function ObservationFields({value,change,disabled}:{value:Observation;change:(v:
  const rows=observationItems(value),allThemes=[...themes,['notes','今天课上怎么样？','一条记一件事：看到什么、成人怎样回应、后来怎样。','例如：今天一起玩了轮流游戏'],['cause_guess','原因猜测（待核实）','每条猜测单独记录，不把猜测当成事实。','例如：也许是在等候时需要休息']] as const;
  return <><Text>想补充哪些线索？每类可逐条添加，一条只记一件事；也可以全部跳过。</Text>{allThemes.map(([key,title,question,example])=>{
   const items=rows.filter(i=>i.kind===key),visible=open.includes(key);
-  return <View key={key} style={{gap:8}}><Check title={title} checked={visible} disabled={disabled} press={()=>setOpen(v=>v.includes(key)?v.filter(k=>k!==key):[...v,key])}/>{visible&&<>
+  return <View key={key} style={{gap:8}}><Check title={title} checked={visible} disabled={disabled} press={()=>{
+   if(!visible&&!items.length)update([...rows,{id:uuid(),kind:key,content:''}]);
+   setOpen(v=>v.includes(key)?v.filter(k=>k!==key):[...v,key]);
+  }}/>{visible&&<>
    {items.map((item,index)=><View key={item.id} style={{gap:6,padding:10,borderWidth:1,borderColor:neutral.border,borderRadius:10}}><Field label={`${title} ${index+1}`} question={question} value={item.content} placeholder={example} exampleInitiallyOpen change={content=>update(rows.map(i=>i.id===item.id?{...i,content}:i))} disabled={disabled}/><Action title={`移除${title} ${index+1}`} disabled={disabled} press={()=>update(rows.filter(i=>i.id!==item.id))}/></View>)}
    <Action title={`添加一条${title}`} disabled={disabled} press={()=>update([...rows,{id:uuid(),kind:key as ObservationKind,content:''}])}/>
   </>}</View>;
@@ -316,8 +319,11 @@ export function LessonHub({ data:remoteData, actorId, actorName, admin, mode, re
       <Text style={{fontSize:18,fontWeight:'600'}}>{selected.observation.business_date} · {selected.course.name} · {selected.teacher.name}</Text><Text>记录者：{selected.creator_name}{selected.marked_error?' · 待核对':''}</Text><ReadObservation value={selected.observation}/><LessonPractice lesson={selected} data={data} openKnowledge={openKnowledge}/>
       {selected.organization.seen_observation_version>0&&selected.organization.seen_observation_version!==selected.observation_version&&<Text>原观察有后续补充，请核对先前整理内容。</Text>}
       <Action title="补充／修改课堂观察" press={()=>open(selected,'observation')}/><Action title="整理这条记录" press={()=>open(selected,'organization')}/>
-      {selected.organization.claimed_name&&<Text>整理人：{selected.organization.claimed_name} · {selected.organization.state==='done'?(needsReview(selected)?'上次已处理；新补充待回看':'已处理'):'整理中'}</Text>}{selected.organization.outcome&&<Text>处理说明：{selected.organization.outcome}</Text>}
+      {selected.organization.claimed_name&&<Text>整理人：{selected.organization.claimed_name} · {selected.organization.state==='done'?(needsReview(selected)?'上次已处理；新补充待回看':'已处理'):currentlyClaimed(selected)?'整理中':'新补充待回看'}</Text>}{selected.organization.outcome&&<Text>处理说明：{selected.organization.outcome}</Text>}
       {selected.organization.targets.map(t=><View key={t.goal.id} style={{gap:6}}><Text>关联目标：{t.goal.input.title} · {t.target.note}</Text><Action title={`查看关联目标：${t.goal.input.title}`} press={()=>{setDetail(null);openGoal(t.goal.id);}}/></View>)}
+      {selected.organization.focus_goals.map(goal=>data.removed_goal_ids?.includes(goal.id)
+       ?<Text key={goal.id}>本课长期目标：{goal.input.title}（已从目录移除）</Text>
+       :<Action key={goal.id} title={`查看关联目标：${goal.input.title}`} press={()=>{setDetail(null);openGoal(goal.id);}}/>)}
       {selected.organization.methods.map(m=><Action key={m.id} title={`查看实际方法：${m.input.title}`} press={()=>{setDetail(null);openMethod(m.id);}}/>)}
       {data.knowledge.filter(k=>!k.deleted&&k.source_lesson_id===selected.id).map(k=><Text key={k.input.id}>{k.input.kind==='difficulty'?'已记困难':'已记经验'}：{k.input.content} · 保留整理时的课堂依据</Text>)}
       {data.actions.filter(a=>a.source_lesson_id===selected.id).map(a=><Text key={a.input.id}>下一步：{a.input.content}（{({pending:'待做',in_plan:'已纳入计划',completed:'已完成',cancelled:'取消'} as Record<string,string>)[a.status]??a.status}）</Text>)}
@@ -336,4 +342,4 @@ function LessonDate({value,today,disabled,change}:{value:string;today:string;dis
     <Action title="其他日期" disabled={disabled} secondary={!other} press={()=>setOther(true)}/></View>
     {other&&<DateField label="上课日期" value={value} disabled={disabled} onChange={change}/>}</Disclosure>;
 }
-function LessonCard({lesson:l,open,matchSource}:{lesson:Lesson;open:()=>void;matchSource?:string}) {return <View testID={`prd-lesson-${l.id}`} style={{gap:8,padding:14,borderRadius:12,backgroundColor:'#FFFFFF'}}><Text>{l.observation.business_date} · {l.course.name} · {l.teacher.name}</Text>{matchSource&&<Text>匹配来源：{matchSource}</Text>}<Text>记录者：{l.creator_name}</Text>{l.marked_error&&<Text accessibilityRole="alert" style={{color:neutral.danger,fontWeight:'600'}}>标记记错，等待管理员处理 · 本节仍计入课时</Text>}<Text>{l.observation.notes||l.observation.teacher_notes||'尚未补充观察'}</Text><Action title={`查看课记：${l.course.name} · ${l.observation.business_date}`} press={open}/></View>;}
+function LessonCard({lesson:l,open,matchSource}:{lesson:Lesson;open:()=>void;matchSource?:string}) {return <View testID={`prd-lesson-${l.id}`} style={{gap:8,padding:14,borderRadius:12,backgroundColor:'#FFFFFF'}}><Text>{l.observation.business_date} · {l.course.name} · {l.teacher.name}</Text>{matchSource&&<Text>匹配来源：{matchSource}</Text>}<Text>记录者：{l.creator_name}</Text>{l.marked_error&&<Text accessibilityRole="alert" style={{color:neutral.danger,fontWeight:'600'}}>标记记错，等待管理员处理 · 本节仍计入课时</Text>}<Text>{l.observation.notes||l.observation.teacher_notes||observationItems(l.observation).find(item=>item.content.trim())?.content||'尚未补充观察'}</Text><Action title={`查看课记：${l.course.name} · ${l.observation.business_date}`} press={open}/></View>;}

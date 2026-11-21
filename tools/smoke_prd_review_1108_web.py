@@ -32,7 +32,7 @@ with sync_playwright() as p:
  a.reload();ready();today=a.evaluate("new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai'}).format(new Date())")
  # R01: real recording, default full example, collapse, edit, server request contains only input.
  widget=a.get_by_role('button',name='查看长期关注',exact=True);expect(widget).to_contain_text('合成共同交往');expect(widget).to_contain_text('合成学习支持');assert widget.inner_text().index('合成学习支持')<widget.inner_text().index('合成共同交往')
- click('记录课堂');click('课程名称（必填）：请选择课程');click('合成认知');click('授课老师（必填）：请选择老师');click('合成唐老师');click('补充观察');reveal_control(a,'checkbox','老师交代的练习或建议').click();click('添加一条老师交代的练习或建议')
+ click('记录课堂');click('课程名称（必填）：请选择课程');click('合成认知');click('授课老师（必填）：请选择老师');click('合成唐老师');click('补充观察');reveal_control(a,'checkbox','老师交代的练习或建议').click()
  example=a.get_by_text(re.compile('合成示例.*目标是.*老师猜测.*逐步增加步骤'))
  expect(example).to_be_visible();expect(field('老师交代的练习或建议')).to_have_value('');snap('01-full-classroom-example',example)
  click('收起填写示例：老师交代的练习或建议');expect(example).to_have_count(0);click('查看填写示例：老师交代的练习或建议');expect(example).to_be_visible()
