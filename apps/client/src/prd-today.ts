@@ -2,7 +2,7 @@ import type {Snapshot} from './foundation';
 import type {EvidenceRecord} from './prd-observations';
 
 export type TodayRecordKind='lesson'|'session'|'moment';
-export type TodayRecord={key:string;id:string;kind:TodayRecordKind;label:string;title:string;author:string;timing:string;created_at:string;sync:string};
+export type TodayRecord={key:string;id:string;kind:TodayRecordKind;label:string;title:string;author:string;authorLabel?:'最近保存'|'创建人';timing:string;created_at:string;sync:string};
 
 const weekdays=['周日','周一','周二','周三','周四','周五','周六'];
 export function businessDateLabel(date:string){
@@ -28,7 +28,8 @@ export function todayRecords(data:Snapshot,moments:EvidenceRecord[],today:string
  for(const session of data.sessions)if(session.input.business_date===today&&!['deleted','cancelled'].includes(session.status))records.push({
   key:'session:'+session.id,id:session.id,kind:'session',label:session.status==='completed'?'家庭干预':session.status==='planned'?'家庭干预计划':'总结草稿',
   title:session.input.summary?.targets.find(target=>target.performed)?.observation||session.input.plan||'已保存的家庭安排',
-  author:session.creator_name,timing:session.input.time_slot,created_at:session.created_at,sync:syncLabel(session.created_at,now),
+  author:session.last_save?.actor_name??session.creator_name,authorLabel:session.last_save?'最近保存':'创建人',
+  timing:session.input.time_slot,created_at:session.created_at,sync:syncLabel(session.last_save?.recorded_at??session.created_at,now),
  });
  for(const moment of moments)if(moment.kind==='moment'&&!moment.deleted&&moment.input.business_date===today){
   const created=moment.created_at||moment.audit.at;

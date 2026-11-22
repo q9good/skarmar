@@ -18,16 +18,38 @@ pub fn today() -> String {
         .date_naive()
         .to_string()
 }
+// The revision records who saved this version, including records written before
+// the client displayed attribution. Missing historical evidence stays unknown.
+const SESSION_WITH_REVISION: &str = "SELECT s.data,
+    COALESCE(json_extract(r.data,'$.actor_name'),''),
+    COALESCE(json_extract(r.data,'$.recorded_at'),'')
+    FROM prd_sessions AS s LEFT JOIN prd_session_revisions AS r
+    ON r.session_id=s.id AND r.version=s.version";
+
+fn read_session(row: &[String]) -> Result<Session> {
+    let mut session: Session = serde_json::from_str(&row[0])?;
+    if !row[1].is_empty() && !row[2].is_empty() {
+        session.last_save = Some(SessionSave {
+            actor_name: row[1].clone(),
+            recorded_at: row[2].clone(),
+        });
+    }
+    Ok(session)
+}
+
 pub fn get_session(db: &dyn Sql, id: &str) -> Result<Option<Session>> {
-    db.query("SELECT data FROM prd_sessions WHERE id=?1", params![id])?
-        .first()
-        .map(|r| serde_json::from_str(&r[0]).map_err(ApiError::from))
-        .transpose()
+    db.query(
+        &format!("{SESSION_WITH_REVISION} WHERE s.id=?1"),
+        params![id],
+    )?
+    .first()
+    .map(|r| read_session(r))
+    .transpose()
 }
 pub fn list(db: &dyn Sql) -> Result<Vec<Session>> {
-    db.query("SELECT data FROM prd_sessions ORDER BY id", &[])?
-        .into_iter()
-        .map(|r| serde_json::from_str(&r[0]).map_err(ApiError::from))
+    db.query(&format!("{SESSION_WITH_REVISION} ORDER BY s.id"), &[])?
+        .iter()
+        .map(|r| read_session(r))
         .collect()
 }
 pub fn history(db: &dyn Sql, id: &str) -> Result<Vec<Revision>> {
@@ -268,6 +290,7 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
             .as_ref()
             .map_or(actor.display_name.clone(), |s| s.creator_name.clone()),
         created_at: old.as_ref().map_or(stamp.clone(), |s| s.created_at.clone()),
+        last_save: None,
         input: input.clone(),
         planned_targets: vec![],
         actual_targets: vec![],
@@ -599,6 +622,11 @@ pub fn write(db: &dyn Sql, actor: &User, request: Write) -> Result<Session> {
             params![session.id, json(&session)?],
         )?;
     }
+    // Return the same attribution immediately in the write response and replay receipt.
+    session.last_save = Some(SessionSave {
+        actor_name: actor.display_name.clone(),
+        recorded_at: stamp.clone(),
+    });
     db.execute(
         "INSERT INTO prd_operations(id,actor_id,request,response) VALUES(?1,?2,?3,?4)",
         params![request.operation_id, actor.id, encoded, json(&session)?],

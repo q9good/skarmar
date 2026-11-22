@@ -148,6 +148,11 @@ pub struct Write {
     pub change_note: String,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct SessionSave {
+    pub actor_name: String,
+    pub recorded_at: String,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Session {
     pub id: String,
     pub version: u64,
@@ -155,6 +160,8 @@ pub struct Session {
     pub creator_id: String,
     pub creator_name: String,
     pub created_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_save: Option<SessionSave>,
     pub input: Input,
     pub planned_targets: Vec<TargetSnapshot>,
     pub actual_targets: Vec<TargetSnapshot>,

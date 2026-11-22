@@ -169,7 +169,7 @@ with sync_playwright() as playwright:
     expect(page.get_by_role('dialog')).to_have_count(0)
     # Restore the pre-upgrade shape of this account's local draft. A blank old
     # association can be repaired without retyping its content or resending a plan.
-    tap('填写这份计划的总结')
+    tap('继续这份总结草稿')
     control('checkbox', '补充经验和困难（可选）').tap()
     tap('新增本次困难')
     fill('实际情况／必填 1', '合成旧草稿：需要提示')
@@ -200,7 +200,7 @@ with sync_playwright() as playwright:
     tap('暂存总结并退出')
     expect(page.get_by_role('dialog')).to_have_count(0)
     assert not [k for k in api('GET', '/prd/state')['knowledge'] if k['source_session_id'] == previous_id]
-    tap('填写这份计划的总结')
+    tap('继续这份总结草稿')
     tap('记录已有经验或困难的反馈')
     expect(control('button', '取消本次反馈：' + difficulty)).to_be_visible()
     tap('正式提交干预总结')

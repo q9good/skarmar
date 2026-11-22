@@ -14,7 +14,7 @@ export function TodayRecords({data,moments,today,open}:{data:Snapshot;moments:Ev
   {records.map(record=><View key={record.key} testID={'today-record-'+record.kind+'-'+record.id} style={{gap:5,paddingTop:records.indexOf(record)?10:0,borderTopWidth:records.indexOf(record)?1:0,borderColor:neutral.border}}>
    <Text style={{fontWeight:'600'}}>{record.label} · {record.timing}</Text>
    <Text selectable numberOfLines={2}>{record.title}</Text>
-   <Text>记录者：{record.author} · {record.sync}</Text>
+   <Text>{record.authorLabel??'记录者'}：{record.author} · {record.sync}</Text>
    {record.kind!=='moment'&&<Pressable accessibilityRole="button" accessibilityLabel={(record.kind==='lesson'?'查看课记：':'查看家庭干预：')+record.title} onPress={()=>open(record.kind,record.id)} style={{padding:10,minHeight:44,borderRadius:8,backgroundColor:palettes.home.soft}}><Text style={{color:palettes.home.ink}}>查看这条记录</Text></Pressable>}
   </View>)}
  </View>;
