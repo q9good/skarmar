@@ -17,3 +17,11 @@
 使用 390 × 844 Chromium 触控视窗和独立 SQLite。三份正式总结通过管理员界面删除，另一个共享计划已取消，隔离库随即移除。
 
 [旧版提交后的提示](artifacts/validation/summary-method-2026-11-22/01-before.png) · [提交和放弃的固定位置](artifacts/validation/summary-method-2026-11-22/02-summary-footer.png) · [漏选时直接确认方法](artifacts/validation/summary-method-2026-11-22/03-method-choice.png) · [放弃确认](artifacts/validation/summary-method-2026-11-22/04-discard.png)
+
+## T87 生产发布核对
+
+|编号|验收项|
+|---|---|
+|T87-1|从已走查的应用提交 `a8d5313` 和审查提交 `dd4f331` 进行普通发布，核实手机流程与实际生产版本。|
+|T87-2|从站外比对首页加载的完整脚本与本次构建，核对健康接口、匿名访问和数据库启动。|
+|T87-3|确认原有路由、存储和正式数据代际延续，示例恢复和清理均跳过，归档发布回执。|
