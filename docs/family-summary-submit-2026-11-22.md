@@ -25,3 +25,13 @@
 |T87-1|从已走查的应用提交 `a8d5313` 和审查提交 `dd4f331` 进行普通发布，核实手机流程与实际生产版本。|
 |T87-2|从站外比对首页加载的完整脚本与本次构建，核对健康接口、匿名访问和数据库启动。|
 |T87-3|确认原有路由、存储和正式数据代际延续，示例恢复和清理均跳过，归档发布回执。|
+
+### 实际上线结果
+
+|编号|结果|
+|---|---|
+|T87-1|发布提交 `8b47fec`。手机操作检查及发布作业通过，原 Worker 已从 `bb1028d5-a43d-416b-a347-52c9c6e0f0bb` 切换到 `4cf7c278-c902-46ef-aef1-2ee6a74a00ca`。上传与激活版本一致，回执为 `deployed_and_verified`。|
+|T87-2|独立访问 skarma.vip，首页和健康接口返回 200。线上脚本共 1,198,755 字节，与审查构建逐字节相同。匿名访问、请求来源和数据库启动检查通过。|
+|T87-3|发布前后数据代际均为 `formal-20261101`，原路由、存储绑定和运行设置核对通过。示例恢复、初始化和清理步骤均已跳过。公开验收未登录家庭账号或写入业务记录。|
+
+[Actions 运行](https://github.com/q9good/skarmar/actions/runs/45006750038) · [发布回执](artifacts/deployment/cloudflare-family-summary-method-20261122-receipt.json) · [独立公开检查](artifacts/deployment/cloudflare-family-summary-method-20261122-checks.json)

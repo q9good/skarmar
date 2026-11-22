@@ -603,8 +603,15 @@
       "id": "T86",
       "title": "家庭总结漏选实际方法时就地提交，固定显示放弃填写",
       "status": "done",
-      "verification": "复现旧版点击后无完成请求。旧草稿用新版接续；具体方法、未用库中方法、记不清三种选择均实际提交一次、关闭并刷新读回。关闭及放弃的本机与共享内容分别核对。应用已修复，生产发布等待用户明确授权。",
+      "verification": "复现旧版点击后无完成请求。旧草稿用新版接续；具体方法、未用库中方法、记不清三种选择均实际提交一次、关闭并刷新读回。关闭及放弃的本机与共享内容分别核对。已获授权，并随 T87 上线。",
       "evidence": "docs/family-summary-submit-2026-11-22.md"
+    },
+    {
+      "id": "T87",
+      "title": "上线家庭总结的方法确认和放弃填写",
+      "status": "done",
+      "evidence": "docs/family-summary-submit-2026-11-22.md",
+      "verification": "发布运行 45006750038 成功，激活 4cf7c278-c902-46ef-aef1-2ee6a74a00ca。独立公开脚本和健康、匿名、来源、数据库启动检查通过，原正式数据代际保留。"
     }
   ],
   "artifacts": [
@@ -2126,6 +2133,18 @@
       "title": "手机走查 · 04-discard",
       "synthetic": true,
       "sha256": "a685cdc975c8a7a675c3c86ddf275740efdaac997236395a0d1e7aa02ccede6a"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-family-summary-method-20261122-receipt.json",
+      "title": "家庭总结方法确认发布回执",
+      "sha256": "b36ca6635bd7784a4e34a3a1f7c6fcc5524cd9058aae2b17de5851ec58dc96fb",
+      "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-family-summary-method-20261122-checks.json",
+      "title": "家庭总结方法确认独立公开验收",
+      "sha256": "644401aa0dd72e991f2c730cf321267ca43ea51b939af0423590bd67115065fe",
+      "synthetic": false
     }
   ]
 }

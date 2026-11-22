@@ -1,0 +1,32 @@
+{
+  "origin": "https://skarma.vip",
+  "source_sha": "8b47fec2a4e5bde9bbb933e0cf2a9ecefc8d0033",
+  "active_version": "4cf7c278-c902-46ef-aef1-2ee6a74a00ca",
+  "before": {
+    "checked_at": "2026-11-22T09:17:25.619444+00:00",
+    "homepage_http": 200,
+    "script": "/_expo/static/js/web/index-0fd166dae465c6b0e4b8bc011058f8bc.js",
+    "formal_launch": "completed_and_verified",
+    "reviewed_goal_removal": "reviewed_two_completed"
+  },
+  "after": {
+    "checked_at": "2026-11-22T09:25:00.136951+00:00",
+    "homepage_http": 200,
+    "script": "/_expo/static/js/web/index-38617be94b08678b25d0d04e4dde6774.js",
+    "formal_launch": "completed_and_verified",
+    "reviewed_goal_removal": "reviewed_two_completed",
+    "checks": {
+      "homepage": "matched_except_known_cf_analytics",
+      "javascript": "matched",
+      "cf_analytics_tags": 1,
+      "health": 200,
+      "anonymous": "passed",
+      "origins": "passed",
+      "prd_database": "startup_completed"
+    },
+    "script_sha256": "54d6a2e392a762b2c7593a8eec0154e3b60ef8c98da4541e5b33edf9592a170e",
+    "script_bytes": 1198755
+  },
+  "business_data_read": false,
+  "production_business_writes": false
+}
