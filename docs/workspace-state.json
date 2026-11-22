@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-21",
+  "updatedAt": "2026-11-22",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "68f38d983e671538756cda7c5de3b13295ed8a45",
+  "implementationCommit": "9271212ad39d19138a1194a923d60c950e0e6ad6",
   "tasks": [
     {
       "id": "T01",
@@ -584,6 +584,13 @@
       "status": "done",
       "evidence": "docs/mobile-operation-review-2026-11-20.md",
       "verification": "两独立账号手机视窗实操；课堂观察四处修复、跟进重新认领、删除后两端清空、旧与新批注导出核对；原HTML现七类53图。未部署。"
+    },
+    {
+      "id": "T84",
+      "title": "两位家人接力干预、并发修订与本机草稿保护",
+      "status": "done",
+      "evidence": "docs/mobile-operation-review-2026-11-20.md",
+      "verification": "独立账号手机视窗实走计划、暂存、正式总结、经验困难及关联、并发修改和取消／删除。已清除合成业务记录和临时库。8类70张审查图可批注并导出，未部署。"
     }
   ],
   "artifacts": [
@@ -2025,7 +2032,7 @@
     {
       "path": "docs/artifacts/validation/mobile-walk-2026-11-20/review.html",
       "title": "手机操作审查 review.html",
-      "sha256": "8c59ee7b7f77727b6f4ad688d5487c89f96a1268f421106edfefff6490687ca9",
+      "sha256": "4f8571cb5f04ef4e15e6b8c58a2ca386b59473b129def1ec290410cc0684847f",
       "synthetic": true
     },
     {
@@ -2045,6 +2052,30 @@
       "title": "双账号课堂走查 54-updated-inbox.png",
       "synthetic": true,
       "sha256": "5e5fc51fb816085c43d10412d2324efbaa4687bab8270b9bc63577273a63ce2d"
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/66-concurrent.png",
+      "title": "同版并发修订",
+      "synthetic": true,
+      "sha256": "7b73a97f0051d88da76b3199dbd07b908f3720e185c6effb672f6b8b294992ee"
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/69-saved-by.png",
+      "title": "创建人与最近保存者",
+      "synthetic": true,
+      "sha256": "e5cc0370a666807cb593d40251bfc89c0dcd9700b6f2e1dd717ceb2d3fec621c"
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/75-delete-while-editing.png",
+      "title": "删除后的本机填写核对",
+      "synthetic": true,
+      "sha256": "2de38c68605c921cd06f496eeefc60fb67c32cd7cbfb08cfa431e3f8ee7bfa1f"
+    },
+    {
+      "path": "docs/artifacts/validation/mobile-walk-2026-11-20/77-draft-method.png",
+      "title": "暂存总结保留方法数量",
+      "synthetic": true,
+      "sha256": "ca67c6ac773549e5fcf53fe5258dd88c25b22d3fd01d0375cda8c3a8d1c4cf48"
     }
   ]
 }
