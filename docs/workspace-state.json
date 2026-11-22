@@ -576,21 +576,28 @@
       "title": "手机日常操作、跨页关联与删除审查",
       "status": "done",
       "evidence": "docs/mobile-operation-review-2026-11-20.md",
-      "verification": "独立审查库实走课堂、两份家庭计划、总结与修订、关联、草稿、优先级、管理员删除及刷新。发现并修复四处问题，六类37张图，审查库已销毁。当前修复待用户审查，未部署。"
+      "verification": "独立审查库实走课堂、两份家庭计划、总结与修订、关联、草稿、优先级、管理员删除及刷新。发现并修复四处问题，六类37张图，审查库已销毁。当前修复待用户审查，未部署。 11月22日已随 T85 普通发布。"
     },
     {
       "id": "T83",
       "title": "双账号课堂整理、关联显示和删除后的跨页同步",
       "status": "done",
       "evidence": "docs/mobile-operation-review-2026-11-20.md",
-      "verification": "两独立账号手机视窗实操；课堂观察四处修复、跟进重新认领、删除后两端清空、旧与新批注导出核对；原HTML现七类53图。未部署。"
+      "verification": "两独立账号手机视窗实操；课堂观察四处修复、跟进重新认领、删除后两端清空、旧与新批注导出核对；原HTML现七类53图。未部署。 11月22日已随 T85 普通发布。"
     },
     {
       "id": "T84",
       "title": "两位家人接力干预、并发修订与本机草稿保护",
       "status": "done",
       "evidence": "docs/mobile-operation-review-2026-11-20.md",
-      "verification": "独立账号手机视窗实走计划、暂存、正式总结、经验困难及关联、并发修改和取消／删除。已清除合成业务记录和临时库。8类70张审查图可批注并导出，未部署。"
+      "verification": "独立账号手机视窗实走计划、暂存、正式总结、经验困难及关联、并发修改和取消／删除。已清除合成业务记录和临时库。8类70张审查图可批注并导出，未部署。 11月22日已随 T85 普通发布。"
+    },
+    {
+      "id": "T85",
+      "title": "发布 T82 至 T84 手机操作修复，保留正式业务数据",
+      "status": "done",
+      "evidence": "docs/cloudflare-release-2026-11-22.md",
+      "verification": "运行44970018935全部通过，回执deployed_and_verified。发布提交479aff6，实际激活bb1028d5，独立检查脚本字节、首页、健康、匿名、来源和数据库启动通过。正式数据代际保留，维护步骤均跳过。"
     }
   ],
   "artifacts": [
@@ -2076,6 +2083,18 @@
       "title": "暂存总结保留方法数量",
       "synthetic": true,
       "sha256": "ca67c6ac773549e5fcf53fe5258dd88c25b22d3fd01d0375cda8c3a8d1c4cf48"
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-mobile-workflows-20261122-receipt.json",
+      "title": "手机操作修复普通发布回执",
+      "sha256": "84cea080ca13c3a631fb7ccf13031c9b10553abcc3f02ec58bea769f1b515429",
+      "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/deployment/cloudflare-mobile-workflows-20261122-checks.json",
+      "title": "手机操作修复发布前后独立公开检查",
+      "sha256": "15ae7b831b519eb2dee91e67220a48e4c9841829198bfa4a30e1e7ab5d3f5e75",
+      "synthetic": false
     }
   ]
 }
