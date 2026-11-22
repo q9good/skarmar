@@ -4,7 +4,7 @@
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
-  "implementationCommit": "9271212ad39d19138a1194a923d60c950e0e6ad6",
+  "implementationCommit": "a8d5313c447f4f794d4c27c1addbbf8558c6bf83",
   "tasks": [
     {
       "id": "T01",
@@ -598,6 +598,13 @@
       "status": "done",
       "evidence": "docs/cloudflare-release-2026-11-22.md",
       "verification": "运行44970018935全部通过，回执deployed_and_verified。发布提交479aff6，实际激活bb1028d5，独立检查脚本字节、首页、健康、匿名、来源和数据库启动通过。正式数据代际保留，维护步骤均跳过。"
+    },
+    {
+      "id": "T86",
+      "title": "家庭总结漏选实际方法时就地提交，固定显示放弃填写",
+      "status": "done",
+      "verification": "复现旧版点击后无完成请求。旧草稿用新版接续；具体方法、未用库中方法、记不清三种选择均实际提交一次、关闭并刷新读回。关闭及放弃的本机与共享内容分别核对。应用已修复，生产发布等待用户明确授权。",
+      "evidence": "docs/family-summary-submit-2026-11-22.md"
     }
   ],
   "artifacts": [
@@ -2095,6 +2102,30 @@
       "title": "手机操作修复发布前后独立公开检查",
       "sha256": "15ae7b831b519eb2dee91e67220a48e4c9841829198bfa4a30e1e7ab5d3f5e75",
       "synthetic": false
+    },
+    {
+      "path": "docs/artifacts/validation/summary-method-2026-11-22/01-before.png",
+      "title": "手机走查 · 01-before",
+      "synthetic": true,
+      "sha256": "37f21be60dd33f976808e1af71ee87e3eeb904b93b071a39c2b412fd4a558845"
+    },
+    {
+      "path": "docs/artifacts/validation/summary-method-2026-11-22/02-summary-footer.png",
+      "title": "手机走查 · 02-summary-footer",
+      "synthetic": true,
+      "sha256": "6e5b1766404d754af0cefac712fa5fb3843feab3087a9ef8ce717696383091f0"
+    },
+    {
+      "path": "docs/artifacts/validation/summary-method-2026-11-22/03-method-choice.png",
+      "title": "手机走查 · 03-method-choice",
+      "synthetic": true,
+      "sha256": "b54daec3718d78441f744ce97f1ffd799bd2acb164950bd2aa604baeea3c1791"
+    },
+    {
+      "path": "docs/artifacts/validation/summary-method-2026-11-22/04-discard.png",
+      "title": "手机走查 · 04-discard",
+      "synthetic": true,
+      "sha256": "a685cdc975c8a7a675c3c86ddf275740efdaac997236395a0d1e7aa02ccede6a"
     }
   ]
 }
