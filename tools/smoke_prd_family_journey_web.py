@@ -113,12 +113,12 @@ with sync_playwright() as playwright:
     control('checkbox', '选择目标：合成轮流').tap()
     fill('实际表现：合成轮流', '合成：完成一轮')
     tap('正式提交干预总结')
-    expect(page.get_by_role('alert')).to_contain_text('实际方法')
-    tap('实际方法')
+    expect(control('dialog', '确认本次实际方法')).to_be_visible()
+    expect(control('button', '确认并提交总结')).to_be_disabled()
     control('checkbox', '实际方法：合成等待').tap()
     expect(page.get_by_text('关联：合成轮流、合成等待', exact=True)).to_have_count(2)
     assert len(writes) == 1
-    tap('正式提交干预总结')
+    tap('确认并提交总结')
     expect(page.get_by_role('dialog')).to_have_count(0)
     expect(control('button', '查看家庭干预：合成：完成一轮')).to_have_count(1)
     assert len(writes) == 2 and writes[-1]['id'] == saved_id and writes[-1]['action'] == 'complete'

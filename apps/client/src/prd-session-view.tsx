@@ -73,6 +73,8 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
  const [goalLoadBusy,setGoalLoadBusy]=useState(false),[goalLoadError,setGoalLoadError]=useState(''),goalLoadSequence=useRef(0);
  const [drafts,setDrafts]=useState<Record<string,SessionDraft>>({}),[ready,setReady]=useState(false),[editor,setEditor]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[choice,setChoice]=useState(false),[detail,setDetail]=useState<string|null>(null),[coverage,setCoverage]=useState(false),[search,setSearch]=useState(''),[more,setMore]=useState(false),[goalQuick,setGoalQuick]=useState(false),[methodName,setMethodName]=useState<string|null>(null),[methodBusy,setMethodBusy]=useState(false),[suggestions,setSuggestions]=useState<Coverage|null>(null),[feedbackLatest,setFeedbackLatest]=useState<Record<string,Feedback>>({}),[history,setHistory]=useState<{session:Session;actor_name:string;recorded_at:string;change_note:string;event:string}[]|null>(null),[day,setDay]=useState<string|null>(null),[month,setMonth]=useState(()=>localDate().slice(0,7));
  useEffect(()=>{if(requested){setDetail(requested.id);setHistory(null);onRequested?.()}},[requested]);
+ const [editPrompt,setEditPrompt]=useState<'methods'|'discard'|null>(null);
+ useEffect(()=>setEditPrompt(null),[editor]);
  const [historyPage,setHistoryPage]=useState(0),[historyMore,setHistoryMore]=useState(false);
  const historySequence=useRef(0),[historyLoading,setHistoryLoading]=useState(false);
  useEffect(()=>{++historySequence.current;setHistoryMore(false);setHistoryLoading(false);},[detail]);
@@ -85,11 +87,13 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
  const draft=editor?drafts[editor]:undefined,rawInput=draft?.request.input,input=rawInput&&!draft?.pending?resolveSummaryLinks(rawInput,draft?.defaultKnowledgeLinks,data.goals):rawInput,summary=input?.summary,remote=draft?data.sessions.find(s=>s.id===draft.request.id):undefined;
  const readOnlyDraft=ended(remote)&&!draft?.pending&&!draft?.quick;
  const discardLocal=async()=>{
-  if(!editor||busy||methodBusy)return;
+  if(!editor||busy||methodBusy||inFlight.current)return;
+  const previous=refs.current[editor];
+  if(!previous||previous.pending||previous.quick)return;
   const next={...refs.current};
   delete next[editor];
   try{await persist(next);setEditor(null);setMethodName(null);setCoverage(false);setError('');}
-  catch(e){setError(errorText(e));}
+  catch(e){refs.current={...refs.current,[editor]:previous};setDrafts(refs.current);setError(errorText(e));}
  };
  const conflict=Boolean(summary?.feedback?.some(f=>feedbackLatest[f.id]&&feedbackLatest[f.id].version!==f.expected_version))||Boolean(draft&&remote&&draft.request.expected_version!==remote.version)||Boolean(summary?.new_knowledge.some(k=>{const current=data.knowledge.find(v=>v.input.id===k.id),details=summary.knowledge_details?.[k.id];return current&&!current.deleted&&(JSON.stringify(current.input)!==JSON.stringify(k)||Boolean(details&&JSON.stringify(current.details)!==JSON.stringify(details)))&&summary.knowledge_versions?.[k.id]!==current.version})),disabled=busy||methodBusy||Boolean(draft?.pending)||Boolean(draft?.quick);
  const candidate=useStableOptions(data,editor,[...(input?.targets.map(t=>t.goal_id)??[]),...(input?.methods.map(m=>m.id)??[]),...(input?.focus_goal_ids??[]),...(summary?.methods.map(m=>m.id)??[])]),options=candidate.options;
@@ -185,10 +189,12 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
    const summary=payload.input?.summary;
    const actual=summary?.targets.filter(target=>target.performed)??[];
    const missing=actual.find(target=>!target.observation.trim());
-   const issue=!actual.length?'请在「选择本次目标」勾选至少一个实际目标。':
-    missing?`请填写「${summaryGoal(missing.goal_id)?.input.title??'已选目标'}」的实际表现。`:
-    summary?.confirmation==='unconfirmed'?'请展开「实际方法」，选择用过的方法，也可明确选「本次没有使用库中方法」或「记不清」。':
-    summaryKnowledgeIssue(summary);
+   if(!actual.length){setError('请在「选择本次目标」勾选至少一个实际目标。');return;}
+   if(missing){setError(`请填写「${summaryGoal(missing.goal_id)?.input.title??'已选目标'}」的实际表现。`);return;}
+   if(summary?.confirmation==='unconfirmed'){
+    setError('');setEditPrompt('methods');return;
+   }
+   const issue=summaryKnowledgeIssue(summary);
    if(issue){setError(issue);return;}
   }
   inFlight.current=true;
@@ -247,6 +253,21 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
   if(ids.length&&!next.some(t=>t.role==='main'&&ids.includes(t.goal_id))){const i=next.findIndex(t=>ids.includes(t.goal_id)&&t.role!=='review');if(i>=0){for(let j=0;j<next.length;j++)if(next[j].role==='main')next[j]={...next[j],role:'secondary'};next[i]={...next[i],role:'main'};}}
   patch({targets:next,...(focusIds?{focus_goal_ids:focusIds}:{}),summary:summary?{...summary,targets:all.map(id=>({...previous.find(t=>t.goal_id===id)??{goal_id:id,observation:''},performed:ids.includes(id)}))}:null});
  };
+ const methodChoices=summary&&input&&(
+  <View testID="family-method-options" style={{gap:8}}>
+  <Check title="本次没有使用库中方法" checked={summary.confirmation==='none'} disabled={disabled} onPress={()=>patchSummary({confirmation:'none',methods:[],first_try_ids:[]})}/>
+  <Check title="记不清实际用了什么方法" checked={summary.confirmation==='unknown'} disabled={disabled} onPress={()=>patchSummary({confirmation:'unknown',methods:[],first_try_ids:[]})}/>
+  <RelationPicker inline label="实际方法" prefix="实际方法：" options={[
+   ...options.methods.map(m=>({id:m.id,label:m.input.title,related:m.input.goal_ids.some(id=>linkedGoalIds.includes(id))})),
+   ...summary.methods.filter(ref=>!options.methods.some(m=>m.id===ref.id)).map(ref=>({id:ref.id,label:remote?.actual_methods.find(m=>m.id===ref.id)?.input.title??'原选方法'})),
+  ]} selected={summary.methods.map(m=>m.id)} disabled={disabled} toggle={id=>patchSummary(current=>{
+   const m=options.methods.find(m=>m.id===id);
+   const methods=current.methods.some(r=>r.id===id)?current.methods.filter(r=>r.id!==id):m?[...current.methods,refOf(m)]:current.methods;
+   return {methods,confirmation:methods.length?'used':'unconfirmed',first_try_ids:(current.first_try_ids??[]).filter(v=>v!==id)};
+  })}/>
+  {input.methods.length>0&&<Button title="计划方法都用上了" disabled={disabled} onPress={()=>patchSummary({confirmation:'used',methods:[...input.methods],first_try_ids:(summary.first_try_ids??[]).filter(id=>input.methods.some(m=>m.id===id))})}/>}
+ </View>
+ );
  const savedEntry=data.sessions.find(s=>s.id===savedEntryId);
  const beginButton=()=>pending.length===1?open(pending[0],'summary'):pending.length?setChoice(true):open();
  return <View style={{gap:12}}>
@@ -284,7 +305,10 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
  {error&&<Text accessibilityRole="alert">{error}</Text>}
  <Button title="放弃这份本机填写" disabled={busy||methodBusy} onPress={()=>void discardLocal()}/>
  </DetailOverlay>}
- {draft&&!readOnlyDraft&&<DetailOverlay tone="family" title={draft.stage==='plan'?'填写干预计划':draft.stage==='summary'?'填写干预总结':'核对干预操作'} close={()=>{if(!busy&&!methodBusy)setEditor(null)}} footer={<>{error&&<Text accessibilityRole="alert">{error}</Text>}<SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/>
+ {draft&&!readOnlyDraft&&<DetailOverlay tone="family" title={draft.stage==='plan'?'填写干预计划':draft.stage==='summary'?'填写干预总结':'核对干预操作'} close={()=>{if(!busy&&!methodBusy)setEditor(null)}} footer={<>{error&&<Text accessibilityRole="alert">{error}</Text>}<View style={{flexDirection:'row',alignItems:'center',gap:8}}>
+  <View style={{flex:1}}><SaveStatus storageKey={key} sharing={busy} pending={Boolean(draft.pending)}/></View>
+  {!draft.pending&&!draft.quick&&<UiButton title="放弃填写" tone="family" variant="link" disabled={busy||methodBusy} press={()=>setEditPrompt('discard')}/>}
+ </View>
  {draft.pending?<Button title={busy?'正在保存…':'重试同一次干预保存'} disabled={busy} primary onPress={()=>void submit(draft.pending!.action)}/>:
  draft.stage==='administration'?<Button title="确认干预操作" primary disabled={disabled||conflict} onPress={()=>void submit(draft.request.action)}/>:
  draft.stage==='plan'?<Button title={busy?'正在保存…':'保存计划并退出'} primary disabled={disabled||conflict||Boolean(draft.quick)||!input?.plan.trim()} onPress={()=>void submit('save_draft')}/>:
@@ -305,18 +329,8 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
 
  {summary.targets.filter(t=>!summaryGoal(t.goal_id)).map((t,i)=><View key={t.goal_id} style={{gap:8}}><Text>{options.removed_goal_ids?.includes(t.goal_id)?'原选目标已删除；原观察仍保留。':'原选目标暂未读到，可从目标选择器刷新目录。'}</Text>{!!t.observation&&<Text selectable>原观察：{t.observation}</Text>}{t.performed?<Button title={`解除未读到目标的关联 ${i+1}`} disabled={disabled} onPress={()=>changeTargets(actualIds.filter(id=>id!==t.goal_id))}/>:<Text>未计入本次实际覆盖。</Text>}</View>)}
  <Disclosure key={editor+':methods'} title="实际方法" summary={summary.methods.length?`已选${summary.methods.length}项`:summary.confirmation==='none'?'未使用库中方法':summary.confirmation==='unknown'?'记不清':'必选，可选未使用或记不清'}>
-  <View testID="family-method-options" style={{gap:8}}><RelationPicker inline label="实际方法" prefix="实际方法：" options={[
-   ...options.methods.map(m=>({id:m.id,label:m.input.title,related:m.input.goal_ids.some(id=>linkedGoalIds.includes(id))})),
-   ...summary.methods.filter(ref=>!options.methods.some(m=>m.id===ref.id)).map(ref=>({id:ref.id,label:remote?.actual_methods.find(m=>m.id===ref.id)?.input.title??'原选方法'})),
-  ]} selected={summary.methods.map(m=>m.id)} disabled={disabled} toggle={id=>patchSummary(current=>{
-   const m=options.methods.find(m=>m.id===id);
-   const methods=current.methods.some(r=>r.id===id)?current.methods.filter(r=>r.id!==id):m?[...current.methods,refOf(m)]:current.methods;
-   return {methods,confirmation:methods.length?'used':'unconfirmed',first_try_ids:(current.first_try_ids??[]).filter(v=>v!==id)};
-  })}/>
-  <Check title="本次没有使用库中方法" checked={summary.confirmation==='none'} disabled={disabled} onPress={()=>patchSummary({confirmation:'none',methods:[],first_try_ids:[]})}/>
-  <Check title="记不清实际用了什么方法" checked={summary.confirmation==='unknown'} disabled={disabled} onPress={()=>patchSummary({confirmation:'unknown',methods:[],first_try_ids:[]})}/>
-  {input.methods.length>0&&<Button title="计划方法都用上了" disabled={disabled} onPress={()=>patchSummary({confirmation:'used',methods:[...input.methods],first_try_ids:(summary.first_try_ids??[]).filter(id=>input.methods.some(m=>m.id===id))})}/>}
- </View></Disclosure>
+  {editPrompt!=='methods'&&methodChoices}
+ </Disclosure>
  {summary.methods.map(r=>{const title=options.methods.find(m=>m.id===r.id)?.input.title??remote?.actual_methods.find(m=>m.id===r.id)?.input.title??'原选方法';return <View key={r.id} style={{gap:6}}><Text>实际版本：{title} 第 {r.version} 版</Text><Check title={`本次开始尝试：${title}`} checked={summary.first_try_ids?.includes(r.id)??false} disabled={disabled} onPress={()=>patchSummary(current=>({first_try_ids:toggle(current.first_try_ids??[],r.id)}))}/></View>;})}
  {(summary.first_try_ids?.length??0)>0&&options.sessions.some(s=>s.status==='completed'&&s.id!==draft.request.id&&s.input.business_date>=new Date(Date.parse(today+'T00:00:00Z')-((new Date(today+'T00:00:00Z').getUTCDay()+6)%7)*86400000).toISOString().slice(0,10)&&s.input.business_date<=today&&s.input.summary?.first_try_ids?.some(id=>!summary.first_try_ids?.includes(id)))&&<Text>同时开始几个新做法，之后不易判断哪一个有帮助。可以保留这次安排。</Text>}
  <SummaryRelatedKnowledge data={options} goals={linkedGoalIds} methods={bindingMethods}/> {input.targets.some(t=>actualIds.includes(t.goal_id)&&summaryGoal(t.goal_id))&&<Disclosure title="调整目标角色">
@@ -357,10 +371,22 @@ export function SessionHub({data,mode,refresh,accepted,acceptMethod,snapshotRead
 
 
  {!draft.pending&&draft.stage==='summary'&&remote?.status!=='completed'&&<Button title={busy?'正在保存…':'暂存总结并退出'} disabled={disabled||conflict||Boolean(draft.quick)} onPress={()=>void submit('save_draft')}/>}
- {!draft.pending&&!disabled&&<Button title="放弃本机填写（已保存记录不变）" onPress={()=>void discardLocal()}/>}
+
 
  </DetailOverlay>}
 
+ {draft&&!readOnlyDraft&&editPrompt==='methods'&&summary&&<DetailOverlay tone="family" title="确认本次实际方法" close={()=>setEditPrompt(null)} footer={
+  <Button primary title="确认并提交总结" disabled={disabled||conflict||summary.confirmation==='unconfirmed'} onPress={()=>{setEditPrompt(null);void submit('complete')}}/>
+ }>
+  <Text>已保留刚才填写的表现。请选择用过的方法（可多选），也可以选“没有使用”或“记不清”。</Text>
+  {methodChoices}
+ </DetailOverlay>}
+ {draft&&!readOnlyDraft&&editPrompt==='discard'&&<DetailOverlay tone="family" title="放弃本次填写？" close={()=>setEditPrompt(null)}>
+  <Text>{remote?'将清除这份记录尚未提交的本机修改，家人已保存的记录会保留。':'将清除这份尚未提交的本机草稿。'}</Text>
+  {error&&<Text accessibilityRole="alert">{error}</Text>}
+  <Button title="继续填写" primary onPress={()=>setEditPrompt(null)}/>
+  <Button title="确认放弃" disabled={disabled} onPress={()=>void discardLocal()}/>
+ </DetailOverlay>}
  {!readOnlyDraft&&methodName!==null&&<DetailOverlay tone="family" title={goalQuick?'快捷新建近期本领':'快捷新增方法'} close={()=>{if(!methodBusy)setMethodName(null)}}><Field label={goalQuick?'新目标名称':'新方法名称'} value={methodName} onChange={setMethodName} disabled={methodBusy||Boolean(methodPending.current)} placeholder={goalQuick?'例如：自己用筷子':'例如：示范后少提醒'}/>{error&&<Text accessibilityRole="alert">{error}</Text>}<Button title={methodBusy?'正在保存…':goalQuick?'保存目标并选入本次':'保存方法并选入本次'} disabled={methodBusy||!methodName.trim()} primary onPress={()=>void(async()=>{setMethodBusy(true);setError('');const hadPending=Boolean(methodPending.current||draft?.quick?.request),assertSession=authSessionGuard();let sent=false;const payload:ObjectWrite=methodPending.current??draft?.quick?.request??{id:uuid(),operation_id:uuid(),expected_version:null,change_note:'',...(goalQuick?{}:{method_create_mode:'quick' as const}),mutation:goalQuick?{kind:'goal',value:{...newGoal(),title:methodName.trim()}}:{kind:'method',value:{...newMethod(),title:methodName.trim(),goal_ids:draft?.stage==='summary'?currentActualIds:input?.targets.map(t=>t.goal_id)??[]}}};methodPending.current=payload;
  try{const currentDraft=refs.current[editor!];if(!currentDraft)throw new Error('原表单已关闭，请从草稿继续');await persist({...refs.current,[editor!]:{...currentDraft,quick:{request:payload,kind:goalQuick?'goal':'method',stage:draft?.stage==='summary'?'summary':'plan'}}});assertSession();sent=true;const saved=await request<Saved>(`/prd/records/${(payload as {id:string}).id}`,'PUT',payload);if(saved.kind==='catalog')throw new Error('保存返回类型不正确');acceptMethod(saved);const current=refs.current[editor!];if(current?.request.input){const v=current.request.input;const updated=saved.kind==='goal'?{...v,targets:v.targets.some(t=>t.goal_id===saved.value.id)?v.targets:v.targets.length?[...v.targets,{goal_id:saved.value.id,role:'secondary' as const,note:''}]:[{goal_id:saved.value.id,role:'main' as const,note:''}],summary:v.summary?{...v.summary,targets:v.summary.targets.some(t=>t.goal_id===saved.value.id)?v.summary.targets:[...v.summary.targets,{goal_id:saved.value.id,performed:true,observation:''}]}:null}:draft?.stage==='summary'?{...v,summary:{...v.summary!,confirmation:'used' as const,methods:v.summary!.methods.some(m=>m.id===saved.value.id)?v.summary!.methods:[...v.summary!.methods,refOf(saved.value)]}}:{...v,methods:v.methods.some(m=>m.id===saved.value.id)?v.methods:[...v.methods,refOf(saved.value)]};await persist({...refs.current,[editor!]:{...current,quick:undefined,request:{...current.request,operation_id:uuid(),input:updated}}})}methodPending.current=null;setMethodName(null)}catch(e){if(resetAfterFailure(hadPending,sent,e)){methodPending.current=null;const v=refs.current[editor!];if(v)void persist({...refs.current,[editor!]:{...v,quick:undefined}})}setError(errorText(e))}finally{setMethodBusy(false)}})()}/></DetailOverlay>}
  {!readOnlyDraft&&coverage&&<CoveragePanel data={options} close={()=>setCoverage(false)} selectedGoals={input?.targets.map(t=>t.goal_id)} selectedFocus={input?.focus_goal_ids} chooseGoal={draft?.stage==='summary'&&input&&!disabled?(id,long)=>{if(long)patch({focus_goal_ids:toggle(input.focus_goal_ids,id)});else changeTargets([...new Set([...actualIds,id])]);setCoverage(false);}:undefined}/>}
