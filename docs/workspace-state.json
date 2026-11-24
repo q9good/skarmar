@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-22",
+  "updatedAt": "2026-11-24",
   "timezone": "Asia/Singapore",
   "repository": "q9good/skarmar",
   "branch": "feat/tencent-informed-web",
@@ -612,6 +612,13 @@
       "status": "done",
       "evidence": "docs/family-summary-submit-2026-11-22.md",
       "verification": "发布运行 45006750038 成功，激活 4cf7c278-c902-46ef-aef1-2ee6a74a00ca。独立公开脚本和健康、匿名、来源、数据库启动检查通过，原正式数据代际保留。"
+    },
+    {
+      "id": "T88",
+      "title": "iPhone 与国内安卓的中文语音录入调研",
+      "status": "done",
+      "evidence": "docs/voice-input-research-2026-11-24.md",
+      "verification": "核对现有 RN Web 输入框、PRD 和提示显示缺口；核实 Apple、国内安卓输入法、Web Speech、原生 Expo、腾讯及 Workers AI 文档，给出配额测算和合成短句真机验收方案。尚无家庭手机或大陆网络实测，未改变应用或生产。"
     }
   ],
   "artifacts": [
